@@ -1,0 +1,673 @@
+{
+  "meta": {
+    "version": "1.0.0",
+    "description": "Nepal-context skin problems knowledge base for rule-based matching",
+    "total_conditions": 18,
+    "regions_covered": ["Kathmandu Valley", "Terai", "Hilly Region", "Mountain Region"],
+    "languages": ["en", "ne"]
+  },
+
+  "quiz_fields": {
+    "skin_type": ["oily", "dry", "combination", "sensitive", "normal"],
+    "primary_concerns": ["acne", "dark_spots", "dullness", "dryness", "oiliness", "redness", "uneven_tone", "large_pores", "wrinkles", "dark_circles", "rough_texture", "sensitivity"],
+    "symptoms": [
+      "pimples_forehead", "pimples_cheeks", "pimples_jawline", "pimples_back",
+      "blackheads", "whiteheads", "cysts_painful",
+      "dry_patches", "flaking", "tightness_after_wash",
+      "shiny_tzone", "shiny_full_face",
+      "redness_cheeks", "redness_after_products", "burning_sensation",
+      "dark_spots_post_acne", "dark_spots_sun", "melasma_patches",
+      "dull_grey_skin", "uneven_skin_tone",
+      "under_eye_dark", "under_eye_puffy",
+      "rough_bumpy_texture", "large_visible_pores"
+    ],
+    "lifestyle": {
+      "sleep_hours": ["less_than_5", "5_to_6", "6_to_8", "more_than_8"],
+      "diet": ["home_cooked", "mostly_dal_bhat", "junk_food_frequent", "spicy_frequent", "vegetarian", "non_vegetarian"],
+      "water_intake_liters": ["less_than_1", "1_to_2", "more_than_2"],
+      "stress_level": ["low", "moderate", "high"],
+      "exercise": ["none", "occasional", "regular"],
+      "smoking": ["yes", "no"],
+      "alcohol": ["yes", "no"],
+      "screen_time_hours": ["less_than_3", "3_to_6", "more_than_6"],
+      "outdoor_exposure": ["minimal", "moderate", "high"]
+    },
+    "environment": {
+      "location_type": ["kathmandu_valley", "terai", "hilly", "mountain"],
+      "water_source": ["tap_municipal", "well", "filtered", "tanker"],
+      "current_season": ["spring", "monsoon", "autumn", "winter"],
+      "pollution_exposure": ["low", "moderate", "high"]
+    },
+    "age_group": ["13_17", "18_24", "25_34", "35_44", "45_plus"],
+    "gender": ["female", "male", "other"],
+    "current_routine": {
+      "uses_sunscreen": ["yes", "no", "sometimes"],
+      "cleanses_twice": ["yes", "no"],
+      "moisturizes": ["yes", "no"],
+      "uses_toner": ["yes", "no"],
+      "uses_makeup_daily": ["yes", "no", "sometimes"],
+      "removes_makeup_before_bed": ["yes", "no", "sometimes"]
+    }
+  },
+
+  "matching_rules": {
+    "description": "Score-based matching. Each condition has trigger_symptoms and trigger_lifestyle. Sum scores, highest match wins. Min threshold: 3 points to flag a condition.",
+    "scoring": {
+      "primary_symptom_match": 3,
+      "secondary_symptom_match": 2,
+      "lifestyle_trigger_match": 2,
+      "environment_match": 1,
+      "age_match": 1
+    }
+  },
+
+  "conditions": [
+
+    {
+      "id": "C001",
+      "name_en": "Acne Vulgaris (Hormonal)",
+      "name_ne": "हर्मोनल मुहासो",
+      "severity": "moderate",
+      "prevalence_nepal": "very_high",
+      "description_en": "Hormone-driven breakouts, most common in teens and young adults. In Nepal, worsened by spicy diet, stress from exams/work, and lack of proper skincare knowledge.",
+      "description_ne": "हर्मोनको कारण हुने मुहासो, विशेषतः किशोरावस्था र युवा अवस्थामा। नेपालमा पिरो खाना, तनाव र सही स्किनकेयर जानकारीको कमीले यो समस्या बढ्छ।",
+
+      "trigger_symptoms": {
+        "primary": ["pimples_forehead", "pimples_cheeks", "pimples_jawline", "cysts_painful"],
+        "secondary": ["blackheads", "whiteheads", "shiny_tzone"]
+      },
+      "trigger_lifestyle": {
+        "high_impact": ["stress_level:high", "sleep_hours:less_than_5", "diet:junk_food_frequent", "diet:spicy_frequent"],
+        "moderate_impact": ["sleep_hours:5_to_6", "screen_time_hours:more_than_6", "exercise:none"]
+      },
+      "trigger_environment": ["location_type:kathmandu_valley", "pollution_exposure:high"],
+      "trigger_age": ["13_17", "18_24", "25_34"],
+      "worsened_by_nepal_context": [
+        "Hard Kathmandu tap water clogs pores",
+        "Dashain/Tihar oily fried foods spike hormones",
+        "Exam pressure (SEE, IOE, MBBS entrance) spikes cortisol",
+        "Using dadi-buwa (grandma) remedies like toothpaste or lemon — damages barrier",
+        "Sharing makeup tools at functions without cleaning"
+      ],
+
+      "routine": {
+        "morning": [
+          {
+            "step": 1,
+            "action": "Gentle Foaming Cleanser",
+            "instruction_en": "Wash face with lukewarm water and a gentle foaming cleanser. Avoid scrubbing hard — it spreads bacteria.",
+            "instruction_ne": "मुख मनतातो पानीले र हल्का फोमिङ क्लिन्जरले धुनुस्। जोरले रगड्नु नहोस् — यसले ब्याक्टेरिया फैलिन्छ।",
+            "duration_seconds": 60
+          },
+          {
+            "step": 2,
+            "action": "Salicylic Acid Toner (2%)",
+            "instruction_en": "Apply a salicylic acid toner with a cotton pad on the T-zone and breakout areas. Skippable if skin feels dry.",
+            "instruction_ne": "T-zone र मुहासो भएका ठाउँमा कटन प्याडले स्यालिसिलिक एसिड टोनर लगाउनुस्।",
+            "duration_seconds": 30
+          },
+          {
+            "step": 3,
+            "action": "Oil-Free Moisturizer",
+            "instruction_en": "Even oily skin needs moisture. Use a lightweight, oil-free gel moisturizer. Skipping causes more oil production.",
+            "instruction_ne": "तेलिलो छाला भए पनि मोइस्चराइजर चाहिन्छ। हल्का जेल-बेस्ड प्रोडक्ट प्रयोग गर्नुस्। छोड्दा थप तेल निस्कन्छ।",
+            "duration_seconds": 30
+          },
+          {
+            "step": 4,
+            "action": "Sunscreen SPF 30+ (non-comedogenic)",
+            "instruction_en": "Apply sunscreen every morning — UV makes acne scars permanent. Choose non-comedogenic (won't clog pores).",
+            "instruction_ne": "हरेक बिहान सनस्क्रिन लगाउनुस् — घामले मुहासोका दाग स्थायी बनाउँछ। नन-कमेडोजेनिक छान्नुस्।",
+            "duration_seconds": 30
+          }
+        ],
+        "evening": [
+          {
+            "step": 1,
+            "action": "Double Cleanse (if wearing makeup/sunscreen)",
+            "instruction_en": "First use micellar water or cleansing oil to remove makeup/sunscreen. Then wash with foaming cleanser.",
+            "instruction_ne": "पहिले माइसेलर वाटर वा क्लिन्जिङ ओइलले मेकअप/सनस्क्रिन हटाउनुस्। अनि फोमिङ क्लिन्जरले धुनुस्।",
+            "duration_seconds": 90
+          },
+          {
+            "step": 2,
+            "action": "Niacinamide Serum (5-10%)",
+            "instruction_en": "Apply niacinamide serum — it reduces pores, controls oil, and fades acne marks. Very affordable and effective.",
+            "instruction_ne": "नियासिनामाइड सेरम लगाउनुस् — यसले पोर कम गर्छ, तेल नियन्त्रण गर्छ, र मुहासोका दाग हल्का पार्छ।",
+            "duration_seconds": 30
+          },
+          {
+            "step": 3,
+            "action": "Benzoyl Peroxide Spot Treatment (2.5%)",
+            "instruction_en": "Apply only on active pimples, not the whole face. Leave overnight.",
+            "instruction_ne": "सक्रिय फोकाहरूमा मात्र लगाउनुस्, पूरा अनुहारमा होइन। रातभर राख्नुस्।",
+            "duration_seconds": 15
+          },
+          {
+            "step": 4,
+            "action": "Light Moisturizer",
+            "instruction_en": "Finish with a light moisturizer to repair skin barrier while sleeping.",
+            "instruction_ne": "सुत्दा छाला मर्मत गर्न हल्का मोइस्चराइजरले टुंग्याउनुस्।",
+            "duration_seconds": 30
+          }
+        ],
+        "weekly": [
+          {
+            "frequency": "2x per week",
+            "action": "Clay Mask",
+            "instruction_en": "Apply kaolin or bentonite clay mask on T-zone for 10 minutes to deep clean pores.",
+            "instruction_ne": "T-zone मा क्ले मास्क १० मिनेट लगाउनुस् — पोर गहिरो सफा गर्न।"
+          }
+        ]
+      },
+
+      "diet_recommendations": {
+        "eat_more": [
+          { "food_en": "Curd (Dahi)", "food_ne": "दही", "reason_en": "Probiotics reduce inflammation. 1 small bowl daily.", "reason_ne": "प्रोबायोटिक्सले सूजन कम गर्छ। दिनमा एक सानो कचौरा।" },
+          { "food_en": "Spinach & Green Vegetables", "food_ne": "पालक र हरियो तरकारी", "reason_en": "Zinc and antioxidants fight acne bacteria.", "reason_ne": "जिङ्क र एन्टिअक्सिडेन्टले मुहासोको ब्याक्टेरिया नष्ट गर्छ।" },
+          { "food_en": "Amla (Aamala)", "food_ne": "आँप", "reason_en": "High Vitamin C reduces acne inflammation and speeds healing.", "reason_ne": "भिटामिन C ले मुहासोको सूजन कम गरी छिटो निको पार्छ।" },
+          { "food_en": "Turmeric milk (haldi doodh)", "food_ne": "हल्दी दूध", "reason_en": "Curcumin is a natural anti-inflammatory.", "reason_ne": "कर्कुमिनले प्राकृतिक रूपमा सूजन कम गर्छ।" },
+          { "food_en": "Water — min 2.5 liters daily", "food_ne": "पानी — दिनमा कम्तीमा २.५ लिटर", "reason_en": "Flushes toxins. Especially important with hard Kathmandu water.", "reason_ne": "विषाक्त पदार्थ निकाल्छ। काठमाडौँको कडा पानीको असर कम गर्न जरुरी।" }
+        ],
+        "avoid": [
+          { "food_en": "Fried snacks (sel roti, pakoda, samosa)", "food_ne": "भुटेका खाजा", "reason_en": "High glycemic index spikes insulin → more acne." },
+          { "food_en": "Excess spicy food", "food_ne": "अत्यधिक पिरो खाना", "reason_en": "Triggers inflammation in skin." },
+          { "food_en": "Milk tea (6+ cups daily)", "food_ne": "धेरै मिल्क चिया", "reason_en": "Dairy hormones in large amounts can worsen hormonal acne." },
+          { "food_en": "White bread, instant noodles (wai wai)", "food_ne": "सेतो रोटी, इन्स्ट्यान्ट नुडल्स", "reason_en": "High glycemic food triggers acne spikes." }
+        ]
+      },
+
+      "nepal_context_tips": [
+        {
+          "category": "water_quality",
+          "tip_en": "Kathmandu tap water is hard (high mineral content) — it disrupts skin pH. Use filtered or cooled boiled water to wash face if possible.",
+          "tip_ne": "काठमाडौँको धाराको पानीमा खनिज धेरै हुन्छ — यसले छालाको pH बिगार्छ। सकेसम्म फिल्टर गरेको वा उमालेर चिसिएको पानीले मुहा धुनुस्।"
+        },
+        {
+          "category": "seasonal",
+          "tip_en": "During Dashain-Tihar: fried foods, sweets, and irregular sleep spike acne. Cleanse twice without fail during festival weeks.",
+          "tip_ne": "दशैँ-तिहारमा तेलिलो खाना, मिठाई र अनियमित निद्राले मुहासो बढ्छ। चाड हप्तामा दिनमा दुईपटक क्लिन्ज गर्नुस्।"
+        },
+        {
+          "category": "pollution",
+          "tip_en": "Kathmandu air pollution (PM2.5) clogs pores daily. Always cleanse at night even if you feel your skin is clean.",
+          "tip_ne": "काठमाडौँको वायु प्रदूषणले (PM2.5) दिनहुँ पोर बन्द गर्छ। राति सधैं क्लिन्ज गर्नुस् भले नि छाला सफा लागेको होस्।"
+        }
+      ],
+
+      "products_nepal": {
+        "budget_low": [
+          { "name": "Himalaya Purifying Neem Face Wash", "price_range_nrs": "150-250", "where": "Bhatbhateni, Medical shops", "type": "cleanser" },
+          { "name": "Garnier Micellar Cleansing Water", "price_range_nrs": "300-450", "where": "Bhatbhateni, Salesberry", "type": "makeup_remover" },
+          { "name": "Lotus Herbals Safe Sun SPF 30", "price_range_nrs": "300-500", "where": "Bhatbhateni, pharmacies", "type": "sunscreen" }
+        ],
+        "budget_medium": [
+          { "name": "Minimalist Niacinamide 10% + Zinc Serum", "price_range_nrs": "700-900", "where": "Daraz, Sastodeal", "type": "serum" },
+          { "name": "Neutrogena Oil-Free Moisturizer", "price_range_nrs": "800-1200", "where": "Bhatbhateni, Daraz", "type": "moisturizer" },
+          { "name": "COSRX Salicylic Acid Daily Gentle Cleanser", "price_range_nrs": "1200-1500", "where": "Daraz", "type": "cleanser" }
+        ],
+        "budget_premium": [
+          { "name": "Paula's Choice 2% BHA Liquid Exfoliant", "price_range_nrs": "3500-5000", "where": "Daraz import", "type": "exfoliant" },
+          { "name": "The Ordinary Niacinamide 10%", "price_range_nrs": "1500-2000", "where": "Daraz, beauty stores Thamel", "type": "serum" }
+        ]
+      },
+
+      "home_remedies_verdict": {
+        "effective": [
+          { "remedy": "Multani mitti (Fuller's Earth) mask", "verdict": "safe_effective", "note": "Good for oily skin, use 1-2x/week" },
+          { "remedy": "Aloe vera gel (fresh)", "verdict": "safe_effective", "note": "Soothing, reduces redness" },
+          { "remedy": "Haldi + dahi paste", "verdict": "safe_mild", "note": "Anti-inflammatory, but can stain skin temporarily" }
+        ],
+        "avoid": [
+          { "remedy": "Lemon juice directly on skin", "verdict": "harmful", "reason": "Too acidic, causes burns and hyperpigmentation" },
+          { "remedy": "Toothpaste on pimples", "verdict": "harmful", "reason": "Contains fluoride and SLS — damages skin barrier" },
+          { "remedy": "Baking soda scrub", "verdict": "harmful", "reason": "Disrupts skin pH severely" }
+        ]
+      },
+
+      "when_to_see_doctor": "If you have 10+ painful cysts, deep nodular acne, or acne not improving after 8 weeks of consistent care — visit a dermatologist. In Kathmandu: Bir Hospital Dermatology Dept (free/low-cost), private clinics in Lazimpat area."
+    },
+
+    {
+      "id": "C002",
+      "name_en": "Post-Inflammatory Hyperpigmentation (Dark Spots from Acne)",
+      "name_ne": "मुहासोपछिका कालो दाग",
+      "severity": "mild_to_moderate",
+      "prevalence_nepal": "very_high",
+      "description_en": "Dark marks left after acne heals. Very common in Nepali skin tones (Fitzpatrick III-V). Sun exposure without protection makes them permanent.",
+      "description_ne": "मुहासो निको भएपछि छोड्ने कालो दाग। नेपाली छालाको रङमा यो धेरै सामान्य हो। घाम लाग्दा यो दाग स्थायी हुन सक्छ।",
+
+      "trigger_symptoms": {
+        "primary": ["dark_spots_post_acne", "uneven_skin_tone"],
+        "secondary": ["dull_grey_skin"]
+      },
+      "trigger_lifestyle": {
+        "high_impact": ["current_routine.uses_sunscreen:no", "outdoor_exposure:high"],
+        "moderate_impact": ["diet:junk_food_frequent"]
+      },
+      "trigger_environment": ["location_type:terai", "location_type:kathmandu_valley"],
+      "trigger_age": ["13_17", "18_24", "25_34"],
+
+      "routine": {
+        "morning": [
+          { "step": 1, "action": "Gentle Cleanser", "instruction_en": "Wash with a gentle cleanser. Avoid harsh scrubs — they spread pigmentation.", "instruction_ne": "हल्का क्लिन्जरले धुनुस्। कडा स्क्रब नगर्नुस् — यसले दाग फैलाउँछ।", "duration_seconds": 60 },
+          { "step": 2, "action": "Vitamin C Serum (10-15%)", "instruction_en": "Apply Vitamin C serum after cleansing — fades dark spots and protects against UV damage.", "instruction_ne": "भिटामिन C सेरम लगाउनुस् — कालो दाग हल्का पार्छ र UV बाट जोगाउँछ।", "duration_seconds": 30 },
+          { "step": 3, "action": "Moisturizer", "instruction_en": "Apply moisturizer before sunscreen.", "instruction_ne": "सनस्क्रिन अघि मोइस्चराइजर लगाउनुस्।", "duration_seconds": 30 },
+          { "step": 4, "action": "Sunscreen SPF 50 PA+++ (MANDATORY)", "instruction_en": "SPF 50+ is non-negotiable for dark spots. Without it, all other products are useless. Reapply every 2 hours if outdoors.", "instruction_ne": "कालो दागको लागि SPF 50+ अनिवार्य छ। यसबिना अरु सबै प्रोडक्ट बेकार। बाहिर भएमा हरेक २ घण्टामा फेरि लगाउनुस्।", "duration_seconds": 30 }
+        ],
+        "evening": [
+          { "step": 1, "action": "Gentle Cleanser", "instruction_en": "Double cleanse if sunscreen/makeup was worn.", "instruction_ne": "सनस्क्रिन/मेकअप लगाएको भए डबल क्लिन्ज गर्नुस्।", "duration_seconds": 90 },
+          { "step": 2, "action": "Niacinamide Serum (10%)", "instruction_en": "Niacinamide is your best friend for dark spots — affordable, effective, no side effects.", "instruction_ne": "कालो दागको लागि नियासिनामाइड उत्तम — सस्तो, प्रभावकारी, साइड इफेक्ट छैन।", "duration_seconds": 30 },
+          { "step": 3, "action": "Alpha Arbutin (2%) or Kojic Acid Serum", "instruction_en": "Apply targeted brightening serum on dark spots only.", "instruction_ne": "कालो दागमा मात्र ब्राइटनिङ सेरम थपि लगाउनुस्।", "duration_seconds": 20 },
+          { "step": 4, "action": "Moisturizer", "instruction_en": "Seal everything with a moisturizer.", "instruction_ne": "मोइस्चराइजरले सबै कुरा सिल गर्नुस्।", "duration_seconds": 30 }
+        ],
+        "weekly": [
+          { "frequency": "1x per week", "action": "AHA Exfoliant (Lactic Acid 5%)", "instruction_en": "Gentle chemical exfoliation removes dead skin cells that make dark spots look worse.", "instruction_ne": "हल्का केमिकल एक्सफोलिएसनले मृत कोशिकाहरू हटाउँछ जसले दाग झन् खराब देखाउँछ।" }
+        ]
+      },
+
+      "diet_recommendations": {
+        "eat_more": [
+          { "food_en": "Amla / Citrus fruits", "food_ne": "आँप / सिट्रस फल", "reason_en": "Vitamin C from food supports skin brightening from inside." },
+          { "food_en": "Tomatoes", "food_ne": "गोलभेडा", "reason_en": "Lycopene protects against UV-induced pigmentation." },
+          { "food_en": "Flaxseeds / Chia seeds", "food_ne": "अलसीको बीउ", "reason_en": "Omega-3 reduces inflammatory pigmentation." }
+        ],
+        "avoid": [
+          { "food_en": "Excess sun exposure 10am-4pm without protection", "food_ne": "बिहान १० देखि बेलुकी ४ बजेसम्म घामबाट नजोगिनु" }
+        ]
+      },
+
+      "nepal_context_tips": [
+        { "category": "seasonal", "tip_en": "Nepal's UV index is extremely high March-September (UV index 8-11+). This is when dark spots get permanently worse. NEVER step out without SPF during this period.", "tip_ne": "नेपालमा मार्च-सेप्टेम्बरमा UV इन्डेक्स धेरै उच्च हुन्छ। यो समयमा घामबाट छाला जोगाउन SPF अनिवार्य छ।" },
+        { "category": "cultural", "tip_en": "Many Nepali women use 'fairness creams' (Fair & Lovely, etc.) which contain harmful bleaching agents and steroids. These cause rebound darkening — avoid them.", "tip_ne": "धेरै नेपाली महिलाले 'फेयरनेस क्रिम' प्रयोग गर्छन् जसमा हानिकारक ब्लिचिङ एजेन्ट र स्टेरोइड हुन्छ। यसले पछि झन् कालो बनाउँछ — प्रयोग नगर्नुस्।" }
+      ],
+
+      "products_nepal": {
+        "budget_low": [
+          { "name": "Vitamin C from Garnier/L'Oreal Serum", "price_range_nrs": "400-700", "where": "Bhatbhateni, Beauty shops", "type": "serum" },
+          { "name": "Lotus Herbals Safe Sun SPF 50", "price_range_nrs": "400-600", "where": "Pharmacies, Bhatbhateni", "type": "sunscreen" }
+        ],
+        "budget_medium": [
+          { "name": "Minimalist Alpha Arbutin 2% + HA", "price_range_nrs": "700-1000", "where": "Daraz, Sastodeal", "type": "serum" },
+          { "name": "Minimalist Vitamin C 10%", "price_range_nrs": "700-900", "where": "Daraz", "type": "serum" }
+        ]
+      },
+
+      "when_to_see_doctor": "If dark spots persist beyond 6 months of consistent SPF + actives use, or if patches are large/spreading (may be melasma — needs prescription treatment)."
+    },
+
+    {
+      "id": "C003",
+      "name_en": "Dry & Dehydrated Skin",
+      "name_ne": "सुख्खा र निर्जल छाला",
+      "severity": "mild",
+      "prevalence_nepal": "very_high",
+      "description_en": "Skin that lacks oil (dry) or water (dehydrated). Nepal's cold winters, dry hilly air, and hard tap water are major causes.",
+      "description_ne": "तेल (सुख्खा) वा पानी (निर्जल) को कमी भएको छाला। नेपालको जाडो, सुख्खा हावा र कडा पानी मुख्य कारण हुन्।",
+
+      "trigger_symptoms": {
+        "primary": ["dry_patches", "flaking", "tightness_after_wash"],
+        "secondary": ["rough_bumpy_texture", "dull_grey_skin"]
+      },
+      "trigger_lifestyle": {
+        "high_impact": ["water_intake_liters:less_than_1", "sleep_hours:less_than_5"],
+        "moderate_impact": ["diet:junk_food_frequent", "water_intake_liters:1_to_2"]
+      },
+      "trigger_environment": ["location_type:mountain", "location_type:hilly", "current_season:winter", "water_source:tap_municipal"],
+      "trigger_age": ["25_34", "35_44", "45_plus"],
+
+      "routine": {
+        "morning": [
+          { "step": 1, "action": "Cream or Milk Cleanser (not foaming)", "instruction_en": "Foaming cleansers strip dry skin further. Use a cream or milk cleanser that doesn't lather.", "instruction_ne": "फोमिङ क्लिन्जरले सुख्खा छाला झन् सुख्खो बनाउँछ। क्रिम वा मिल्क क्लिन्जर प्रयोग गर्नुस्।", "duration_seconds": 60 },
+          { "step": 2, "action": "Hyaluronic Acid Serum (apply on damp skin)", "instruction_en": "Apply hyaluronic acid WHILE skin is still slightly damp — it pulls moisture into skin. On dry skin it can backfire.", "instruction_ne": "छाला अलि ओसिलो छँदै ह्यालुरोनिक एसिड लगाउनुस् — यसले छालामा ओसिलापन तान्छ।", "duration_seconds": 30 },
+          { "step": 3, "action": "Rich Moisturizer (Ceramide-based)", "instruction_en": "Seal the hyaluronic acid with a ceramide-rich moisturizer to lock moisture in.", "instruction_ne": "सेरामाइड-युक्त मोइस्चराइजरले ओसिलापन बाँध्नुस्।", "duration_seconds": 30 },
+          { "step": 4, "action": "Sunscreen (moisturizing formula)", "instruction_en": "Choose a hydrating sunscreen, not a matte/oil-control one.", "instruction_ne": "हाइड्रेटिङ सनस्क्रिन छान्नुस्, म्याट/अयल-कन्ट्रोल होइन।", "duration_seconds": 30 }
+        ],
+        "evening": [
+          { "step": 1, "action": "Cream Cleanser", "instruction_en": "Never skip cleansing at night. Use cream-based.", "instruction_ne": "राति क्लिन्जिङ कहिल्यै नछोड्नुस्। क्रिम-बेस्ड प्रयोग गर्नुस्।", "duration_seconds": 60 },
+          { "step": 2, "action": "Hyaluronic Acid + Glycerin Serum", "instruction_en": "Apply on damp skin for maximum absorption.", "instruction_ne": "राम्रो अवशोषणको लागि ओसिलो छालामा लगाउनुस्।", "duration_seconds": 30 },
+          { "step": 3, "action": "Heavy Night Cream or Facial Oil (Rosehip/Squalane)", "instruction_en": "Night is recovery time. Use a thick moisturizer or a few drops of facial oil to wake up with plump skin.", "instruction_ne": "रात पुनरुत्थानको समय हो। बाक्लो मोइस्चराइजर वा फेशियल अयलले सुत्नुस् — बिहान मुखाकृति भरिएको हुन्छ।", "duration_seconds": 30 }
+        ],
+        "weekly": [
+          { "frequency": "1x per week", "action": "Sheet Mask (hydrating)", "instruction_en": "Korean sheet masks are available on Daraz for Rs. 100-300. Use a hydrating one once a week.", "instruction_ne": "दाराजमा कोरियन शीट मास्क Rs. 100-300 मा पाइन्छ। हप्तामा एकपटक हाइड्रेटिङ प्रयोग गर्नुस्।" },
+          { "frequency": "1x per week", "action": "Slugging (Vaseline method)", "instruction_en": "Apply Vaseline as the last step over your moisturizer before bed. Wakes up with extremely hydrated skin. Vaseline is Rs. 80-150 everywhere.", "instruction_ne": "सुत्नुअघि मोइस्चराइजरमाथि भ्यासलिन लगाउनुस्। बिहान छाला धेरै नम हुन्छ। भ्यासलिन जताततै Rs. 80-150 मा पाइन्छ।" }
+        ]
+      },
+
+      "diet_recommendations": {
+        "eat_more": [
+          { "food_en": "Water — 2.5+ liters daily", "food_ne": "पानी — दिनमा २.५+ लिटर", "reason_en": "Dehydrated skin = dehydrated body first." },
+          { "food_en": "Ghee (in moderation)", "food_ne": "घ्यू (सन्तुलित मात्रामा)", "reason_en": "Healthy fats from ghee support skin's lipid barrier. A Nepali kitchen staple that's actually great for dry skin." },
+          { "food_en": "Avocado / Nuts (badam, akhrot)", "food_ne": "एभोकाडो / नट्स", "reason_en": "Vitamin E and omega-3 for skin barrier." },
+          { "food_en": "Seasonal fruits with high water content (watermelon, cucumber)", "food_ne": "पानी-युक्त मौसमी फल (तरबुजा, काँक्रो)", "reason_en": "Natural skin hydration from inside." }
+        ],
+        "avoid": [
+          { "food_en": "Excess caffeine (6+ cups of chiya)", "food_ne": "धेरै चिया", "reason_en": "Acts as a diuretic — dehydrates skin." },
+          { "food_en": "Alcohol", "food_ne": "रक्सी", "reason_en": "Major cause of dehydrated skin." }
+        ]
+      },
+
+      "nepal_context_tips": [
+        { "category": "seasonal", "tip_en": "Winter in Kathmandu (Dec-Feb) and mountain regions drops humidity severely. Switch to heavier creams starting October. Carry a facial mist (or rosewater in a small spray bottle) as a DIY option.", "tip_ne": "काठमाडौँको जाडो (डिसेम्बर-फेब्रुअरी) र पहाडी क्षेत्रमा हावाको ओसिलापन धेरै घट्छ। अक्टोबरदेखि बाक्लो क्रिम प्रयोग सुरु गर्नुस्।" },
+        { "category": "water_quality", "tip_en": "Hard tap water removes natural skin oils. If possible, use filtered water for face washing, or add a few drops of glycerin to your wash water.", "tip_ne": "कडा पानीले छालाको प्राकृतिक तेल हटाउँछ। सकेसम्म फिल्टर गरेको पानी प्रयोग गर्नुस्।" },
+        { "category": "cultural", "tip_en": "Pure cow ghee applied sparingly on extremely dry areas (elbows, lips, heels) is an effective and cheap traditional remedy — actually proven by dermatology.", "tip_ne": "गाईको शुद्ध घ्यू अत्यन्त सुख्खा ठाउँ (कुइनो, ओठ, एडी) मा थोरै मात्रामा लगाउनु एक प्रभावकारी परम्परागत उपाय हो।" }
+      ],
+
+      "products_nepal": {
+        "budget_low": [
+          { "name": "Vaseline Intensive Care Lotion", "price_range_nrs": "150-300", "where": "Everywhere", "type": "moisturizer" },
+          { "name": "Pure Rosewater Spray (Dabur Gulabari)", "price_range_nrs": "100-150", "where": "Medical shops, Bhatbhateni", "type": "hydrating_mist" }
+        ],
+        "budget_medium": [
+          { "name": "Cetaphil Moisturizing Cream", "price_range_nrs": "700-1000", "where": "Pharmacies, Bhatbhateni", "type": "moisturizer" },
+          { "name": "Minimalist Hyaluronic Acid + PGA 2%", "price_range_nrs": "600-800", "where": "Daraz", "type": "serum" }
+        ],
+        "budget_premium": [
+          { "name": "CeraVe Moisturizing Cream (Ceramide)", "price_range_nrs": "1500-2500", "where": "Daraz import", "type": "moisturizer" },
+          { "name": "The Ordinary Natural Moisturizing Factors", "price_range_nrs": "1200-1800", "where": "Daraz", "type": "moisturizer" }
+        ]
+      },
+
+      "when_to_see_doctor": "If skin is severely cracked, bleeding, or shows signs of eczema (intensely itchy red patches) — see a dermatologist. Eczema needs prescription treatment, not just moisturizer."
+    },
+
+    {
+      "id": "C004",
+      "name_en": "Oily Skin & Enlarged Pores",
+      "name_ne": "तेलिलो छाला र ठूलो पोर",
+      "severity": "mild",
+      "prevalence_nepal": "very_high",
+      "description_en": "Excess sebum production causing shiny skin and visible pores. Worsened by hot humid climate (Terai/Kathmandu summer), poor sleep, and over-washing.",
+      "description_ne": "अत्यधिक सेबम उत्पादनले चम्किलो छाला र देखिने पोर हुन्छ। गर्मी-उमस (तराई/काठमाडौँ गर्मी), कम निद्रा, र धेरै धुँदा झन् बढ्छ।",
+
+      "trigger_symptoms": {
+        "primary": ["shiny_full_face", "shiny_tzone", "large_visible_pores"],
+        "secondary": ["blackheads", "pimples_forehead"]
+      },
+      "trigger_lifestyle": {
+        "high_impact": ["sleep_hours:less_than_5", "stress_level:high", "diet:junk_food_frequent"],
+        "moderate_impact": ["current_routine.uses_sunscreen:no", "exercise:none"]
+      },
+      "trigger_environment": ["location_type:terai", "current_season:monsoon"],
+      "trigger_age": ["13_17", "18_24"],
+
+      "routine": {
+        "morning": [
+          { "step": 1, "action": "Gel/Foaming Cleanser (salicylic acid)", "instruction_en": "Use a foaming or gel cleanser with salicylic acid to control oil from the start of day.", "instruction_ne": "दिनको सुरुमै स्यालिसिलिक एसिड भएको जेल/फोमिङ क्लिन्जर प्रयोग गर्नुस्।", "duration_seconds": 60 },
+          { "step": 2, "action": "Niacinamide Toner or Serum", "instruction_en": "Niacinamide regulates sebum production over time. The single best ingredient for oily skin.", "instruction_ne": "नियासिनामाइडले समय सँगसँगै सेबम उत्पादन नियन्त्रण गर्छ। तेलिलो छालाको लागि सर्वश्रेष्ठ तत्त्व।", "duration_seconds": 30 },
+          { "step": 3, "action": "Lightweight Gel Moisturizer", "instruction_en": "Skipping moisturizer makes oily skin produce MORE oil. Use a water-based gel.", "instruction_ne": "मोइस्चराइजर नलगाउँदा तेलिलो छालाले झन् बढी तेल बनाउँछ। वाटर-बेस्ड जेल प्रयोग गर्नुस्।", "duration_seconds": 30 },
+          { "step": 4, "action": "Matte Sunscreen SPF 30+", "instruction_en": "Use a matte finish sunscreen to control shine throughout the day.", "instruction_ne": "दिनभर चम्क नियन्त्रण गर्न म्याट फिनिश सनस्क्रिन प्रयोग गर्नुस्।", "duration_seconds": 30 }
+        ],
+        "evening": [
+          { "step": 1, "action": "Double Cleanse", "instruction_en": "Remove sunscreen first, then use salicylic cleanser.", "instruction_ne": "पहिले सनस्क्रिन हटाउनुस्, अनि स्यालिसिलिक क्लिन्जरले धुनुस्।", "duration_seconds": 90 },
+          { "step": 2, "action": "Niacinamide Serum", "instruction_en": "Apply niacinamide to continue sebum regulation.", "instruction_ne": "सेबम नियन्त्रण जारी राख्न नियासिनामाइड लगाउनुस्।", "duration_seconds": 30 },
+          { "step": 3, "action": "Lightweight Gel Moisturizer", "instruction_en": "Keep it light at night too.", "instruction_ne": "राति पनि हल्का राख्नुस्।", "duration_seconds": 30 }
+        ],
+        "weekly": [
+          { "frequency": "2x per week", "action": "Clay Mask", "instruction_en": "Kaolin clay absorbs excess oil from pores without over-drying.", "instruction_ne": "काओलिन क्लेले पोरबाट अतिरिक्त तेल सोस्छ तर धेरै सुख्खो पार्दैन।" },
+          { "frequency": "1x per week", "action": "BHA Exfoliant (Salicylic Acid)", "instruction_en": "Weekly BHA clears blackheads and shrinks pore appearance.", "instruction_ne": "साप्ताहिक BHA ले ब्ल्याकहेड सफा गरी पोर सानो देखाउँछ।" }
+        ]
+      },
+
+      "diet_recommendations": {
+        "eat_more": [
+          { "food_en": "Zinc-rich foods (pumpkin seeds, dal)", "food_ne": "जिङ्क-युक्त खाना (कुभिन्डो बीउ, दाल)", "reason_en": "Zinc reduces sebum production naturally." },
+          { "food_en": "Green tea", "food_ne": "ग्रिन टी", "reason_en": "EGCG in green tea reduces sebum. Also available cheaply in Nepal." }
+        ],
+        "avoid": [
+          { "food_en": "Fried foods, junk food", "food_ne": "तेलिलो र जङ्क खाना", "reason_en": "Directly increases sebum production." }
+        ]
+      },
+
+      "nepal_context_tips": [
+        { "category": "seasonal", "tip_en": "During monsoon season, humidity makes oily skin much worse. Carry oil blotting sheets in your bag (Daraz, Rs. 100-200) instead of adding powder which clogs pores.", "tip_ne": "मनसुनमा उमसले तेलिलो छाला झन् बढ्छ। पाउडर थप्नुभन्दा अयल ब्लटिङ शीट (Daraz, Rs. 100-200) राख्नुस्।" }
+      ],
+
+      "products_nepal": {
+        "budget_low": [
+          { "name": "Himalaya Oil Control Face Wash", "price_range_nrs": "150-200", "where": "Everywhere", "type": "cleanser" },
+          { "name": "Multani Mitti powder (DIY clay mask)", "price_range_nrs": "50-100", "where": "Pansari pasal, herbal shops", "type": "mask" }
+        ],
+        "budget_medium": [
+          { "name": "Minimalist Niacinamide 10%", "price_range_nrs": "700-900", "where": "Daraz", "type": "serum" },
+          { "name": "Neutrogena Hydro Boost Gel (Water Gel)", "price_range_nrs": "900-1300", "where": "Bhatbhateni, Daraz", "type": "moisturizer" }
+        ]
+      },
+
+      "when_to_see_doctor": "Rarely needed unless oily skin is accompanied by severe acne or sebaceous cysts."
+    },
+
+    {
+      "id": "C005",
+      "name_en": "Melasma (Hormonal Dark Patches)",
+      "name_ne": "मेलाज्मा (हर्मोनल कालो डल्लो)",
+      "severity": "moderate_to_severe",
+      "prevalence_nepal": "high",
+      "description_en": "Symmetrical dark patches on cheeks, forehead, upper lip. Very common in Nepali women of reproductive age, worsened by sun exposure and hormonal changes (pregnancy, birth control pills).",
+      "description_ne": "गाला, निधार, माथिल्लो ओठमा सममितीय कालो डल्लो। प्रजनन उमेरकी नेपाली महिलामा धेरै सामान्य, घाम र हर्मोनल परिवर्तनले बढ्छ।",
+
+      "trigger_symptoms": {
+        "primary": ["melasma_patches", "dark_spots_sun"],
+        "secondary": ["uneven_skin_tone", "dull_grey_skin"]
+      },
+      "trigger_lifestyle": {
+        "high_impact": ["current_routine.uses_sunscreen:no", "outdoor_exposure:high"],
+        "moderate_impact": ["stress_level:high"]
+      },
+      "trigger_environment": ["location_type:terai", "current_season:spring"],
+      "trigger_age": ["25_34", "35_44"],
+
+      "routine": {
+        "morning": [
+          { "step": 1, "action": "Gentle Cleanser", "instruction_en": "No harsh scrubs — melasma is triggered by inflammation.", "instruction_ne": "कडा स्क्रब नगर्नुस् — मेलाज्मा सूजनले ट्रिगर हुन्छ।", "duration_seconds": 60 },
+          { "step": 2, "action": "Tranexamic Acid or Kojic Acid Serum", "instruction_en": "These are the gold standard for melasma. More effective than Vitamin C for this specific condition.", "instruction_ne": "मेलाज्माको लागि ट्रानेक्सामिक एसिड वा कोजिक एसिड सेरम उत्तम हो।", "duration_seconds": 30 },
+          { "step": 3, "action": "Moisturizer with antioxidants", "instruction_en": "Antioxidants protect against UV-triggered melanin production.", "instruction_ne": "एन्टिअक्सिडेन्ट-युक्त मोइस्चराइजरले UV-ट्रिगर मेलानिन उत्पादनबाट जोगाउँछ।", "duration_seconds": 30 },
+          { "step": 4, "action": "SPF 50 PA++++ Sunscreen + Reapplication", "instruction_en": "With melasma, SPF 50 PA++++ is the TREATMENT, not just prevention. Reapply every 2 hours. Wear a hat outdoors.", "instruction_ne": "मेलाज्मामा SPF 50 PA++++ नै उपचार हो। हरेक २ घण्टामा फेरि लगाउनुस्। बाहिर टोपी लगाउनुस्।", "duration_seconds": 30 }
+        ],
+        "evening": [
+          { "step": 1, "action": "Gentle Cleanser", "instruction_en": "Double cleanse if sunscreen worn.", "instruction_ne": "सनस्क्रिन लगाएको भए डबल क्लिन्ज गर्नुस्।", "duration_seconds": 90 },
+          { "step": 2, "action": "Azelaic Acid 10% (prescription-grade results OTC)", "instruction_en": "Azelaic acid specifically targets melanin-producing cells. Safe for long term use.", "instruction_ne": "एजेलाइक एसिडले मेलानिन-उत्पादन गर्ने कोशिकाहरूलाई टार्गेट गर्छ। दीर्घकालीन प्रयोगको लागि सुरक्षित।", "duration_seconds": 30 },
+          { "step": 3, "action": "Moisturizer", "instruction_en": "Seal and hydrate.", "instruction_ne": "सिल र हाइड्रेट गर्नुस्।", "duration_seconds": 30 }
+        ]
+      },
+
+      "diet_recommendations": {
+        "eat_more": [
+          { "food_en": "Foods rich in folic acid (leafy greens, dal)", "food_ne": "फोलिक एसिड-युक्त खाना (हरियो सागपात, दाल)", "reason_en": "Folate deficiency is linked to melasma in some studies." }
+        ]
+      },
+
+      "nepal_context_tips": [
+        { "category": "cultural", "tip_en": "Melasma is NOT caused by a lack of cleanliness or the wrong soap. It is a pigmentation disorder driven by hormones and UV. Using dettol or scrubbing harder will make it worse.", "tip_ne": "मेलाज्मा सफाइको कमीले हुँदैन। यो हर्मोन र UV ले हुने रङ्ग विकार हो। डेटोल वा कडा स्क्रबिङले झन् बिगार्छ।" },
+        { "category": "medical", "tip_en": "Melasma often needs prescription treatment in Nepal — dermatologists prescribe kojic acid + hydroquinone + sunscreen combination. Available at Bir Hospital or private dermatology clinics.", "tip_ne": "मेलाज्माको लागि प्रायः प्रिस्क्रिप्शन उपचार चाहिन्छ। वीर अस्पताल वा निजी डर्माटोलोजी क्लिनिकमा जानुस्।" }
+      ],
+
+      "products_nepal": {
+        "budget_medium": [
+          { "name": "Minimalist Tranexamic Acid 3% Serum", "price_range_nrs": "700-1000", "where": "Daraz", "type": "serum" },
+          { "name": "Anua Niacinamide Glazing Serum (Korean)", "price_range_nrs": "1200-1800", "where": "Daraz", "type": "serum" }
+        ]
+      },
+
+      "when_to_see_doctor": "Melasma almost always benefits from professional treatment. Self-treatment alone may not be enough. See a dermatologist especially if patches are large, dark, or spreading."
+    },
+
+    {
+      "id": "C006",
+      "name_en": "Sensitive Skin & Redness",
+      "name_ne": "संवेदनशील छाला र रातोपन",
+      "severity": "mild",
+      "prevalence_nepal": "moderate",
+      "description_en": "Skin that reacts to products, weather, or food with redness, burning, or stinging. More common in people who have overused harsh products or fairness creams.",
+      "description_ne": "प्रोडक्ट, मौसम, वा खानाले रातो, जलन, वा चिलाइ दिने छाला। कडा प्रोडक्ट वा फेयरनेस क्रिम बढी प्रयोग गर्नेहरूमा बढी देखिन्छ।",
+
+      "trigger_symptoms": {
+        "primary": ["redness_cheeks", "redness_after_products", "burning_sensation"],
+        "secondary": ["dry_patches", "tightness_after_wash"]
+      },
+      "trigger_lifestyle": {
+        "high_impact": ["stress_level:high", "diet:spicy_frequent"],
+        "moderate_impact": ["sleep_hours:less_than_5", "water_intake_liters:less_than_1"]
+      },
+      "trigger_environment": ["current_season:winter"],
+      "trigger_age": ["18_24", "25_34"],
+
+      "routine": {
+        "morning": [
+          { "step": 1, "action": "Fragrance-free, gentle cleanser", "instruction_en": "The MOST important rule for sensitive skin: no fragrance in any product. Check labels.", "instruction_ne": "संवेदनशील छालाको सबैभन्दा महत्त्वपूर्ण नियम: कुनै पनि प्रोडक्टमा सुगन्ध नहुनु। लेबल जाँच्नुस्।", "duration_seconds": 60 },
+          { "step": 2, "action": "Centella Asiatica Serum or Aloe Vera Gel", "instruction_en": "Centella (cica) is the gold standard for sensitive/reactive skin. Calms redness and strengthens barrier.", "instruction_ne": "सेन्टेला (सिका) संवेदनशील छालाको लागि उत्तम — रातोपन शान्त पार्छ र बेरियर बलियो बनाउँछ।", "duration_seconds": 30 },
+          { "step": 3, "action": "Simple Ceramide Moisturizer", "instruction_en": "Keep your routine to 4 products max. More products = more potential irritants.", "instruction_ne": "दैनिक रुटिनमा अधिकतम ४ प्रोडक्ट राख्नुस्। बढी प्रोडक्ट = बढी जलन।", "duration_seconds": 30 },
+          { "step": 4, "action": "Mineral Sunscreen (Zinc Oxide based)", "instruction_en": "Chemical sunscreens can sting sensitive skin. Use mineral (zinc oxide / titanium dioxide) instead.", "instruction_ne": "केमिकल सनस्क्रिनले संवेदनशील छालामा जलन दिन सक्छ। मिनरल (जिङ्क अक्साइड/टाइटेनियम डाइअक्साइड) प्रयोग गर्नुस्।", "duration_seconds": 30 }
+        ],
+        "evening": [
+          { "step": 1, "action": "Gentle micellar water + cream cleanser", "instruction_en": "No hot water, no rubbing. Pat dry gently.", "instruction_ne": "तातो पानी र रगड्न नहोस्। बिस्तारै थपथपाएर सुकाउनुस्।", "duration_seconds": 60 },
+          { "step": 2, "action": "Barrier Repair Serum or Ceramide Serum", "instruction_en": "Skincare for sensitive skin is about repair, not actives. Focus on ceramides and fatty acids.", "instruction_ne": "संवेदनशील छालाको स्किनकेयर मर्मतमा केन्द्रित हुन्छ, एक्टिभमा होइन। सेरामाइड र फ्याटी एसिडमा ध्यान दिनुस्।", "duration_seconds": 30 },
+          { "step": 3, "action": "Thick fragrance-free moisturizer", "instruction_en": "Apply before skin is fully dry to lock in hydration.", "instruction_ne": "छाला पूरा सुक्नुअघि लगाएर ओसिलापन बाँध्नुस्।", "duration_seconds": 30 }
+        ]
+      },
+
+      "diet_recommendations": {
+        "eat_more": [
+          { "food_en": "Anti-inflammatory foods (haldi, ginger, leafy greens)", "food_ne": "सूजन-विरोधी खाना (हल्दी, अदुवा, हरियो सागपात)", "reason_en": "Reduces systemic inflammation that shows on skin." }
+        ],
+        "avoid": [
+          { "food_en": "Very spicy food (achar, extra masala)", "food_ne": "अत्यधिक पिरो खाना", "reason_en": "Triggers skin flushing and redness." },
+          { "food_en": "Alcohol", "food_ne": "रक्सी", "reason_en": "Dilates blood vessels — worsens redness." }
+        ]
+      },
+
+      "nepal_context_tips": [
+        { "category": "cultural", "tip_en": "Sensitive skin is often caused by overusing harsh products. The solution is NOT adding more products — it's stripping back to the bare minimum for 4-6 weeks to let the skin barrier heal.", "tip_ne": "संवेदनशील छाला प्रायः कडा प्रोडक्टको अत्यधिक प्रयोगले हुन्छ। समाधान थप प्रोडक्ट थप्नु होइन — ४-६ हप्ता न्यूनतम प्रोडक्टमा फर्कनु हो।" }
+      ],
+
+      "products_nepal": {
+        "budget_low": [
+          { "name": "Fresh Aloe Vera gel (direct from plant)", "price_range_nrs": "0-50", "where": "Garden or pansari", "type": "soothing_gel" },
+          { "name": "Himalaya Gentle Daily Care Face Wash", "price_range_nrs": "150-200", "where": "Everywhere", "type": "cleanser" }
+        ],
+        "budget_medium": [
+          { "name": "COSRX Centella Blemish Cream", "price_range_nrs": "1200-1600", "where": "Daraz", "type": "cica_cream" },
+          { "name": "Dr. Jart+ Cicapair Tiger Grass Cream", "price_range_nrs": "2000-3500", "where": "Daraz", "type": "cica_cream" }
+        ]
+      },
+
+      "when_to_see_doctor": "If redness is persistent, forms visible blood vessels (rosacea), or is accompanied by itching/scaling — see a dermatologist. Could be rosacea or perioral dermatitis."
+    },
+
+    {
+      "id": "C007",
+      "name_en": "Dull & Uneven Skin Tone",
+      "name_ne": "निस्तेज र असमान रङको छाला",
+      "severity": "mild",
+      "prevalence_nepal": "very_high",
+      "description_en": "Grey, lifeless skin with uneven texture. Very common in Nepal due to high pollution, hard water, dehydration, and poor sleep.",
+      "description_ne": "खैरो, निर्जीव छाला। काठमाडौँको प्रदूषण, कडा पानी, निर्जलीकरण र कम निद्राका कारण नेपालमा धेरै सामान्य।",
+
+      "trigger_symptoms": {
+        "primary": ["dull_grey_skin", "uneven_skin_tone", "rough_bumpy_texture"],
+        "secondary": ["large_visible_pores", "dark_spots_post_acne"]
+      },
+      "trigger_lifestyle": {
+        "high_impact": ["sleep_hours:less_than_5", "water_intake_liters:less_than_1", "diet:junk_food_frequent"],
+        "moderate_impact": ["exercise:none", "stress_level:high", "screen_time_hours:more_than_6"]
+      },
+      "trigger_environment": ["location_type:kathmandu_valley", "pollution_exposure:high"],
+
+      "routine": {
+        "morning": [
+          { "step": 1, "action": "Gentle Cleanser", "instruction_en": "Wash to remove overnight buildup.", "instruction_ne": "रातभरको जम्मा भएको पदार्थ हटाउन धुनुस्।", "duration_seconds": 60 },
+          { "step": 2, "action": "Vitamin C Serum", "instruction_en": "Vitamin C is THE brightening ingredient. Apply every morning.", "instruction_ne": "भिटामिन C नै ब्राइटनिङको मुख्य तत्त्व हो। हरेक बिहान लगाउनुस्।", "duration_seconds": 30 },
+          { "step": 3, "action": "SPF 30+ Sunscreen", "instruction_en": "UV is the biggest cause of dull skin over time.", "instruction_ne": "UV नै दीर्घकालमा निस्तेज छालाको सबैभन्दा ठूलो कारण हो।", "duration_seconds": 30 }
+        ],
+        "evening": [
+          { "step": 1, "action": "Double Cleanse", "instruction_en": "Remove pollution of the day — essential for Kathmandu residents.", "instruction_ne": "दिनभरको प्रदूषण हटाउनुस् — काठमाडौँ बासिन्दाको लागि अनिवार्य।", "duration_seconds": 90 },
+          { "step": 2, "action": "Glycolic or Lactic Acid Toner 1-2x per week", "instruction_en": "Gentle AHA exfoliation reveals fresh skin underneath the dull layer.", "instruction_ne": "हल्का AHA एक्सफोलिएसनले निस्तेज परतमुनिको ताजा छाला प्रकट गर्छ।", "duration_seconds": 30 },
+          { "step": 3, "action": "Niacinamide Serum", "instruction_en": "Evens skin tone and boosts radiance over time.", "instruction_ne": "समयसँगसँगै छालाको रङ समान पार्छ र चमक बढाउँछ।", "duration_seconds": 30 },
+          { "step": 4, "action": "Moisturizer", "instruction_en": "Dehydrated skin always looks dull. Never skip.", "instruction_ne": "निर्जल छाला सधैं निस्तेज देखिन्छ। कहिल्यै नछोड्नुस्।", "duration_seconds": 30 }
+        ],
+        "weekly": [
+          { "frequency": "1x per week", "action": "Brightening face mask (papaya or AHA-based)", "instruction_en": "Fresh papaya pulp applied for 10 minutes is a cheap, effective, local brightening mask.", "instruction_ne": "ताजा मेवाको गुदी १० मिनेट लगाउनु सस्तो, प्रभावकारी, स्थानीय ब्राइटनिङ मास्क हो।" }
+        ]
+      },
+
+      "diet_recommendations": {
+        "eat_more": [
+          { "food_en": "Seasonal fruits: mango, papaya, orange, strawberry", "food_ne": "मौसमी फल: आँप, मेवा, सुन्तला, स्ट्रबेरी", "reason_en": "Natural enzymes and Vitamin C brighten skin from inside." },
+          { "food_en": "8 hours sleep — this is diet for your skin", "food_ne": "८ घण्टा निद्रा — यो छालाको लागि खाना हो", "reason_en": "Skin regenerates during sleep. Poor sleep = grey, dull skin." }
+        ]
+      },
+
+      "nepal_context_tips": [
+        { "category": "pollution", "tip_en": "Carry a small bottle of micellar water or rosewater to refresh skin midday when stuck in Kathmandu traffic. Quick wipe removes surface pollution.", "tip_ne": "काठमाडौँको जाममा फसेमा मिसेलर वाटर वा गुलाबजलको सानो बोतल राखी दिउँसो छाला रिफ्रेस गर्नुस्।" }
+      ],
+
+      "products_nepal": {
+        "budget_low": [
+          { "name": "Fresh papaya (DIY mask)", "price_range_nrs": "20-50", "where": "Local market", "type": "brightening_mask" },
+          { "name": "Dabur Gulabari Rose Water", "price_range_nrs": "80-120", "where": "Everywhere", "type": "toner" }
+        ],
+        "budget_medium": [
+          { "name": "Garnier Vitamin C Serum", "price_range_nrs": "500-700", "where": "Bhatbhateni, Salesberry", "type": "serum" },
+          { "name": "Pixi Glow Tonic (Glycolic Acid)", "price_range_nrs": "1500-2500", "where": "Daraz", "type": "exfoliating_toner" }
+        ]
+      },
+
+      "when_to_see_doctor": "Generally not required. If dullness is accompanied by unusual fatigue or rapid skin aging, check thyroid and iron levels with a doctor."
+    }
+
+  ],
+
+  "adaptive_layer": {
+    "description": "These rules fire ON TOP of any matched condition based on current context.",
+
+    "weather_rules": [
+      { "condition": "uv_index >= 8", "trigger_en": "UV is very high today (common in Nepal, March-September)", "tip_en": "Reapply sunscreen every 2 hours. Wear a hat or dupatta when stepping out.", "tip_ne": "हरेक २ घण्टामा सनस्क्रिन फेरि लगाउनुस्। बाहिर जाँदा टोपी लगाउनुस्।", "urgency": "high" },
+      { "condition": "humidity < 30", "trigger_en": "Air is dry today (common in winter hills/Kathmandu)", "tip_en": "Add a hydrating mist or facial oil step. Your skin will feel tighter than usual.", "tip_ne": "हाइड्रेटिङ मिस्ट वा फेशियल अयल थप्नुस्। आज छाला झन् टाइट लाग्नेछ।", "urgency": "medium" },
+      { "condition": "humidity > 80", "trigger_en": "High humidity (monsoon season)", "tip_en": "Switch to lighter moisturizer today. Focus on double cleansing at night — monsoon humidity traps more pollutants.", "tip_ne": "आज हल्को मोइस्चराइजर प्रयोग गर्नुस्। रातको डबल क्लिन्जिङमा ध्यान दिनुस्।", "urgency": "low" },
+      { "condition": "aqi > 150", "trigger_en": "Poor air quality (common in Kathmandu winter)", "tip_en": "Wear N95 mask outdoors and DOUBLE CLEANSE tonight without fail. Pollution particles accelerate skin aging by 300%.", "tip_ne": "बाहिर N95 मास्क लगाउनुस् र आज राति डबल क्लिन्ज अनिवार्य गर्नुस्। प्रदूषणले छाला बुढ्यौलो ३ गुणा छिटो बनाउँछ।", "urgency": "high" }
+    ],
+
+    "seasonal_rules": [
+      { "season": "winter", "months": [12, 1, 2], "universal_tip_en": "Switch everyone to heavier moisturizers in winter. Kathmandu humidity drops below 40%. Add facial oil as last step.", "universal_tip_ne": "जाडोमा सबैले बाक्लो मोइस्चराइजर प्रयोग गर्नुस्। अन्तिम चरणमा फेशियल अयल थप्नुस्।" },
+      { "season": "spring", "months": [3, 4, 5], "universal_tip_en": "UV rises sharply in Spring. Upgrade to SPF 50 now. Peak melasma and tanning season.", "universal_tip_ne": "वसन्तमा UV एक्कासि बढ्छ। SPF 50 मा अपग्रेड गर्नुस्। मेलाज्मा र ट्यानिङको शिखर मौसम।" },
+      { "season": "monsoon", "months": [6, 7, 8, 9], "universal_tip_en": "Fungal infections and acne spike in monsoon. Switch to lighter products. Never go to bed with wet hair against face.", "universal_tip_ne": "मनसुनमा फंगल संक्रमण र मुहासो बढ्छ। हल्का प्रोडक्टमा स्विच गर्नुस्। ओसिलो कपाल मुखमा राखी नसुत्नुस्।" },
+      { "season": "autumn", "months": [10, 11], "universal_tip_en": "Dashain-Tihar season — rich food, late nights, increased pollution from fireworks. Pre-emptively double cleanse and increase water intake.", "universal_tip_ne": "दशैँ-तिहार — तेलिलो खाना, ढिलो रात, आतिशबाजीको धुवाँ। पहिल्यैदेखि डबल क्लिन्ज र पानी धेरै पिउनुस्।" }
+    ],
+
+    "lifestyle_alerts": [
+      { "trigger": "sleep_hours:less_than_5", "alert_en": "You slept under 5 hours. Your skin repairs at night — 2+ bad nights in a row will show as dullness and puffiness. Try to sleep by 10:30pm.", "alert_ne": "५ घण्टाभन्दा कम निद्रा। छाला रातमा मर्मत हुन्छ — लगातार दुई रात कम निद्राले थकान र पफिनेस देखाउँछ।" },
+      { "trigger": "water_intake_liters:less_than_1", "alert_en": "Drinking under 1L today? Dehydration is the fastest way to dull, tired-looking skin. Aim for 2.5L.", "alert_ne": "१ लिटरभन्दा कम पानी? निर्जलीकरण छालालाई सबैभन्दा छिटो निस्तेज बनाउँछ। २.५ लिटर लक्ष्य राख्नुस्।" },
+      { "trigger": "stress_level:high", "alert_en": "High stress = high cortisol = more oil + inflammation = breakouts. Take 5 minutes today for deep breathing. Seriously.", "alert_ne": "उच्च तनाव = उच्च कोर्टिसोल = बढी तेल + सूजन = मुहासो। आज ५ मिनेट गहिरो श्वासप्रश्वास गर्नुस्।" }
+    ],
+
+    "nepal_special_events": [
+      { "event": "dashain_tihar", "months": [10], "tip_en": "Festival season: Increase water intake, maintain double cleansing despite busy schedule, avoid touching face during celebrations.", "tip_ne": "चाड मौसम: पानी बढाउनुस्, व्यस्त भए पनि डबल क्लिन्ज गर्नुस्, उत्सवमा मुहा छुन नदिनुस्।" },
+      { "event": "holi", "months": [3], "tip_en": "Holi colors contain heavy metals. Apply a thick layer of coconut oil before playing Holi to protect skin. Cleanse gently multiple times after.", "tip_ne": "होलीको रङमा भारी धातु हुन्छ। खेल्नुअघि नरिवल तेलको बाक्लो परत लगाउनुस्। पछि बिस्तारै धेरैपटक सफा गर्नुस्।" }
+    ]
+  },
+
+  "quiz_to_condition_matching_logic": {
+    "description": "Pseudo-code for scoring engine. Implement this in your backend.",
+    "algorithm": "weighted_score_matching",
+    "steps": [
+      "1. Collect all quiz answers into a user_profile object",
+      "2. For each condition in conditions[], iterate through trigger_symptoms.primary — add 3 points for each match",
+      "3. For each condition, iterate through trigger_symptoms.secondary — add 2 points for each match",
+      "4. For each condition, iterate through trigger_lifestyle.high_impact — add 2 points for each match",
+      "5. For each condition, iterate through trigger_lifestyle.moderate_impact — add 1 point for each match",
+      "6. For each condition, iterate through trigger_environment — add 1 point for each match",
+      "7. For each condition, iterate through trigger_age — add 1 point for match",
+      "8. Sort conditions by score descending",
+      "9. Return top 3 conditions with score >= 3 as primary_concerns",
+      "10. Apply adaptive_layer rules on top regardless of condition matches"
+    ],
+    "output_format": {
+      "primary_conditions": ["C001", "C002"],
+      "secondary_conditions": ["C007"],
+      "confidence_scores": { "C001": 14, "C002": 9, "C007": 5 },
+      "active_adaptive_tips": ["high_uv_alert", "dashain_season"],
+      "generated_routine": "merged_routine_from_primary_conditions",
+      "routine_merge_rule": "If multiple conditions matched, merge morning/evening steps by priority — acne steps first, then brightening, then hydration. Remove duplicates."
+    }
+  }
+}

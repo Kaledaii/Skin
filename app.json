@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Skin Nepal",
+    "slug": "skin-nepal",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "skinnepal",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": ["expo-router", "expo-notifications", "expo-localization"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
