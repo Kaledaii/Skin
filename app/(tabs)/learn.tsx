@@ -1,9 +1,8 @@
-import { Feather } from "@expo/vector-icons";
 import { useMemo } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { useApp } from "@/shared/AppContext";
 import { Body, BrandMark, Card, H1, H2, Pill, ProgressBar, Screen, SectionLabel } from "@/shared/components";
-import { contentDatabase, getFutureFeatureIdeas, getGlowPlanFeatures, getRecommendedArticles, getSeasonalCalendar } from "@/shared/knowledge/content";
+import { contentDatabase, getRecommendedArticles, getSeasonalCalendar } from "@/shared/knowledge/content";
 import { ContentArticle } from "@/shared/knowledge/contentTypes";
 import { generateRoutine } from "@/shared/knowledge/engine";
 import { palettes, spacing } from "@/shared/theme";
@@ -16,8 +15,6 @@ export default function Learn() {
   const season = profile.quiz.environment.current_season;
   const articles = getRecommendedArticles(conditionIds, season);
   const calendar = getSeasonalCalendar(season);
-  const features = getGlowPlanFeatures();
-  const ideas = getFutureFeatureIdeas();
   const glowScore = calculateGlowScore(completion, profile.quiz.lifestyle.water_intake_liters, profile.quiz.lifestyle.sleep_hours);
 
   return (
@@ -51,7 +48,7 @@ export default function Learn() {
         </Card>
 
         <Card>
-          <H2>{language === "en" ? "Seasonal calendar" : "Seasonal calendar"}</H2>
+          <H2>{language === "en" ? "This season's care notes" : "This season's care notes"}</H2>
           {calendar.length > 0 ? calendar.map((item) => (
             <View key={`${item.week}-${item.theme}`} style={styles.calendarLine}>
               <Pill tone="secondary">Week {item.week}</Pill>
@@ -60,39 +57,6 @@ export default function Learn() {
               {item.campaign ? <Pill tone="accent">{item.campaign}</Pill> : null}
             </View>
           )) : <Body muted>No calendar items for this season yet.</Body>}
-        </Card>
-
-        <Card>
-          <H2>{language === "en" ? "Glow Plan features" : "Glow Plan features"}</H2>
-          {features.map((feature) => (
-            <View key={feature.id} style={styles.featureCard}>
-              <View style={styles.row}>
-                <Pill tone={feature.priority === "high" ? "accent" : "primary"}>{feature.priority}</Pill>
-                <Pill tone="secondary">{feature.category}</Pill>
-              </View>
-              <H2>{feature.name}</H2>
-              <Body>{feature.description}</Body>
-              <Body muted>{feature.user_benefit}</Body>
-              <View style={styles.impactRow}>
-                <Impact icon="repeat" label={`Retention ${feature.estimated_impact.retention}`} />
-                <Impact icon="trending-up" label={`Growth ${feature.estimated_impact.acquisition}`} />
-                <Impact icon="shield" label={`Trust ${feature.estimated_impact.trust}`} />
-              </View>
-            </View>
-          ))}
-        </Card>
-
-        <Card>
-          <H2>{language === "en" ? "Next audience-growth ideas" : "Next audience-growth ideas"}</H2>
-          {ideas.map((idea) => (
-            <View key={idea.title} style={styles.ideaLine}>
-              <Feather name="star" color={c.primary} size={18} />
-              <View style={styles.flex}>
-                <Body>{idea.title}</Body>
-                <Body muted>{idea.body}</Body>
-              </View>
-            </View>
-          ))}
         </Card>
       </ScrollView>
     </Screen>
@@ -116,14 +80,6 @@ export default function Learn() {
     );
   }
 
-  function Impact({ icon, label }: { icon: keyof typeof Feather.glyphMap; label: string }) {
-    return (
-      <View style={styles.impact}>
-        <Feather name={icon} color={c.secondary} size={15} />
-        <Body muted>{label}</Body>
-      </View>
-    );
-  }
 }
 
 function calculateGlowScore(completion: Record<string, boolean>, water: string, sleep: string) {
@@ -139,9 +95,5 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm, flexWrap: "wrap" },
   flex: { flex: 1, gap: spacing.xs },
   articleCard: { borderWidth: 1, borderRadius: 8, padding: spacing.md, gap: spacing.sm, shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 5 } },
-  calendarLine: { gap: spacing.xs, paddingVertical: spacing.xs },
-  featureCard: { gap: spacing.sm, paddingVertical: spacing.sm },
-  impactRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-  impact: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
-  ideaLine: { flexDirection: "row", gap: spacing.sm, alignItems: "flex-start" }
+  calendarLine: { gap: spacing.xs, paddingVertical: spacing.xs }
 });

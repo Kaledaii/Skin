@@ -24,8 +24,11 @@ export default function Home() {
   const percent = routineSteps.length ? Math.round((completed / routineSteps.length) * 100) : 0;
   const topMatch = result.matches[0];
   const activeSteps = routinePeriod === "morning" ? result.morning : visibleEvening;
-  const remedies = useMemo(() => collectRemedies(result.matches.map((match) => match.condition)), [result.matches]);
+  const remedies = useMemo(() => collectRemedies(topMatch ? [topMatch.condition] : []), [topMatch]);
   const topAction = result.morning[0]?.action ?? result.evening[0]?.action ?? "Start with a gentle cleanser";
+  const productMatches = products
+    .filter((item) => item.fit.includes(profile.skinType) && (tier === "premium" || item.budgetTier === profile.budgetTier))
+    .slice(0, 3);
 
   return (
     <Screen>
@@ -213,9 +216,13 @@ export default function Home() {
           <Card variant="seasonal">
             <View style={styles.sectionTitle}>
               <Feather name="heart" color={c.secondary} size={22} />
-              <H2>{language === "en" ? "Ayurveda / home remedies" : "Ayurveda / home remedies"}</H2>
+              <H2>{language === "en" ? "Home remedies for this match" : "Home remedies for this match"}</H2>
             </View>
-            <Body muted>{language === "en" ? "Traditional ideas from the knowledge base, with safety labels." : "Knowledge base बाट safety label सहित traditional ideas."}</Body>
+            <Body muted>
+              {topMatch
+                ? `Only showing remedies connected to ${localized(language, topMatch.condition.name_en, topMatch.condition.name_ne)}. Stop anything that stings or worsens irritation.`
+                : "Only showing remedies that match your result."}
+            </Body>
             {remedies.slice(0, 5).map((remedy) => (
               <View key={`${remedy.remedy}-${remedy.verdict}`} style={[styles.remedyCard, { backgroundColor: c.surface, borderColor: c.border }]}>
                 <Pill tone={remedy.verdict === "harmful" ? "danger" : remedy.verdict === "safe_mild" ? "accent" : "secondary"}>
@@ -229,16 +236,14 @@ export default function Home() {
         ) : null}
 
         <Card>
-          <H2>{language === "en" ? "Budget reality picks" : "Budget reality picks"}</H2>
-          {products
-            .filter((item) => item.budgetTier === profile.budgetTier || tier === "premium")
-            .slice(0, 2)
-            .map((item) => (
+          <H2>{language === "en" ? "Matched product picks" : "Matched product picks"}</H2>
+          <Body muted>{language === "en" ? "Filtered by your skin type and selected budget." : "Filtered by your skin type and selected budget."}</Body>
+          {productMatches.length > 0 ? productMatches.map((item) => (
               <View key={item.id} style={styles.productLine}>
                 <Body>{item.name}</Body>
                 <Pill tone={item.sponsored ? "accent" : "primary"}>{item.sponsored ? t(language, "sponsored") : item.price}</Pill>
               </View>
-            ))}
+            )) : <Body muted>No exact product match yet. Try changing skin type or budget in Products.</Body>}
         </Card>
       </ScrollView>
 
@@ -269,7 +274,7 @@ export default function Home() {
         </View>
         {steps.map((step) => (
           <View key={step.id} style={styles.routineStep}>
-            <Button label={`${completion[step.id] ? "✓ " : ""}${step.action}`} onPress={() => toggleCompletion(step.id)} secondary={!completion[step.id]} />
+            <Button label={`${completion[step.id] ? "Done: " : ""}${step.action}`} onPress={() => toggleCompletion(step.id)} secondary={!completion[step.id]} />
             <Body muted>{step.instruction[language]}</Body>
             {step.durationSeconds ? <Pill tone="primary">{step.durationSeconds}s</Pill> : null}
           </View>

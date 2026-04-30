@@ -68,33 +68,3 @@ export type ContentDatabase = {
     campaign_list: ContentCampaign[];
   };
 };
-
-export type RoadmapFeature = {
-  id: string;
-  name: string;
-  description: string;
-  user_benefit: string;
-  visual_component: string | null;
-  data_source: string | null;
-  status: "planned" | "in_progress" | "launched" | "backlog";
-  priority: "high" | "medium" | "low";
-  category: string;
-  estimated_impact: {
-    retention: string;
-    acquisition: string;
-    trust: string;
-  };
-};
-
-export type FeaturesDatabase = {
-  meta: {
-    version: string;
-    name: string;
-    description: string;
-    total_features: number;
-    status_options: string[];
-    priority_options: string[];
-    categories: string[];
-  };
-  features: RoadmapFeature[];
-};

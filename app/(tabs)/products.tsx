@@ -19,8 +19,9 @@ export default function Products() {
           <View style={styles.heroRow}>
             <BrandMark compact />
             <View style={styles.flex}>
-              <SectionLabel tone="accent">{language === "en" ? "Budget reality picks" : "Budget reality picks"}</SectionLabel>
+              <SectionLabel tone="accent">{language === "en" ? "Matched local picks" : "Matched local picks"}</SectionLabel>
               <H1>{t(language, "products")}</H1>
+              <Body muted>{language === "en" ? "Filtered by skin type and budget, not a generic shopping list." : "Filtered by skin type and budget."}</Body>
             </View>
           </View>
         </Card>
@@ -39,7 +40,7 @@ export default function Products() {
               <H2>{item.name}</H2>
               {item.sponsored ? <Pill tone="accent">{t(language, "sponsored")}</Pill> : null}
             </View>
-            <Body muted>{item.category} • {item.price}</Body>
+            <Body muted>{item.category} - {item.price}</Body>
             <Body>{item.ingredientLabel[language]}</Body>
             <View style={styles.row}>
               <Pill tone="primary">{item.category}</Pill>

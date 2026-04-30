@@ -93,7 +93,7 @@ export function AppAtmosphere({ children }: PropsWithChildren) {
             style={[
               styles.cursorGlow,
               {
-                backgroundColor: c.primarySoft,
+                backgroundColor: themeMode === "dark" ? c.primary : c.primarySoft,
                 transform: cursor.getTranslateTransform()
               }
             ]}
@@ -296,14 +296,14 @@ const styles = StyleSheet.create({
   },
   lightWash: {
     position: "absolute",
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    opacity: 0.26
+    width: 340,
+    height: 340,
+    borderRadius: 170,
+    opacity: 0.34
   },
-  lightWashOne: { top: -80, left: -70 },
-  lightWashTwo: { top: 190, right: -100 },
-  lightWashThree: { bottom: -90, left: "20%" },
+  lightWashOne: { top: -110, left: -100 },
+  lightWashTwo: { top: 170, right: -130 },
+  lightWashThree: { bottom: -130, left: "18%" },
   petal: {
     position: "absolute",
     borderTopLeftRadius: 999,
@@ -312,10 +312,10 @@ const styles = StyleSheet.create({
   },
   cursorGlow: {
     position: "absolute",
-    width: 320,
-    height: 320,
-    borderRadius: 160,
-    opacity: 0.18
+    width: 360,
+    height: 360,
+    borderRadius: 180,
+    opacity: 0.3
   },
   brandMark: {
     width: 58,

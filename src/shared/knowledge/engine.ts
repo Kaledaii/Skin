@@ -295,24 +295,62 @@ function getWaterQualityTip(profile: QuizProfile): WaterQualityTip {
   const location = profile.environment.location_type;
   const source = profile.environment.water_source;
 
+  if (location === "mountain") {
+    return {
+      id: "mountain-barrier-water",
+      title: { en: "Mountain barrier water care", ne: "Mountain barrier water care" },
+      tips: {
+        en: [
+          "Cold, dry mountain air makes skin lose water faster, so moisturize within 60 seconds after washing.",
+          source === "well" ? "If you use well water, boil and cool it or filter it for the final face rinse." : "Use lukewarm water only; hot water strips the barrier quickly at altitude.",
+          "Add a thicker night cream or facial oil on tight, flaky areas."
+        ],
+        ne: [
+          "Mountain air le skin chhito dry banauchha, face wash pachi 60 seconds bhitra moisturizer lagaunuhos.",
+          source === "well" ? "well water bhaye final rinse ko lagi boil/cool gareko wa filtered pani use garnuhos." : "hot water haina, lukewarm pani use garnuhos; altitude ma barrier chhito weak hunchha.",
+          "tight wa flaky area ma rati thicker cream wa facial oil thapnuhos."
+        ]
+      }
+    };
+  }
+
+  if (location === "hilly") {
+    return {
+      id: "hilly-seasonal-water",
+      title: { en: "Hilly-region water care", ne: "Hilly-region water care" },
+      tips: {
+        en: [
+          "Hilly weather swings between sun, wind, and dry evenings, so keep cleansing gentle.",
+          source === "well" ? "For well water, filter the final rinse if your cheeks feel tight after washing." : "If tap water feels harsh, finish with a splash of filtered water.",
+          "Use moisturizer before skin fully dries to protect the barrier."
+        ],
+        ne: [
+          "Hilly weather ma sun, wind ra dry evening change huncha, cleansing gentle rakhnu hos.",
+          source === "well" ? "well water le cheeks tight bhaye final rinse filtered pani le garnuhos." : "tap water harsh lage final rinse filtered pani le garnuhos.",
+          "skin pura nasukdai moisturizer lagaera barrier jogaunuhos."
+        ]
+      }
+    };
+  }
+
   if (location === "terai" || source === "well") {
     return {
       id: "terai-well",
       title: { en: "Terai well water care", ne: "Terai well water care" },
       tips: {
         en: ["Use filtered or boiled/cooled water for the final face rinse.", "If water is muddy or iron-rich, avoid direct face washing until it is filtered.", "Use micellar water first when skin feels gritty."],
-        ne: ["final face rinse का लागि filtered वा उमालेर चिस्याएको पानी प्रयोग गर्नुहोस्।", "पानी धमिलो वा iron-rich छ भने filter नगरी अनुहार नधुनुहोस्।", "छाला gritty लागे पहिले micellar water प्रयोग गर्नुहोस्।"]
+        ne: ["final face rinse ko lagi filtered wa boil/cool gareko pani use garnuhos.", "pani muddy wa iron-rich chha bhane filter nagari face wash nagarnuhos.", "skin gritty lage pahile micellar water use garnuhos."]
       }
     };
   }
 
-  if (location === "mountain" || source === "tanker") {
+  if (source === "tanker") {
     return {
-      id: "mountain-tanker",
-      title: { en: "Mountain tanker water care", ne: "Mountain tanker water care" },
+      id: "tanker-barrier",
+      title: { en: "Tanker-water barrier care", ne: "Tanker-water barrier care" },
       tips: {
         en: ["Tanker water can be chlorinated, so use a filtered final rinse when possible.", "Let stored water sit before face washing if it smells strongly of chlorine.", "Moisturize immediately after washing to protect the barrier."],
-        ne: ["tanker water मा chlorine हुन सक्छ, सकेसम्म filtered final rinse गर्नुहोस्।", "chlorine गन्ध धेरै आए पानी केही बेर राखेर मात्र अनुहार धुनुहोस्।", "धोएपछि तुरुन्त moisturizer लगाएर barrier जोगाउनुहोस्।"]
+        ne: ["tanker water ma chlorine huna sakchha, sakey samma filtered final rinse garnuhos.", "chlorine smell dherai aaye pani kehi ber rakhna dinuhos.", "wash pachi turuntai moisturizer lagaunuhos."]
       }
     };
   }
@@ -322,37 +360,41 @@ function getWaterQualityTip(profile: QuizProfile): WaterQualityTip {
     title: { en: "Kathmandu hard-water care", ne: "Kathmandu hard-water care" },
     tips: {
       en: ["Use filtered water for the final rinse when skin feels tight.", "Micellar water can remove sunscreen before cleanser.", "Avoid harsh scrubbing because hard water can already stress the barrier."],
-      ne: ["छाला tight लागे final rinse filtered पानीले गर्नुहोस्।", "cleanser अघि sunscreen हटाउन micellar water प्रयोग गर्न सकिन्छ।", "hard water ले barrier stress गर्न सक्छ, त्यसैले जोरले scrub नगर्नुहोस्।"]
+      ne: ["skin tight lage final rinse filtered pani le garnuhos.", "cleanser aghi sunscreen hatauna micellar water use garna sakincha.", "hard water le barrier stress garna sakchha, jorle scrub nagarnuhos."]
     }
   };
 }
 
 function buildDailyMicroTips(profile: QuizProfile, matches: ConditionMatch[], waterTip: WaterQualityTip): DailyMicroTip[] {
-  const tips: DailyMicroTip[] = [
-    {
-      id: "uv-sunscreen",
-      tag: "uv",
-      text: { en: "UV is high today — do not skip sunscreen.", ne: "आज UV index धेरै छ — sunscreen नछोड्नुस्।" }
-    },
-    {
-      id: "dashain-double-cleanse",
-      tag: "festival",
-      text: { en: "After oily Dashain food, double cleanse at night.", ne: "Dashain मा oily खाना खाएपछि double cleanse गर्नुस्।" }
-    }
-  ];
+  const tips: DailyMicroTip[] = [];
+  const topId = matches[0]?.condition.id;
+
+  if (topId === "C001") {
+    tips.push({ id: "acne-touch", tag: "acne", text: { en: "Active pimples? Hands off, cleanse gently tonight, and spot treat only.", ne: "active pimple chha? haat nalagaunuhos, beluka gentle cleanse garera spot treatment matra garnuhos." } });
+  } else if (topId === "C002" || topId === "C005") {
+    tips.push({ id: "pigment-spf", tag: "marks", text: { en: "Dark marks fade slower without daily SPF, even when you stay indoors.", ne: "daily SPF bina dark marks dhilo fade hunchha, indoor basda pani." } });
+  } else if (topId === "C003") {
+    tips.push({ id: "dry-barrier", tag: "barrier", text: { en: "Tight after washing? Apply moisturizer while skin is still damp.", ne: "wash pachi skin tight hunchha? ali bhijekai bela moisturizer lagaunuhos." } });
+  } else if (topId === "C004") {
+    tips.push({ id: "oil-moisturizer", tag: "oil", text: { en: "Oily skin still needs moisturizer; skipping it can trigger more oil.", ne: "oily skin lai pani moisturizer chahinchha; skip garda ajhai oil badhna sakchha." } });
+  } else if (topId === "C006") {
+    tips.push({ id: "sensitive-pause", tag: "sensitive", text: { en: "Sensitive today? Pause actives and use only cleanser, moisturizer, SPF.", ne: "sensitive chha? aaja actives roknuhos, cleanser, moisturizer, SPF matra." } });
+  } else if (topId === "C007") {
+    tips.push({ id: "dull-antioxidant", tag: "glow", text: { en: "Dull skin needs sleep, water, and a gentle cleanse before more actives.", ne: "dull skin ko lagi dherai actives bhanda pahile sleep, pani ra gentle cleanse chahinchha." } });
+  }
 
   if (profile.lifestyle.water_intake_liters === "less_than_1") {
-    tips.push({ id: "hydrate", tag: "hydration", text: { en: "Under 1L water today? Add one glass before tea.", ne: "आज पानी कम भयो? चिया अघि एक गिलास पानी थप्नुस्।" } });
+    tips.push({ id: "hydrate", tag: "hydration", text: { en: "Under 1L water today? Add one glass before tea.", ne: "aaja pani kam bhayo? chiya aghi ek glass pani thapnuhos." } });
   }
   if (profile.environment.current_season === "monsoon") {
-    tips.push({ id: "monsoon", tag: "monsoon", text: { en: "Monsoon humidity is high — keep skin folds dry.", ne: "मनसुन humidity धेरै छ — skin folds सुख्खा राख्नुस्।" } });
+    tips.push({ id: "monsoon", tag: "monsoon", text: { en: "Monsoon humidity is high; keep skin folds dry.", ne: "monsoon humidity dherai chha; skin folds dry rakhnu hos." } });
   }
-  if (matches[0]?.condition.id === "C001") {
-    tips.push({ id: "acne-touch", tag: "acne", text: { en: "Active pimples? Hands off, spot treat only.", ne: "active pimple छ? हात नलगाउनुस्, spot treatment मात्र।" } });
+  if (profile.currentRoutine.uses_sunscreen === "no" || profile.currentRoutine.uses_sunscreen === "sometimes") {
+    tips.push({ id: "uv-sunscreen", tag: "uv", text: { en: "Sunscreen is the non-negotiable step for your selected plan.", ne: "tapai ko plan ma sunscreen non-negotiable step ho." } });
   }
   tips.push({ id: waterTip.id, tag: "water", text: { en: waterTip.tips.en[0], ne: waterTip.tips.ne[0] } });
 
-  return tips;
+  return tips.length > 0 ? tips : [{ id: waterTip.id, tag: "water", text: { en: waterTip.tips.en[0], ne: waterTip.tips.ne[0] } }];
 }
 
 function normalizeAction(action: string) {
