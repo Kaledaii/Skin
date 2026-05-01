@@ -11,7 +11,17 @@
       "bundler": "metro",
       "output": "single"
     },
-    "plugins": ["expo-router", "expo-notifications", "expo-localization"],
+    "plugins": [
+      "expo-router",
+      "expo-notifications",
+      "expo-localization",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Skin Nepal uses your location to show local weather and air quality skincare guidance."
+        }
+      ]
+    ],
     "experiments": {
       "typedRoutes": true
     }

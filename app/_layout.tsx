@@ -11,7 +11,14 @@ function RootStack() {
     <>
       <StatusBar style={themeMode === "dark" ? "light" : "dark"} />
       <AppAtmosphere>
-        <Stack screenOptions={{ headerStyle: { backgroundColor: c.bg }, headerTintColor: c.text, contentStyle: { backgroundColor: "transparent" } }}>
+        <Stack
+          screenOptions={{
+            headerStyle: { backgroundColor: c.bg },
+            headerTintColor: c.text,
+            headerShadowVisible: false,
+            contentStyle: { backgroundColor: c.bg }
+          }}
+        >
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="onboarding" options={{ title: "Onboarding" }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

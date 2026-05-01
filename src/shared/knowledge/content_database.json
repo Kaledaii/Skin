@@ -1,9 +1,9 @@
 {
   "meta": {
-    "version": "1.0.0",
+    "version": "2.0.0",
     "name": "Nepal Skincare App — Content & Blog Database",
-    "description": "Articles, books, visual library, and 52-week content calendar.",
-    "total_articles": 12,
+    "description": "Articles, books, visual library, and 52-week content calendar. Expanded with Swaskin Ayurveda, diet, pollution, and monsoon articles.",
+    "total_articles": 17,
     "total_books": 5,
     "total_visuals": 8,
     "total_campaigns": 8,
@@ -333,6 +333,142 @@
       "visual_hook": "real_glowing_skin_nepal",
       "content_calendar_week": 3,
       "requires_user_consent": true
+    },
+    {
+      "id": "blog_001",
+      "title_en": "Why your grandmother's haldi doodh is better than any serum",
+      "category": "education",
+      "condition_ids": [
+        "C002",
+        "C005",
+        "C010",
+        "C015"
+      ],
+      "tags": [
+        "turmeric",
+        "ayurveda",
+        "brightening",
+        "internal skincare"
+      ],
+      "summary_en": "The science behind turmeric milk and how curcumin outperforms many marketed brightening actives for South Asian skin.",
+      "reading_time_min": 4,
+      "seasonal_relevance": [
+        "all"
+      ],
+      "visual_hook": "ayurveda",
+      "content_calendar_week": 1,
+      "display_trigger": "turmeric",
+      "is_evergreen": true
+    },
+    {
+      "id": "blog_002",
+      "title_en": "The Kathmandu pollution skin guide: protect against PM2.5",
+      "category": "education",
+      "condition_ids": [
+        "C006",
+        "C007",
+        "C015"
+      ],
+      "tags": [
+        "pollution",
+        "kathmandu",
+        "PM2.5",
+        "double cleanse",
+        "antioxidants"
+      ],
+      "summary_en": "A science-backed approach to protecting your skin when the AQI hits 200+. No expensive products needed.",
+      "reading_time_min": 6,
+      "seasonal_relevance": [
+        "all"
+      ],
+      "visual_hook": "kathmandu_life",
+      "content_calendar_week": 2,
+      "display_trigger": "pollution",
+      "is_evergreen": true
+    },
+    {
+      "id": "blog_003",
+      "title_en": "The Nepali skin diet: what to eat for clear, glowing skin",
+      "category": "diet",
+      "condition_ids": [
+        "C001",
+        "C011",
+        "C012",
+        "C014",
+        "C003",
+        "C007"
+      ],
+      "tags": [
+        "diet",
+        "dal bhat",
+        "ghee",
+        "achar",
+        "acne",
+        "nutrition"
+      ],
+      "summary_en": "Dal, achar, and ghee — which traditional foods help your skin and which silently cause breakouts?",
+      "reading_time_min": 5,
+      "seasonal_relevance": [
+        "all"
+      ],
+      "visual_hook": "diet_skin",
+      "content_calendar_week": 3,
+      "display_trigger": "diet",
+      "is_evergreen": true
+    },
+    {
+      "id": "blog_004",
+      "title_en": "Monsoon skin survival guide for Nepal",
+      "category": "seasonal",
+      "condition_ids": [
+        "C012",
+        "C014",
+        "C004"
+      ],
+      "tags": [
+        "monsoon",
+        "humidity",
+        "fungal acne",
+        "seasonal"
+      ],
+      "summary_en": "Humidity, fungal breakouts, and sudden acne flares — your complete monsoon skincare reset.",
+      "reading_time_min": 5,
+      "seasonal_relevance": [
+        "monsoon"
+      ],
+      "visual_hook": "seasonal",
+      "content_calendar_week": 4,
+      "display_trigger": "monsoon",
+      "is_evergreen": false
+    },
+    {
+      "id": "blog_005",
+      "title_en": "Niacinamide vs Vitamin C: which does Nepal skin need more?",
+      "category": "education",
+      "condition_ids": [
+        "C002",
+        "C005",
+        "C010",
+        "C015",
+        "C004",
+        "C009",
+        "C006"
+      ],
+      "tags": [
+        "niacinamide",
+        "vitamin C",
+        "actives",
+        "ingredients"
+      ],
+      "summary_en": "Breaking down the two most popular skincare actives and which addresses our specific climate better.",
+      "reading_time_min": 4,
+      "seasonal_relevance": [
+        "all"
+      ],
+      "visual_hook": "ingredients",
+      "content_calendar_week": 5,
+      "display_trigger": "niacinamide",
+      "is_evergreen": true
     }
   ],
   "books": [

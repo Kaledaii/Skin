@@ -22,10 +22,20 @@ const symptomsToShow = [
   "tightness_after_wash",
   "shiny_tzone",
   "redness_after_products",
+  "burning_sensation",
   "dark_spots_post_acne",
+  "dark_spots_sun",
+  "melasma_patches",
   "dull_grey_skin",
+  "uneven_skin_tone",
   "under_eye_dark",
-  "rough_bumpy_texture"
+  "under_eye_puffy",
+  "rough_bumpy_texture",
+  "large_visible_pores",
+  "itchy_patches",
+  "itchy_uniform_bumps",
+  "sweat_rash_heat_bumps",
+  "wrinkles"
 ];
 
 export default function Onboarding() {
@@ -78,7 +88,7 @@ export default function Onboarding() {
           <SectionBody>
             <MultiSelectBox
               label={language === "en" ? "Primary concerns" : "Primary concerns"}
-              values={knowledgeBase.quiz_fields.primary_concerns.slice(0, 8)}
+              values={knowledgeBase.quiz_fields.primary_concerns}
               selected={profile.quiz.primaryConcerns}
               onToggle={(value) => toggleQuizArray("primaryConcerns", value)}
             />

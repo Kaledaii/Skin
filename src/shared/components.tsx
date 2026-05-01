@@ -1,4 +1,5 @@
 import { PropsWithChildren, useEffect, useMemo, useRef, useState } from "react";
+import { LinearGradient } from "expo-linear-gradient";
 import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
 import { palettes, spacing } from "./theme";
 import { useApp } from "./AppContext";
@@ -7,7 +8,7 @@ const nativeDriver = Platform.OS !== "web";
 
 export function Screen({ children }: PropsWithChildren) {
   const { themeMode } = useApp();
-  return <View style={styles.screen}>{children}</View>;
+  return <View style={[styles.screen, { backgroundColor: palettes[themeMode].bg }]}>{children}</View>;
 }
 
 export function AppAtmosphere({ children }: PropsWithChildren) {
@@ -16,17 +17,17 @@ export function AppAtmosphere({ children }: PropsWithChildren) {
   const cursor = useRef(new Animated.ValueXY({ x: -200, y: -200 })).current;
   const petals = useMemo(
     () =>
-      Array.from({ length: 9 }, (_, index) => ({
+      Array.from({ length: 14 }, (_, index) => ({
         id: index,
-        left: `${(index * 17 + 8) % 92}%`,
-        size: 18 + (index % 4) * 9,
-        duration: 9200 + index * 850,
-        delay: index * 420,
-        tint: index % 3 === 0 ? c.primarySoft : index % 3 === 1 ? c.secondarySoft : c.accentSoft,
-        opacity: themeMode === "dark" ? 0.16 : 0.3,
+        left: `${(index * 19 + 5) % 96}%`,
+        size: 38 + (index % 5) * 17,
+        duration: 18000 + index * 1150,
+        delay: index * 520,
+        tint: index % 4 === 0 ? c.primary : index % 4 === 1 ? c.blush : index % 4 === 2 ? c.secondary : c.accent,
+        opacity: themeMode === "dark" ? 0.12 : 0.08,
         value: new Animated.Value(0)
       })),
-    [c.accentSoft, c.primarySoft, c.secondarySoft, themeMode]
+    [c.accent, c.blush, c.primary, c.secondary, themeMode]
   );
 
   useEffect(() => {
@@ -54,7 +55,7 @@ export function AppAtmosphere({ children }: PropsWithChildren) {
   useEffect(() => {
     if (Platform.OS !== "web" || typeof window === "undefined") return;
     const handleMove = (event: PointerEvent) => {
-      cursor.setValue({ x: event.clientX - 160, y: event.clientY - 160 });
+      cursor.setValue({ x: event.clientX - 210, y: event.clientY - 210 });
     };
     window.addEventListener("pointermove", handleMove);
     return () => window.removeEventListener("pointermove", handleMove);
@@ -67,9 +68,9 @@ export function AppAtmosphere({ children }: PropsWithChildren) {
         <View style={[styles.lightWash, styles.lightWashTwo, { backgroundColor: c.secondarySoft }]} />
         <View style={[styles.lightWash, styles.lightWashThree, { backgroundColor: c.accentSoft }]} />
         {petals.map((petal) => {
-          const translateY = petal.value.interpolate({ inputRange: [0, 1], outputRange: [0, -44] });
-          const translateX = petal.value.interpolate({ inputRange: [0, 1], outputRange: [0, petal.id % 2 === 0 ? 18 : -18] });
-          const rotate = petal.value.interpolate({ inputRange: [0, 1], outputRange: ["0deg", petal.id % 2 === 0 ? "18deg" : "-18deg"] });
+          const translateY = petal.value.interpolate({ inputRange: [0, 1], outputRange: [120, -560] });
+          const translateX = petal.value.interpolate({ inputRange: [0, 1], outputRange: [0, petal.id % 2 === 0 ? 42 : -42] });
+          const rotate = petal.value.interpolate({ inputRange: [0, 1], outputRange: ["0deg", petal.id % 2 === 0 ? "360deg" : "-360deg"] });
           return (
             <Animated.View
               key={petal.id}
@@ -77,9 +78,9 @@ export function AppAtmosphere({ children }: PropsWithChildren) {
                 styles.petal,
                 {
                   left: petal.left as `${number}%`,
-                  top: `${8 + ((petal.id * 13) % 80)}%` as `${number}%`,
+                  top: `${18 + ((petal.id * 11) % 70)}%` as `${number}%`,
                   width: petal.size,
-                  height: petal.size * 1.35,
+                  height: petal.size,
                   backgroundColor: petal.tint,
                   opacity: petal.opacity,
                   transform: [{ translateY }, { translateX }, { rotate }]
@@ -109,11 +110,15 @@ export function BrandMark({ compact = false }: { compact?: boolean }) {
   const { themeMode } = useApp();
   const c = palettes[themeMode];
   return (
-    <View style={[styles.brandMark, compact && styles.brandMarkCompact, { backgroundColor: c.primarySoft, borderColor: c.borderStrong }]}>
-      <View style={[styles.brandLeaf, { backgroundColor: c.primary }]} />
-      <View style={[styles.brandLeaf, styles.brandLeafTwo, { backgroundColor: c.secondary }]} />
+    <LinearGradient
+      colors={[c.primary, themeMode === "dark" ? "#FFADC0" : "#E8849A"]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[styles.brandMark, compact && styles.brandMarkCompact]}
+    >
+      <Text style={[styles.brandText, compact && styles.brandTextCompact]}>S</Text>
       <View style={[styles.brandDot, { backgroundColor: c.accent }]} />
-    </View>
+    </LinearGradient>
   );
 }
 
@@ -206,12 +211,26 @@ export function Button({ label, onPress, secondary = false }: { label: string; o
         {
           backgroundColor: secondary ? (hovered ? c.primarySoft : c.surfaceAlt) : c.primary,
           borderColor: hovered ? c.borderStrong : c.border,
+          shadowColor: c.primary,
+          shadowOpacity: hovered || !secondary ? 0.24 : 0.12,
           transform: [{ translateY: hovered ? -1 : pressed ? 1 : 0 }, { scale: pressed ? 0.98 : 1 }]
         }
       ]}
     >
       <Text style={[styles.buttonText, { color: secondary ? c.text : "#FFFFFF" }]} numberOfLines={2}>{label}</Text>
     </Pressable>
+  );
+}
+
+export function FloatingBadge({ label, tone = "primary" }: { label: string; tone?: "primary" | "secondary" | "accent" }) {
+  const { themeMode } = useApp();
+  const c = palettes[themeMode];
+  const dot = tone === "secondary" ? c.secondary : tone === "accent" ? c.accent : c.primary;
+  return (
+    <View style={[styles.floatingBadge, { backgroundColor: c.surface, borderColor: c.border }]}>
+      <View style={[styles.floatingBadgeDot, { backgroundColor: dot }]} />
+      <Text style={[styles.floatingBadgeText, { color: c.muted }]}>{label}</Text>
+    </View>
   );
 }
 
@@ -299,65 +318,56 @@ const styles = StyleSheet.create({
     width: 340,
     height: 340,
     borderRadius: 170,
-    opacity: 0.34
+    opacity: 0.2
   },
   lightWashOne: { top: -110, left: -100 },
   lightWashTwo: { top: 170, right: -130 },
   lightWashThree: { bottom: -130, left: "18%" },
   petal: {
     position: "absolute",
-    borderTopLeftRadius: 999,
-    borderTopRightRadius: 999,
-    borderBottomLeftRadius: 999
+    borderRadius: 999
   },
   cursorGlow: {
     position: "absolute",
-    width: 360,
-    height: 360,
-    borderRadius: 180,
-    opacity: 0.3
+    width: 420,
+    height: 420,
+    borderRadius: 210,
+    opacity: 0.22
   },
   brandMark: {
     width: 58,
     height: 58,
     borderRadius: 29,
-    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden"
+    overflow: "hidden",
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8
   },
   brandMarkCompact: {
     width: 42,
     height: 42,
     borderRadius: 21
   },
-  brandLeaf: {
-    width: 20,
-    height: 28,
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    borderBottomLeftRadius: 18,
-    transform: [{ rotate: "-32deg" }]
+  brandText: {
+    color: "#FFFFFF",
+    fontSize: 25,
+    fontWeight: "800",
+    fontFamily: Platform.select({ web: "Cormorant Garamond, Georgia, serif", default: undefined })
   },
-  brandLeafTwo: {
-    position: "absolute",
-    width: 16,
-    height: 24,
-    right: 13,
-    top: 13,
-    transform: [{ rotate: "36deg" }],
-    opacity: 0.9
-  },
+  brandTextCompact: { fontSize: 19 },
   brandDot: {
     position: "absolute",
-    bottom: 12,
+    bottom: 11,
     width: 8,
     height: 8,
     borderRadius: 4
   },
   card: {
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 18,
     padding: spacing.md,
     gap: spacing.sm,
     shadowRadius: 18,
@@ -400,8 +410,8 @@ const styles = StyleSheet.create({
     fontWeight: "800"
   },
   button: {
-    minHeight: 46,
-    borderRadius: 8,
+    minHeight: 48,
+    borderRadius: 40,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
@@ -413,6 +423,30 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 15,
     fontWeight: "800"
+  },
+  floatingBadge: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2
+  },
+  floatingBadgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3
+  },
+  floatingBadgeText: {
+    fontSize: 13,
+    fontWeight: "700",
+    fontFamily: Platform.select({ web: "DM Sans, Inter, system-ui, sans-serif", default: undefined })
   },
   segment: {
     borderRadius: 8,

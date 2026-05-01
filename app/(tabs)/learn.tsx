@@ -26,7 +26,7 @@ export default function Learn() {
             <View style={styles.flex}>
           <SectionLabel tone="accent">Weekly glow guide</SectionLabel>
           <H1>{language === "en" ? "Learn what your skin needs next" : "अब skin लाई के चाहिन्छ सिक्नुहोस्"}</H1>
-          <Body muted>{contentDatabase.meta.description}</Body>
+          <Body muted>Short reads, seasonal reminders, and glow habits tuned for your quiz result.</Body>
             </View>
           </View>
         </Card>

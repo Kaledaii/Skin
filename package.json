@@ -20,6 +20,7 @@
     "expo-image-picker": "~17.0.10",
     "expo-linear-gradient": "~15.0.8",
     "expo-localization": "~17.0.8",
+    "expo-location": "^55.1.8",
     "expo-notifications": "~0.32.13",
     "expo-router": "~6.0.17",
     "expo-status-bar": "~3.0.9",

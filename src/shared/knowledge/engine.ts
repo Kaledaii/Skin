@@ -49,18 +49,20 @@ const fallbackProfile: QuizProfile = {
 };
 
 const primaryConcernConditionMap: Record<string, string[]> = {
-  acne: ["C001"],
-  dark_spots: ["C002", "C005"],
-  dullness: ["C007"],
-  dryness: ["C003"],
-  oiliness: ["C004"],
-  redness: ["C006"],
-  uneven_tone: ["C002", "C005", "C007"],
-  large_pores: ["C004"],
-  rough_texture: ["C007", "C003"],
-  sensitivity: ["C006"],
-  wrinkles: ["C003", "C007"],
-  dark_circles: ["C007"]
+  acne: ["C001", "C011", "C012", "C014"],
+  dark_spots: ["C002", "C005", "C010"],
+  pigmentation: ["C002", "C005", "C010", "C015"],
+  dullness: ["C006", "C007", "C013", "C015"],
+  dryness: ["C003", "C008"],
+  dehydration: ["C003", "C008", "C013"],
+  oiliness: ["C004", "C009"],
+  redness: ["C005", "C008", "C014"],
+  uneven_tone: ["C002", "C005", "C007", "C010"],
+  large_pores: ["C004", "C009"],
+  rough_texture: ["C006", "C007", "C009"],
+  sensitivity: ["C006", "C008", "C012"],
+  wrinkles: ["C015"],
+  dark_circles: ["C013"]
 };
 
 export function getDefaultQuizProfile(): QuizProfile {
@@ -71,16 +73,19 @@ export function generateRoutine(profile: QuizProfile): GeneratedRoutineResult {
   const matches = matchConditions(profile);
   const sourceConditions = matches.map((match) => match.condition);
 
+  const conditionMorning = sourceConditions.flatMap((condition) => condition.routine.morning ?? []).map(toGeneratedStep);
+  const conditionEvening = sourceConditions.flatMap((condition) => condition.routine.evening ?? []).map(toGeneratedStep);
+  const movedToEvening = conditionMorning.filter(shouldMoveToEvening);
   const morning =
     sourceConditions.length > 0
-      ? mergeSteps(sourceConditions.flatMap((condition) => condition.routine.morning ?? []).map(toGeneratedStep))
+      ? mergeSteps([...coreMorningSteps(), ...conditionMorning.filter((step) => shouldShowInDailyRoutine(step) && !shouldMoveToEvening(step))], "morning").slice(0, 8)
       : fallbackMorning();
   const evening =
     sourceConditions.length > 0
-      ? mergeSteps(sourceConditions.flatMap((condition) => condition.routine.evening ?? []).map(toGeneratedStep))
+      ? mergeSteps([...coreEveningSteps(), ...conditionEvening.filter(shouldShowInDailyRoutine), ...movedToEvening], "evening").slice(0, 8)
       : fallbackEvening();
   const weekly =
-    sourceConditions.length > 0 ? mergeSteps(sourceConditions.flatMap((condition) => condition.routine.weekly ?? []).map(toGeneratedWeeklyStep)) : [];
+    sourceConditions.length > 0 ? mergeSteps(sourceConditions.flatMap((condition) => condition.routine.weekly ?? []).map(toGeneratedWeeklyStep), "weekly").slice(0, 6) : [];
   const dietEatMore =
     sourceConditions.length > 0
       ? uniqueFoods(sourceConditions.flatMap((condition) => condition.diet_recommendations?.eat_more ?? [])).slice(0, 5)
@@ -207,8 +212,8 @@ function matchesProfileTrigger(trigger: string, profile: QuizProfile) {
 
 function toGeneratedStep(step: KnowledgeRoutineStep): GeneratedStep {
   return {
-    id: normalizeAction(step.action),
-    action: step.action,
+    id: normalizeAction(cleanRoutineAction(step.action)),
+    action: cleanRoutineAction(step.action),
     instruction: { en: step.instruction_en, ne: step.instruction_ne ?? step.instruction_en },
     durationSeconds: step.duration_seconds
   };
@@ -216,31 +221,114 @@ function toGeneratedStep(step: KnowledgeRoutineStep): GeneratedStep {
 
 function toGeneratedWeeklyStep(step: KnowledgeWeeklyStep): GeneratedStep {
   return {
-    id: normalizeAction(step.action),
-    action: step.action,
+    id: normalizeAction(cleanRoutineAction(step.action)),
+    action: cleanRoutineAction(step.action),
     instruction: { en: step.instruction_en, ne: step.instruction_ne ?? step.instruction_en },
     frequency: step.frequency
   };
 }
 
-function mergeSteps(steps: GeneratedStep[]) {
+function mergeSteps(steps: GeneratedStep[], period: "morning" | "evening" | "weekly" = "morning") {
   const map = new Map<string, GeneratedStep>();
   for (const step of steps) {
     const key = normalizeAction(step.action);
     if (!map.has(key)) map.set(key, { ...step, id: key });
   }
-  return Array.from(map.values()).sort((a, b) => priority(a.action) - priority(b.action));
+  return Array.from(map.values()).sort((a, b) => priority(a.action, period) - priority(b.action, period));
 }
 
-function priority(action: string) {
+function cleanRoutineAction(action: string) {
+  return action.replace(/^(Diet|Habit|Evening habit):\s*/i, "").trim();
+}
+
+function shouldShowInDailyRoutine(step: GeneratedStep) {
+  const text = `${step.action} ${step.instruction.en}`.toLowerCase();
+  if (text.startsWith("diet:")) return false;
+  if (text.includes("eat ") || text.includes("drink ") || text.includes("iron-rich") || text.includes("water daily")) return false;
+  if (text.includes("blood test") || text.includes("food diary")) return false;
+  return true;
+}
+
+function shouldMoveToEvening(step: GeneratedStep) {
+  const text = `${step.action} ${step.instruction.en}`.toLowerCase();
+  return text.includes("sleep") || text.includes("before bed") || text.includes("pillowcase") || text.includes("night");
+}
+
+function coreMorningSteps(): GeneratedStep[] {
+  return [
+    {
+      id: "gentle-cleanser",
+      action: "Gentle cleanser",
+      instruction: { en: "Start by washing away sweat and overnight buildup with lukewarm water.", ne: "Start by washing away sweat and overnight buildup with lukewarm water." }
+    },
+    {
+      id: "toner-rose-water",
+      action: "Toner or rose water",
+      instruction: { en: "Pat on rose water or a gentle toner to prep skin without friction.", ne: "Pat on rose water or a gentle toner to prep skin without friction." }
+    },
+    {
+      id: "vitamin-c-antioxidant",
+      action: "Vitamin C or antioxidant serum",
+      instruction: { en: "Use this before moisturizer and SPF, especially on polluted or high-UV days.", ne: "Use this before moisturizer and SPF, especially on polluted or high-UV days." }
+    },
+    {
+      id: "light-moisturizer",
+      action: "Light moisturizer",
+      instruction: { en: "Seal hydration while skin is still slightly damp.", ne: "Seal hydration while skin is still slightly damp." }
+    },
+    {
+      id: "sunscreen-spf30",
+      action: "Sunscreen SPF 30+",
+      instruction: { en: "Finish with sunscreen on face, neck, and exposed skin every morning.", ne: "Finish with sunscreen on face, neck, and exposed skin every morning." }
+    }
+  ];
+}
+
+function coreEveningSteps(): GeneratedStep[] {
+  return [
+    {
+      id: "first-cleanse",
+      action: "First cleanse",
+      instruction: { en: "Remove sunscreen, makeup, oil, and pollution with micellar water or an oil cleanse.", ne: "Remove sunscreen, makeup, oil, and pollution with micellar water or an oil cleanse." }
+    },
+    {
+      id: "second-cleanse",
+      action: "Second cleanse",
+      instruction: { en: "Follow with a gentle water-based cleanser so pores are actually clean.", ne: "Follow with a gentle water-based cleanser so pores are actually clean." }
+    },
+    {
+      id: "treatment-serum",
+      action: "Treatment serum or spot care",
+      instruction: { en: "Apply niacinamide, acne spot care, or the matched treatment only after cleansing.", ne: "Apply niacinamide, acne spot care, or the matched treatment only after cleansing." }
+    },
+    {
+      id: "night-moisturizer",
+      action: "Night moisturizer",
+      instruction: { en: "Finish by repairing the barrier before sleep.", ne: "Finish by repairing the barrier before sleep." }
+    }
+  ];
+}
+
+function priority(action: string, period: "morning" | "evening" | "weekly") {
   const normalized = action.toLowerCase();
-  if (normalized.includes("benzoyl") || normalized.includes("acne") || normalized.includes("salicylic")) return 1;
-  if (normalized.includes("cleanse") || normalized.includes("cleanser")) return 2;
-  if (normalized.includes("sunscreen") || normalized.includes("spf")) return 3;
-  if (normalized.includes("moistur")) return 4;
-  if (normalized.includes("vitamin") || normalized.includes("bright") || normalized.includes("niacinamide")) return 5;
-  if (normalized.includes("hydrat")) return 6;
-  return 10;
+  if (period === "weekly") {
+    if (normalized.includes("steam")) return 10;
+    if (normalized.includes("exfoliat") || normalized.includes("scrub")) return 20;
+    if (normalized.includes("clay") || normalized.includes("multani") || normalized.includes("mask") || normalized.includes("ubtan")) return 30;
+    if (normalized.includes("aloe") || normalized.includes("honey") || normalized.includes("oat")) return 40;
+    return 60;
+  }
+
+  if (normalized.includes("cleanse") || normalized.includes("cleanser") || normalized.includes("wash")) return 10;
+  if (normalized.includes("toner") || normalized.includes("rose water")) return 20;
+  if (normalized.includes("vitamin c") || normalized.includes("antioxidant")) return period === "morning" ? 30 : 80;
+  if (normalized.includes("niacinamide") || normalized.includes("retinol") || normalized.includes("treatment") || normalized.includes("spot") || normalized.includes("benzoyl") || normalized.includes("salicylic") || normalized.includes("acne")) return period === "morning" ? 35 : 30;
+  if (normalized.includes("mask") || normalized.includes("paste") || normalized.includes("neem") || normalized.includes("turmeric") || normalized.includes("aloe")) return period === "morning" ? 45 : 35;
+  if (normalized.includes("moistur") || normalized.includes("cream") || normalized.includes("barrier")) return 40;
+  if (normalized.includes("sunscreen") || normalized.includes("spf")) return period === "morning" ? 50 : 80;
+  if (normalized.includes("sleep") || normalized.includes("pillowcase") || normalized.includes("phone")) return 90;
+  if (normalized.includes("hydrat")) return 60;
+  return 70;
 }
 
 function uniqueFoods(foods: KnowledgeFood[]) {

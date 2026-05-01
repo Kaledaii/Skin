@@ -27,6 +27,12 @@ export type HomeRemedy = {
   verdict: "safe_effective" | "safe_mild" | "harmful" | string;
   note?: string;
   reason?: string;
+  nepali?: string;
+  ingredients?: string;
+  method?: string;
+  frequency?: string;
+  why_it_works?: string;
+  caution?: string;
 };
 
 export type KnowledgeCondition = {

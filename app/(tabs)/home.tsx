@@ -1,13 +1,14 @@
 import { Feather } from "@expo/vector-icons";
 import type { ComponentProps, ReactNode } from "react";
 import { useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useApp } from "@/shared/AppContext";
-import { Body, BrandMark, Button, Card, H1, H2, Pill, ProgressBar, Screen, SectionLabel, ToggleGroup } from "@/shared/components";
+import { Body, BrandMark, Button, Card, FloatingBadge, H1, H2, Pill, ProgressBar, Screen, SectionLabel, ToggleGroup } from "@/shared/components";
 import { products } from "@/shared/data";
 import { t } from "@/shared/i18n";
 import { generateRoutine, localized } from "@/shared/knowledge/engine";
 import { GeneratedStep, HomeRemedy } from "@/shared/knowledge/types";
+import { getAqiGuidance, useEnvironmentalData } from "@/shared/services/environment";
 import { palettes, spacing } from "@/shared/theme";
 
 export default function Home() {
@@ -17,6 +18,7 @@ export default function Home() {
   const [showTopButton, setShowTopButton] = useState(false);
   const [routinePeriod, setRoutinePeriod] = useState<"morning" | "evening">("morning");
   const [expandedConcernId, setExpandedConcernId] = useState<string | null>(null);
+  const environment = useEnvironmentalData();
   const result = useMemo(() => generateRoutine(profile.quiz), [profile.quiz]);
   const visibleEvening = tier === "premium" ? result.evening : result.evening.slice(0, 4);
   const routineSteps = [...result.morning, ...visibleEvening];
@@ -38,12 +40,14 @@ export default function Home() {
           onPress={() => setThemeMode(themeMode === "dark" ? "light" : "dark")}
           background={c.surface}
           color={c.primary}
+          border={c.borderStrong}
         />
         <QuickTextButton
           label={language === "en" ? "EN" : "ने"}
           onPress={() => setLanguage(language === "en" ? "ne" : "en")}
           background={c.surface}
           color={c.text}
+          border={c.borderStrong}
         />
       </View>
 
@@ -57,6 +61,11 @@ export default function Home() {
           <View>
             <Pill tone={tier === "premium" ? "accent" : "primary"}>{tier === "premium" ? t(language, "premium") : t(language, "free")}</Pill>
             <H1>{language === "en" ? `Namaste, ${profile.name}` : `नमस्ते, ${profile.name}`}</H1>
+            <View style={styles.badgeRow}>
+              <FloatingBadge label="Nepal weather-aware" />
+              <FloatingBadge label={`${profile.quiz.environment.location_type ?? profile.location} region`} tone="secondary" />
+              <FloatingBadge label={`${profile.budgetTier} budget`} tone="accent" />
+            </View>
           </View>
         </View>
 
@@ -71,6 +80,8 @@ export default function Home() {
           </View>
           <ProgressBar value={Math.min((topMatch?.score ?? 0) * 10, 100)} color={c.primary} />
         </Card>
+
+        <EnvironmentalCard environment={environment} colors={c} />
 
         <Card>
           <H2>{language === "en" ? "Matched skin concern" : "Matched skin concern"}</H2>
@@ -228,8 +239,12 @@ export default function Home() {
                 <Pill tone={remedy.verdict === "harmful" ? "danger" : remedy.verdict === "safe_mild" ? "accent" : "secondary"}>
                   {remedy.verdict === "harmful" ? "Avoid / नगर्नुहोस्" : remedy.verdict === "safe_mild" ? "Mild / सावधानी" : "Safe / गर्न सकिन्छ"}
                 </Pill>
-                <Body>{remedy.remedy}</Body>
-                <Body muted>{remedy.note ?? remedy.reason ?? "Use gently and stop if irritation starts."}</Body>
+                <Body>{remedy.nepali ? `${remedy.remedy} (${remedy.nepali})` : remedy.remedy}</Body>
+                {remedy.ingredients ? <Body muted>Ingredients: {remedy.ingredients}</Body> : null}
+                <Body muted>{remedy.method ?? remedy.reason ?? remedy.note ?? "Use gently and stop if irritation starts."}</Body>
+                {remedy.frequency ? <Pill tone="primary">{remedy.frequency}</Pill> : null}
+                {remedy.why_it_works ? <Body muted>{remedy.why_it_works}</Body> : null}
+                {remedy.caution ? <Body muted>Caution: {remedy.caution}</Body> : null}
               </View>
             ))}
           </Card>
@@ -293,19 +308,97 @@ function collectRemedies(conditions: Array<{ home_remedies_verdict?: { effective
   return Array.from(byName.values());
 }
 
+function EnvironmentalCard({
+  environment,
+  colors
+}: {
+  environment: ReturnType<typeof useEnvironmentalData>;
+  colors: (typeof palettes)["light"];
+}) {
+  if (environment.loading) {
+    return (
+      <Card>
+        <View style={styles.environmentHeader}>
+          <View style={styles.sectionTitle}>
+            <Feather name="cloud" color={colors.secondary} size={22} />
+            <H2>Weather + AQI skin guide</H2>
+          </View>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+        <Body muted>Checking local UV, humidity, wind, and air quality.</Body>
+      </Card>
+    );
+  }
+
+  if (!environment.data) {
+    return (
+      <Card>
+        <View style={styles.sectionTitle}>
+          <Feather name="alert-circle" color={colors.danger} size={22} />
+          <H2>Weather + AQI skin guide</H2>
+        </View>
+        <Body muted>{environment.error ?? "Local environmental guidance is unavailable right now."}</Body>
+      </Card>
+    );
+  }
+
+  const guidance = getAqiGuidance(environment.data.aqi);
+  const isPoor = environment.data.aqi > 100;
+
+  return (
+    <Card variant={isPoor ? "accent" : "soft"}>
+      <View style={styles.environmentHeader}>
+        <View style={styles.sectionTitle}>
+          <Feather name="cloud" color={isPoor ? colors.danger : colors.secondary} size={22} />
+          <H2>Weather + AQI skin guide</H2>
+        </View>
+        <Pill tone={guidance.tone}>AQI {environment.data.aqi} / {guidance.level}</Pill>
+      </View>
+
+      <Body>{guidance.message}</Body>
+      <View style={styles.metricGrid}>
+        <Metric label="UV" value={environment.data.uv.toFixed(1)} colors={colors} />
+        <Metric label="Humidity" value={`${Math.round(environment.data.humidity)}%`} colors={colors} />
+        <Metric label="Wind" value={`${Math.round(environment.data.wind)} km/h`} colors={colors} />
+        <Metric label="PM2.5" value={`${environment.data.pm25.toFixed(1)}`} colors={colors} />
+      </View>
+
+      {isPoor ? (
+        <View style={styles.ingredientBlock}>
+          <Body muted>Look for Vitamin C or E, niacinamide, and ceramides tonight.</Body>
+          <Body muted>These help neutralize free radicals, strengthen the barrier, and repair the skin seal against dust irritation.</Body>
+        </View>
+      ) : null}
+
+      <Pill tone="primary">{environment.data.source === "gps" ? "Using your location" : "Using Kathmandu fallback"}</Pill>
+    </Card>
+  );
+}
+
+function Metric({ label, value, colors }: { label: string; value: string; colors: (typeof palettes)["light"] }) {
+  return (
+    <View style={[styles.metricTile, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+      <Text style={[styles.metricLabel, { color: colors.muted }]}>{label}</Text>
+      <Text style={[styles.metricValue, { color: colors.text }]}>{value}</Text>
+    </View>
+  );
+}
+
 function QuickIconButton({
   icon,
   onPress,
   background,
-  color
+  color,
+  border
 }: {
   icon: ComponentProps<typeof Feather>["name"];
   onPress: () => void;
   background: string;
   color: string;
+  border: string;
 }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.quickButton, { backgroundColor: background, transform: [{ scale: pressed ? 0.96 : 1 }] }]}>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.quickButton, { backgroundColor: background, borderColor: border, transform: [{ scale: pressed ? 0.96 : 1 }] }]}>
       <Feather name={icon} color={color} size={18} />
     </Pressable>
   );
@@ -315,15 +408,17 @@ function QuickTextButton({
   label,
   onPress,
   background,
-  color
+  color,
+  border
 }: {
   label: string;
   onPress: () => void;
   background: string;
   color: string;
+  border: string;
   }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.quickTextButton, { backgroundColor: background, transform: [{ scale: pressed ? 0.96 : 1 }] }]}>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.quickTextButton, { backgroundColor: background, borderColor: border, transform: [{ scale: pressed ? 0.96 : 1 }] }]}>
       <Text style={{ color, fontWeight: "800" }}>{label}</Text>
     </Pressable>
   );
@@ -332,6 +427,7 @@ function QuickTextButton({
 const styles = StyleSheet.create({
   content: { gap: spacing.md, paddingBottom: 120, paddingTop: 56 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  badgeRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.sm },
   heroRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   flex: { flex: 1, gap: spacing.xs },
   quickActions: {
@@ -362,6 +458,12 @@ const styles = StyleSheet.create({
   },
   row: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
   sectionTitle: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  environmentHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: spacing.sm },
+  metricGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
+  metricTile: { minWidth: 92, flex: 1, borderWidth: 1, borderRadius: 8, padding: spacing.sm, gap: 2 },
+  metricLabel: { fontSize: 12, fontWeight: "800", textTransform: "uppercase" },
+  metricValue: { fontSize: 17, fontWeight: "900" },
+  ingredientBlock: { gap: spacing.xs },
   concernCard: { borderWidth: 1, borderRadius: 8, padding: spacing.sm, gap: spacing.xs },
   productLine: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: spacing.sm },
   tipLine: { gap: spacing.xs },
