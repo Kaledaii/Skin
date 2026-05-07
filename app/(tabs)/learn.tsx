@@ -1,21 +1,36 @@
-import { useMemo } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { Feather } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useMemo, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useApp } from "@/shared/AppContext";
-import { Body, BrandMark, Card, H1, H2, Pill, ProgressBar, Screen, SectionLabel } from "@/shared/components";
-import { contentDatabase, getRecommendedArticles, getSeasonalCalendar } from "@/shared/knowledge/content";
+import { Body, BrandMark, Card, FloatingBadge, H1, H2, Pill, ProgressBar, Screen, SectionLabel } from "@/shared/components";
+import { getAllArticles, getRecommendedArticles, getSeasonalCalendar } from "@/shared/knowledge/content";
 import { ContentArticle } from "@/shared/knowledge/contentTypes";
+import { dailyHabitTips, glossaryTerms, learnQAs, nutrientGuides } from "@/shared/knowledge/education";
 import { generateRoutine } from "@/shared/knowledge/engine";
+import { calculateSkinHabitScore } from "@/shared/knowledge/tracking";
 import { palettes, spacing } from "@/shared/theme";
 
+const categories = ["recommended", "all", "education", "seasonal", "diet", "glow_up", "product_review", "motivation"];
+
 export default function Learn() {
-  const { language, themeMode, profile, completion } = useApp();
+  const { language, themeMode, profile, completion, todayCheckIn } = useApp();
+  const router = useRouter();
   const c = palettes[themeMode];
+  const [selectedCategory, setSelectedCategory] = useState("recommended");
   const routine = useMemo(() => generateRoutine(profile.quiz), [profile.quiz]);
   const conditionIds = routine.matches.map((match) => match.condition.id);
   const season = profile.quiz.environment.current_season;
-  const articles = getRecommendedArticles(conditionIds, season);
+  const recommendedArticles = getRecommendedArticles(conditionIds, season);
+  const allArticles = getAllArticles();
+  const articles =
+    selectedCategory === "recommended"
+      ? recommendedArticles
+      : selectedCategory === "all"
+        ? allArticles
+        : allArticles.filter((article) => article.category === selectedCategory);
   const calendar = getSeasonalCalendar(season);
-  const glowScore = calculateGlowScore(completion, profile.quiz.lifestyle.water_intake_liters, profile.quiz.lifestyle.sleep_hours);
+  const habitScore = calculateSkinHabitScore({ completion, routineSteps: [...routine.morning, ...routine.evening], profile, checkIn: todayCheckIn });
 
   return (
     <Screen>
@@ -24,9 +39,14 @@ export default function Learn() {
           <View style={styles.heroRow}>
             <BrandMark compact />
             <View style={styles.flex}>
-          <SectionLabel tone="accent">Weekly glow guide</SectionLabel>
-          <H1>{language === "en" ? "Learn what your skin needs next" : "अब skin लाई के चाहिन्छ सिक्नुहोस्"}</H1>
-          <Body muted>Short reads, seasonal reminders, and glow habits tuned for your quiz result.</Body>
+              <SectionLabel tone="accent">Learn hub</SectionLabel>
+              <H1>{language === "en" ? "Learn what your skin needs next" : "Skin lai ke chahinchha, sajilo tarika le bujhnuhos"}</H1>
+              <Body muted>Articles, glossary, nutrients, Q&A, and daily habits tuned for Nepal's weather, water, budget, and lifestyle.</Body>
+              <View style={styles.badgeRow}>
+                <FloatingBadge label="Readable articles" />
+                <FloatingBadge label="Roman Nepali help" tone="secondary" />
+                <FloatingBadge label="No diagnosis" tone="accent" />
+              </View>
             </View>
           </View>
         </Card>
@@ -34,29 +54,110 @@ export default function Learn() {
         <Card variant="seasonal" style={{ backgroundColor: c.surfaceGlow }}>
           <View style={styles.row}>
             <View style={styles.flex}>
-              <H2>Glow Score</H2>
-              <Body muted>{language === "en" ? "A gentle weekly score from routine, water, and sleep habits." : "routine, पानी र sleep बाट बनेको gentle weekly score।"}</Body>
+              <H2>Skin Habit Score</H2>
+              <Body muted>Gentle score from routine, SPF, makeup removal, water, sleep, lifestyle risk, and photo logs.</Body>
             </View>
-            <Pill tone={glowScore >= 75 ? "secondary" : "accent"}>{glowScore}/100</Pill>
+            <Pill tone={habitScore.score >= 75 ? "secondary" : "accent"}>{habitScore.score}/100</Pill>
           </View>
-          <ProgressBar value={glowScore} color={glowScore >= 75 ? c.secondary : c.primary} />
+          <ProgressBar value={habitScore.score} color={habitScore.score >= 75 ? c.secondary : c.primary} />
+          <Body muted>{habitScore.reasons.slice(0, 2).join(" ")}</Body>
         </Card>
 
         <Card>
-          <H2>{language === "en" ? "Recommended reads" : "Recommended reads"}</H2>
-          {articles.map((article) => <ArticleCard key={article.id} article={article} />)}
+          <H2>Readable articles</H2>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
+            {categories.map((category) => {
+              const active = selectedCategory === category;
+              return (
+                <Pressable
+                  key={category}
+                  onPress={() => setSelectedCategory(category)}
+                  style={({ pressed }) => [
+                    styles.categoryChip,
+                    { backgroundColor: active ? c.primary : c.surfaceAlt, borderColor: active ? c.primary : c.border, transform: [{ scale: pressed ? 0.97 : 1 }] }
+                  ]}
+                >
+                  <Text style={[styles.categoryText, { color: active ? "#FFFFFF" : c.muted }]}>{labelForCategory(category)}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+          {articles.map((article) => (
+            <ArticleCard key={article.id} article={article} />
+          ))}
         </Card>
 
         <Card>
-          <H2>{language === "en" ? "This season's care notes" : "This season's care notes"}</H2>
-          {calendar.length > 0 ? calendar.map((item) => (
-            <View key={`${item.week}-${item.theme}`} style={styles.calendarLine}>
-              <Pill tone="secondary">Week {item.week}</Pill>
-              <Body>{item.theme}</Body>
-              <Body muted>{item.short_tip}</Body>
-              {item.campaign ? <Pill tone="accent">{item.campaign}</Pill> : null}
+          <H2>Glossary: hard words made simple</H2>
+          <View style={styles.termGrid}>
+            {glossaryTerms.map((term) => (
+              <View key={term.id} style={[styles.infoTile, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+                <Pill tone="primary">{term.term}</Pill>
+                <Body>{term.meaning_en}</Body>
+                <Body muted>{term.meaning_ne}</Body>
+              </View>
+            ))}
+          </View>
+        </Card>
+
+        <Card>
+          <H2>Nutrients for skin</H2>
+          <View style={styles.termGrid}>
+            {nutrientGuides.map((nutrient) => (
+              <View key={nutrient.id} style={[styles.infoTile, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+                <Pill tone="secondary">{nutrient.name}</Pill>
+                <Body>{nutrient.skin_benefit}</Body>
+                <Body muted>{nutrient.meaning_ne}</Body>
+                <Body muted>Foods: {nutrient.nepali_foods.join(", ")}</Body>
+              </View>
+            ))}
+          </View>
+        </Card>
+
+        <Card>
+          <H2>Daily healthy habits</H2>
+          {dailyHabitTips.map((tip) => (
+            <View key={tip.id} style={[styles.infoTile, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+              <View style={styles.row}>
+                <Pill tone="accent">{tip.tags[0]}</Pill>
+                <Feather name="check-circle" color={c.secondary} size={18} />
+              </View>
+              <H2>{tip.title}</H2>
+              <Body>{tip.why}</Body>
+              <Body muted>{tip.how}</Body>
             </View>
-          )) : <Body muted>No calendar items for this season yet.</Body>}
+          ))}
+        </Card>
+
+        <Card>
+          <H2>Q&A: Nepal context</H2>
+          {learnQAs.map((qa) => (
+            <View key={qa.id} style={[styles.infoTile, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+              <H2>{language === "ne" ? qa.question_ne : qa.question_en}</H2>
+              <Body>{language === "ne" ? qa.answer_ne : qa.answer_en}</Body>
+              <View style={styles.badgeRow}>
+                {qa.tags.map((tag) => (
+                  <Pill key={tag} tone="primary">{tag}</Pill>
+                ))}
+              </View>
+            </View>
+          ))}
+        </Card>
+
+        <Card>
+          <H2>This season's care notes</H2>
+          {calendar.length > 0 ? (
+            calendar.map((item) => (
+              <View key={`${item.week}-${item.theme}`} style={styles.calendarLine}>
+                <Pill tone="secondary">Week {item.week}</Pill>
+                <Body>{item.theme}</Body>
+                <Body muted>{item.short_tip}</Body>
+                {item.campaign ? <Pill tone="accent">{item.campaign}</Pill> : null}
+              </View>
+            ))
+          ) : (
+            <Body muted>No calendar items for this season yet.</Body>
+          )}
         </Card>
       </ScrollView>
     </Screen>
@@ -65,35 +166,43 @@ export default function Learn() {
   function ArticleCard({ article }: { article: ContentArticle }) {
     const title = language === "ne" ? article.title_ne ?? article.title_en : article.title_en;
     return (
-      <View style={[styles.articleCard, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+      <Pressable
+        onPress={() => router.push(`/learn/${article.id}` as never)}
+        style={({ pressed }) => [
+          styles.articleCard,
+          { backgroundColor: c.surfaceAlt, borderColor: c.border, transform: [{ scale: pressed ? 0.99 : 1 }] }
+        ]}
+      >
         <View style={styles.row}>
-          <Pill tone={article.category === "diet" ? "accent" : article.category === "seasonal" ? "secondary" : "primary"}>{article.category}</Pill>
+          <Pill tone={article.category === "diet" ? "accent" : article.category === "seasonal" ? "secondary" : "primary"}>{labelForCategory(article.category)}</Pill>
           <Pill tone="primary">{article.reading_time_min} min</Pill>
         </View>
         <H2>{title}</H2>
         <Body muted>{article.summary_en}</Body>
         <View style={styles.row}>
-          <Body muted>{article.visual_hook.replace(/_/g, " ")}</Body>
-          {article.condition_ids.length > 0 ? <Pill tone="secondary">{article.condition_ids.join(", ")}</Pill> : null}
+          <Body muted>Tap to read full guide</Body>
+          <Feather name="arrow-right" color={c.primary} size={18} />
         </View>
-      </View>
+      </Pressable>
     );
   }
-
 }
 
-function calculateGlowScore(completion: Record<string, boolean>, water: string, sleep: string) {
-  const routinePoints = Math.min(Object.values(completion).filter(Boolean).length * 9, 45);
-  const waterPoints = water === "more_than_2" ? 25 : water === "1_to_2" ? 16 : 7;
-  const sleepPoints = sleep === "6_to_8" || sleep === "more_than_8" ? 30 : sleep === "5_to_6" ? 18 : 8;
-  return Math.min(100, routinePoints + waterPoints + sleepPoints);
+function labelForCategory(category: string) {
+  return category.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 const styles = StyleSheet.create({
   content: { gap: spacing.md, paddingBottom: spacing.xl },
   heroRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm, flexWrap: "wrap" },
+  badgeRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
   flex: { flex: 1, gap: spacing.xs },
-  articleCard: { borderWidth: 1, borderRadius: 8, padding: spacing.md, gap: spacing.sm, shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 5 } },
+  categoryRow: { gap: spacing.xs, paddingVertical: spacing.xs },
+  categoryChip: { minHeight: 38, borderWidth: 1, borderRadius: 999, paddingHorizontal: spacing.md, alignItems: "center", justifyContent: "center" },
+  categoryText: { fontSize: 13, fontWeight: "800" },
+  articleCard: { borderWidth: 1, borderRadius: 14, padding: spacing.md, gap: spacing.sm, shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 5 } },
+  termGrid: { gap: spacing.sm },
+  infoTile: { borderWidth: 1, borderRadius: 14, padding: spacing.md, gap: spacing.xs },
   calendarLine: { gap: spacing.xs, paddingVertical: spacing.xs }
 });

@@ -1,15 +1,20 @@
-import { Image, ScrollView, StyleSheet, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { LineChart } from "react-native-chart-kit";
+import { useMemo } from "react";
 import { useApp } from "@/shared/AppContext";
-import { Body, BrandMark, Button, Card, H1, H2, Pill, ProgressBar, Screen, SectionLabel } from "@/shared/components";
+import { Body, BrandMark, Button, Card, H1, H2, Pill, ProgressBar, Screen, SectionLabel, ToggleGroup } from "@/shared/components";
 import { routineLogs } from "@/shared/data";
 import { t } from "@/shared/i18n";
+import { generateRoutine } from "@/shared/knowledge/engine";
+import { calculateSkinHabitScore } from "@/shared/knowledge/tracking";
 import { palettes, spacing } from "@/shared/theme";
 
 export default function Progress() {
-  const { language, themeMode, tier, setTier, profile, pickSelfie } = useApp();
+  const { language, themeMode, tier, setTier, profile, completion, todayCheckIn, updateTodayCheckIn, pickSelfie } = useApp();
   const c = palettes[themeMode];
   const premiumLocked = tier !== "premium";
+  const routine = useMemo(() => generateRoutine(profile.quiz), [profile.quiz]);
+  const habitScore = calculateSkinHabitScore({ completion, routineSteps: [...routine.morning, ...routine.evening], profile, checkIn: todayCheckIn });
 
   return (
     <Screen>
@@ -19,26 +24,86 @@ export default function Progress() {
           <View style={styles.heroRow}>
             <BrandMark compact />
             <View style={styles.flex}>
-              <SectionLabel tone="accent">Skin Health Score</SectionLabel>
-              <H2>{language === "en" ? "80/100 this week" : "80/100 this week"}</H2>
-              <Body muted>{language === "en" ? "Consistency, sleep, hydration, and photo logs in one gentle view." : "Consistency, sleep, hydration र photo logs एउटै view मा."}</Body>
+              <SectionLabel tone="accent">Skin Habit Score</SectionLabel>
+              <H2>{habitScore.score}/100 today</H2>
+              <Body muted>Gentle score from routine, SPF, makeup removal, water, sleep, lifestyle risk, and photo logs.</Body>
             </View>
           </View>
-          <ProgressBar value={80} color={c.primary} />
+          <ProgressBar value={habitScore.score} color={habitScore.score >= 75 ? c.secondary : c.primary} />
+          <View style={styles.scoreGrid}>
+            <ScoreTile label="Routine" value={habitScore.parts.routine} total={40} />
+            <ScoreTile label="Care" value={habitScore.parts.care} total={20} />
+            <ScoreTile label="Water + sleep" value={habitScore.parts.wellness} total={20} />
+            <ScoreTile label="Lifestyle" value={habitScore.parts.lifestyle} total={10} />
+            <ScoreTile label="Logs" value={habitScore.parts.logs} total={10} />
+          </View>
         </Card>
+
+        <Card>
+          <H2>Why this score?</H2>
+          {habitScore.reasons.map((reason) => (
+            <Body key={reason}>• {reason}</Body>
+          ))}
+        </Card>
+
+        <Card>
+          <H2>Today's check-in</H2>
+          <View style={styles.checkRow}>
+            <CheckPill label="SPF done" active={todayCheckIn.sunscreen} onPress={() => updateTodayCheckIn({ sunscreen: !todayCheckIn.sunscreen })} />
+            <CheckPill label="Makeup removed" active={todayCheckIn.makeupRemoved} onPress={() => updateTodayCheckIn({ makeupRemoved: !todayCheckIn.makeupRemoved })} />
+            <CheckPill label="Smoked today" active={todayCheckIn.smoked} danger onPress={() => updateTodayCheckIn({ smoked: !todayCheckIn.smoked })} />
+            <CheckPill label="Alcohol today" active={todayCheckIn.alcohol} danger onPress={() => updateTodayCheckIn({ alcohol: !todayCheckIn.alcohol })} />
+          </View>
+          <H2>Water</H2>
+          <ToggleGroup
+            value={todayCheckIn.water}
+            options={[
+              { label: "<1L", value: "less_than_1" },
+              { label: "1-2L", value: "1_to_2" },
+              { label: "2L+", value: "more_than_2" }
+            ]}
+            onChange={(water) => updateTodayCheckIn({ water })}
+          />
+          <H2>Sleep</H2>
+          <ToggleGroup
+            value={todayCheckIn.sleep}
+            options={[
+              { label: "<5h", value: "less_than_5" },
+              { label: "5-6h", value: "5_to_6" },
+              { label: "6-8h", value: "6_to_8" },
+              { label: "8h+", value: "more_than_8" }
+            ]}
+            onChange={(sleep) => updateTodayCheckIn({ sleep })}
+          />
+          <TextInput
+            value={todayCheckIn.skinNote ?? ""}
+            onChangeText={(skinNote) => updateTodayCheckIn({ skinNote })}
+            placeholder="Skin note: oily, dry, puffy, glowing..."
+            placeholderTextColor={c.muted}
+            style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]}
+          />
+          <TextInput
+            value={todayCheckIn.moodNote ?? ""}
+            onChangeText={(moodNote) => updateTodayCheckIn({ moodNote })}
+            placeholder="Mood/stress note"
+            placeholderTextColor={c.muted}
+            style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]}
+          />
+        </Card>
+
         <Card>
           <H2>{language === "en" ? "Weekly photo log" : "Weekly photo log"}</H2>
-          {profile.selfieUri ? <Image source={{ uri: profile.selfieUri }} style={styles.selfie} /> : <Body muted>{language === "en" ? "No selfie added yet." : "अहिलेसम्म selfie छैन।"}</Body>}
-          <Button label={language === "en" ? "Add weekly selfie" : "weekly selfie थप्नुहोस्"} onPress={pickSelfie} secondary />
+          {profile.selfieUri ? <Image source={{ uri: profile.selfieUri }} style={styles.selfie} /> : <Body muted>{language === "en" ? "No selfie added yet." : "Selfie add gareko chhaina."}</Body>}
+          <Button label={language === "en" ? "Add weekly selfie" : "weekly selfie thapnuhos"} onPress={pickSelfie} secondary />
         </Card>
 
         <Card>
           <H2>{language === "en" ? "Consistency" : "Consistency"}</H2>
-          <Body>{language === "en" ? "You followed 80% of your routine this week. Keep it kind and consistent." : "यो हप्ता routine 80% follow भयो। विस्तारै consistent रहनुहोस्।"}</Body>
+          <Body>{`You completed ${habitScore.parts.routine}/40 routine points today. Keep it kind and consistent.`}</Body>
           {premiumLocked ? (
             <>
               <Pill>{t(language, "premium")}</Pill>
-              <Body muted>{language === "en" ? "Graphs unlock with premium." : "Graphs premium मा unlock हुन्छ।"}</Body>
+              <Body muted>{language === "en" ? "Graphs unlock with premium." : "Graphs premium ma unlock huncha."}</Body>
               <Button label={t(language, "upgrade")} onPress={() => setTier("premium")} />
             </>
           ) : (
@@ -70,12 +135,47 @@ export default function Progress() {
       </ScrollView>
     </Screen>
   );
+
+  function ScoreTile({ label, value, total }: { label: string; value: number; total: number }) {
+    return (
+      <View style={[styles.scoreTile, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+        <Text style={[styles.scoreValue, { color: c.text }]}>{value}/{total}</Text>
+        <Text style={[styles.scoreLabel, { color: c.muted }]}>{label}</Text>
+      </View>
+    );
+  }
+
+  function CheckPill({ label, active, danger = false, onPress }: { label: string; active: boolean; danger?: boolean; onPress: () => void }) {
+    return (
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.checkPill,
+          {
+            backgroundColor: active ? (danger ? c.accent : c.secondary) : c.surfaceAlt,
+            borderColor: active ? (danger ? c.accent : c.secondary) : c.border,
+            transform: [{ scale: pressed ? 0.97 : 1 }]
+          }
+        ]}
+      >
+        <Text style={[styles.checkText, { color: active ? "#FFFFFF" : c.text }]}>{label}</Text>
+      </Pressable>
+    );
+  }
 }
 
 const styles = StyleSheet.create({
   content: { gap: spacing.md, paddingBottom: spacing.xl },
   heroRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   flex: { flex: 1, gap: spacing.xs },
+  scoreGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
+  scoreTile: { minWidth: 96, flex: 1, borderWidth: 1, borderRadius: 12, padding: spacing.sm, gap: 2 },
+  scoreValue: { fontSize: 17, fontWeight: "900" },
+  scoreLabel: { fontSize: 12, fontWeight: "800" },
+  checkRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
+  checkPill: { minHeight: 38, borderWidth: 1, borderRadius: 999, paddingHorizontal: spacing.md, alignItems: "center", justifyContent: "center" },
+  checkText: { fontSize: 13, fontWeight: "800" },
+  input: { borderWidth: 1, borderRadius: 12, minHeight: 46, paddingHorizontal: spacing.md, fontSize: 15 },
   selfie: { width: "100%", height: 240, borderRadius: 8 },
   chart: { borderRadius: 8, alignSelf: "center" }
 });

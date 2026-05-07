@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from "react";
 import { getDefaultQuizProfile } from "./knowledge/engine";
-import { BudgetTier, Language, SkinType, SubscriptionTier, ThemeMode, UserProfile } from "./types";
+import { BudgetTier, DailyCheckIn, Language, SkinType, SubscriptionTier, ThemeMode, UserProfile } from "./types";
 
 type AppState = {
   language: Language;
@@ -19,6 +19,9 @@ type AppState = {
   toggleCompletion: (id: string) => void;
   likedTipIds: string[];
   savedTipIds: string[];
+  dailyCheckIns: Record<string, DailyCheckIn>;
+  todayCheckIn: DailyCheckIn;
+  updateTodayCheckIn: (patch: Partial<DailyCheckIn>) => void;
   toggleLikedTip: (id: string) => void;
   toggleSavedTip: (id: string) => void;
   pickSelfie: () => Promise<void>;
@@ -50,6 +53,9 @@ export function AppProvider({ children }: PropsWithChildren) {
   const [completion, setCompletion] = useState<Record<string, boolean>>({});
   const [likedTipIds, setLikedTipIds] = useState<string[]>([]);
   const [savedTipIds, setSavedTipIds] = useState<string[]>([]);
+  const [dailyCheckIns, setDailyCheckIns] = useState<Record<string, DailyCheckIn>>({});
+  const today = getTodayKey();
+  const todayCheckIn = dailyCheckIns[today] ?? createDefaultCheckIn(today, profile);
 
   useEffect(() => {
     AsyncStorage.getItem("skin-nepal-state").then((raw) => {
@@ -72,12 +78,14 @@ export function AppProvider({ children }: PropsWithChildren) {
       const parsedState = JSON.parse(raw) as { likedTipIds?: string[]; savedTipIds?: string[] };
       if (parsedState.likedTipIds) setLikedTipIds(parsedState.likedTipIds);
       if (parsedState.savedTipIds) setSavedTipIds(parsedState.savedTipIds);
+      const checkInState = JSON.parse(raw) as { dailyCheckIns?: Record<string, DailyCheckIn> };
+      if (checkInState.dailyCheckIns) setDailyCheckIns(checkInState.dailyCheckIns);
     });
   }, []);
 
   useEffect(() => {
-    AsyncStorage.setItem("skin-nepal-state", JSON.stringify({ language, themeMode, tier, profile, completion, likedTipIds, savedTipIds }));
-  }, [language, themeMode, tier, profile, completion, likedTipIds, savedTipIds]);
+    AsyncStorage.setItem("skin-nepal-state", JSON.stringify({ language, themeMode, tier, profile, completion, likedTipIds, savedTipIds, dailyCheckIns }));
+  }, [language, themeMode, tier, profile, completion, likedTipIds, savedTipIds, dailyCheckIns]);
 
   const value = useMemo<AppState>(() => ({
     language,
@@ -114,6 +122,12 @@ export function AppProvider({ children }: PropsWithChildren) {
     toggleCompletion: (id) => setCompletion((current) => ({ ...current, [id]: !current[id] })),
     likedTipIds,
     savedTipIds,
+    dailyCheckIns,
+    todayCheckIn,
+    updateTodayCheckIn: (patch) => setDailyCheckIns((current) => ({
+      ...current,
+      [today]: { ...(current[today] ?? createDefaultCheckIn(today, profile)), ...patch, date: today }
+    })),
     toggleLikedTip: (id) => setLikedTipIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id])),
     toggleSavedTip: (id) => setSavedTipIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id])),
     pickSelfie: async () => {
@@ -129,8 +143,9 @@ export function AppProvider({ children }: PropsWithChildren) {
       setCompletion({});
       setLikedTipIds([]);
       setSavedTipIds([]);
+      setDailyCheckIns({});
     }
-  }), [completion, language, profile, themeMode, tier, likedTipIds, savedTipIds]);
+  }), [completion, language, profile, themeMode, tier, likedTipIds, savedTipIds, dailyCheckIns, today, todayCheckIn]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
@@ -143,3 +158,21 @@ export function useApp() {
 
 export const skinTypes: SkinType[] = ["oily", "dry", "combination", "sensitive"];
 export const budgetTiers: BudgetTier[] = ["under200", "200to500", "500plus"];
+
+function getTodayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function createDefaultCheckIn(date: string, profile: UserProfile): DailyCheckIn {
+  return {
+    date,
+    completedStepIds: [],
+    water: (profile.quiz.lifestyle.water_intake_liters as DailyCheckIn["water"]) ?? "1_to_2",
+    sleep: (profile.quiz.lifestyle.sleep_hours as DailyCheckIn["sleep"]) ?? "6_to_8",
+    sunscreen: profile.quiz.currentRoutine.uses_sunscreen === "yes",
+    makeupRemoved: profile.quiz.currentRoutine.removes_makeup_before_bed === "yes",
+    smoked: profile.quiz.lifestyle.smoking === "yes",
+    alcohol: profile.quiz.lifestyle.alcohol === "yes",
+    selfieUri: profile.selfieUri
+  };
+}

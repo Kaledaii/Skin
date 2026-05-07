@@ -61,6 +61,20 @@ export type RoutineLog = {
   sleep: number;
 };
 
+export type DailyCheckIn = {
+  date: string;
+  completedStepIds: string[];
+  water: "less_than_1" | "1_to_2" | "more_than_2";
+  sleep: "less_than_5" | "5_to_6" | "6_to_8" | "more_than_8";
+  sunscreen: boolean;
+  makeupRemoved: boolean;
+  smoked: boolean;
+  alcohol: boolean;
+  moodNote?: string;
+  skinNote?: string;
+  selfieUri?: string;
+};
+
 export type CommunityQuestion = {
   id: string;
   title: Record<Language, string>;

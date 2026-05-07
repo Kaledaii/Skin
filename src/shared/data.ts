@@ -38,12 +38,12 @@ export const morningSteps: RoutineStep[] = [
       "ne": "Vitamin C Serum"
     },
     "description": {
-      "en": "Your antioxidant shield against Kathmandu pollution. 3 drops only.",
-      "ne": "Your antioxidant shield against Kathmandu pollution. 3 drops only."
+      "en": "Your antioxidant shield against UV, dust, smoke, and city pollution. 3 drops only.",
+      "ne": "UV, dhulo, smoke ra city pollution bata antioxidant shield. 3 drops only."
     },
     "reason": {
-      "en": "This step is non-negotiable if you live in Kathmandu. Apply before sunscreen. Ayurveda option: Fresh amla juice diluted 50/50 with water — applied with cotton pad.",
-      "ne": "This step is non-negotiable if you live in Kathmandu. Apply before sunscreen. Ayurveda option: Fresh amla juice diluted 50/50 with water — applied with cotton pad."
+      "en": "This step helps on high-UV, dusty, smoky, or polluted days. Apply before sunscreen. Ayurveda option: Fresh amla juice diluted 50/50 with water — applied with cotton pad.",
+      "ne": "High-UV, dusty, smoky wa polluted day ma help garcha. Sunscreen aghi apply garnuhos. Ayurveda option: fresh amla juice 50/50 water ma dilute garera cotton pad le."
     }
   },
   {
@@ -328,8 +328,8 @@ export const tips: Tip[] = [
   {
     "id": "blog_002",
     "title": {
-      "en": "The Kathmandu pollution skin guide: protect against PM2.5",
-      "ne": "The Kathmandu pollution skin guide: protect against PM2.5"
+      "en": "Nepal pollution skin guide: protect against PM2.5",
+      "ne": "Nepal pollution skin guide: PM2.5 bata protect"
     },
     "body": {
       "en": "A science-backed approach to protecting your skin when the AQI hits 200+. No expensive products needed.",

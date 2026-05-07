@@ -32,7 +32,6 @@ export default function TabsLayout() {
       <Tabs.Screen name="products" options={{ title: t(language, "products"), tabBarIcon: ({ color, size }) => <Feather name="package" color={color} size={size} /> }} />
       <Tabs.Screen name="tips" options={{ title: t(language, "tips"), tabBarIcon: ({ color, size }) => <Feather name="zap" color={color} size={size} /> }} />
       <Tabs.Screen name="learn" options={{ title: "Learn", tabBarIcon: ({ color, size }) => <Feather name="book-open" color={color} size={size} /> }} />
-      <Tabs.Screen name="blogs" options={{ title: "Blogs", tabBarIcon: ({ color, size }) => <Feather name="file-text" color={color} size={size} /> }} />
       <Tabs.Screen name="community" options={{ title: t(language, "community"), tabBarIcon: ({ color, size }) => <Feather name="help-circle" color={color} size={size} /> }} />
       <Tabs.Screen name="settings" options={{ title: t(language, "settings"), tabBarIcon: ({ color, size }) => <Feather name="settings" color={color} size={size} /> }} />
     </Tabs>

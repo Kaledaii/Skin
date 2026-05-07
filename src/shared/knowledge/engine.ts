@@ -72,20 +72,21 @@ export function getDefaultQuizProfile(): QuizProfile {
 export function generateRoutine(profile: QuizProfile): GeneratedRoutineResult {
   const matches = matchConditions(profile);
   const sourceConditions = matches.map((match) => match.condition);
+  const contextual = buildContextualRoutine(profile);
 
   const conditionMorning = sourceConditions.flatMap((condition) => condition.routine.morning ?? []).map(toGeneratedStep);
   const conditionEvening = sourceConditions.flatMap((condition) => condition.routine.evening ?? []).map(toGeneratedStep);
   const movedToEvening = conditionMorning.filter(shouldMoveToEvening);
   const morning =
     sourceConditions.length > 0
-      ? mergeSteps([...coreMorningSteps(), ...conditionMorning.filter((step) => shouldShowInDailyRoutine(step) && !shouldMoveToEvening(step))], "morning").slice(0, 8)
-      : fallbackMorning();
+      ? mergeSteps([...coreMorningSteps(), ...contextual.morning, ...conditionMorning.filter((step) => shouldShowInDailyRoutine(step) && !shouldMoveToEvening(step))], "morning").slice(0, 8)
+      : mergeSteps([...fallbackMorning(), ...contextual.morning], "morning").slice(0, 8);
   const evening =
     sourceConditions.length > 0
-      ? mergeSteps([...coreEveningSteps(), ...conditionEvening.filter(shouldShowInDailyRoutine), ...movedToEvening], "evening").slice(0, 8)
-      : fallbackEvening();
+      ? mergeSteps([...coreEveningSteps(), ...contextual.evening, ...conditionEvening.filter(shouldShowInDailyRoutine), ...movedToEvening], "evening").slice(0, 8)
+      : mergeSteps([...fallbackEvening(), ...contextual.evening], "evening").slice(0, 8);
   const weekly =
-    sourceConditions.length > 0 ? mergeSteps(sourceConditions.flatMap((condition) => condition.routine.weekly ?? []).map(toGeneratedWeeklyStep), "weekly").slice(0, 6) : [];
+    sourceConditions.length > 0 ? mergeSteps([...contextual.weekly, ...sourceConditions.flatMap((condition) => condition.routine.weekly ?? []).map(toGeneratedWeeklyStep)], "weekly").slice(0, 6) : contextual.weekly;
   const dietEatMore =
     sourceConditions.length > 0
       ? uniqueFoods(sourceConditions.flatMap((condition) => condition.diet_recommendations?.eat_more ?? [])).slice(0, 5)
@@ -103,11 +104,12 @@ export function generateRoutine(profile: QuizProfile): GeneratedRoutineResult {
         ];
   const contextTips =
     sourceConditions.length > 0
-      ? sourceConditions.flatMap((condition) => condition.nepal_context_tips ?? []).slice(0, 4).map((tip) => ({
+      ? [...buildLifestyleContextTips(profile), ...sourceConditions.flatMap((condition) => condition.nepal_context_tips ?? []).map((tip) => ({
           category: tip.category,
-          text: { en: tip.tip_en, ne: tip.tip_ne ?? tip.tip_en }
-        }))
+          text: { en: sanitizeTextForProfile(tip.tip_en, profile), ne: tip.tip_ne ?? sanitizeTextForProfile(tip.tip_en, profile) }
+        }))].slice(0, 6)
       : [
+          ...buildLifestyleContextTips(profile),
           {
             category: "general",
             text: {
@@ -179,7 +181,41 @@ function scoreCondition(condition: KnowledgeCondition, profile: QuizProfile): Co
     reasons.push(`Age group: ${humanize(profile.ageGroup)}`);
   }
 
+  const usesMakeup = profile.currentRoutine.uses_makeup_daily === "yes" || profile.currentRoutine.uses_makeup_daily === "sometimes";
+  const missesMakeupRemoval = usesMakeup && profile.currentRoutine.removes_makeup_before_bed !== "yes";
+  if (missesMakeupRemoval && ["C001", "C004", "C009"].includes(condition.id)) {
+    score += 2;
+    reasons.push("Makeup removal: daily makeup not always removed before sleep");
+  }
+  if (profile.lifestyle.smoking === "yes" && ["C007", "C013", "C015"].includes(condition.id)) {
+    score += 2;
+    reasons.push("Lifestyle: smoking can slow healing and break collagen");
+  }
+  if (profile.lifestyle.alcohol === "yes" && ["C005", "C007", "C013", "C015"].includes(condition.id)) {
+    score += 2;
+    reasons.push("Lifestyle: alcohol can worsen dehydration, puffiness, and redness");
+  }
+
+  if (condition.id === "C015" && profile.ageGroup === "18_24" && !hasStrongPrematureAgingSignal(profile)) {
+    return { condition, score: 0, reasons: ["Premature aging held back: no strong aging signal for this age group"] };
+  }
+
   return { condition, score, reasons };
+}
+
+function hasStrongPrematureAgingSignal(profile: QuizProfile) {
+  const symptoms = new Set(profile.symptoms);
+  const concerns = new Set(profile.primaryConcerns);
+  const highSun = profile.lifestyle.outdoor_exposure === "high" && profile.currentRoutine.uses_sunscreen !== "yes";
+  return (
+    symptoms.has("wrinkles") ||
+    symptoms.has("dark_spots_sun") ||
+    concerns.has("wrinkles") ||
+    profile.lifestyle.smoking === "yes" ||
+    profile.lifestyle.alcohol === "yes" ||
+    profile.lifestyle.sleep_hours === "less_than_5" ||
+    highSun
+  );
 }
 
 function matchesKeyValue(trigger: string, bucket: Record<string, string>) {
@@ -208,6 +244,135 @@ function matchesProfileTrigger(trigger: string, profile: QuizProfile) {
   }
 
   return matchesLifestyleTrigger(trigger, profile.lifestyle) || matchesKeyValue(trigger, profile.environment) || matchesKeyValue(trigger, profile.currentRoutine);
+}
+
+function buildContextualRoutine(profile: QuizProfile): { morning: GeneratedStep[]; evening: GeneratedStep[]; weekly: GeneratedStep[] } {
+  const morning: GeneratedStep[] = [];
+  const evening: GeneratedStep[] = [];
+  const weekly: GeneratedStep[] = [];
+  const location = profile.environment.location_type;
+  const usesMakeup = profile.currentRoutine.uses_makeup_daily === "yes" || profile.currentRoutine.uses_makeup_daily === "sometimes";
+  const missesMakeupRemoval = usesMakeup && profile.currentRoutine.removes_makeup_before_bed !== "yes";
+
+  if (missesMakeupRemoval) {
+    evening.push({
+      id: "makeup-first-cleanse",
+      action: "Makeup first cleanse",
+      instruction: {
+        en: "Use micellar water or oil cleanser first, then gentle face wash. Sleeping with makeup can clog pores and trigger tiny bumps.",
+        ne: "Pahile micellar water wa oil cleanser, ani gentle face wash. Makeup liyera sutda pores clog bhayera sano bumps aauna sakcha."
+      }
+    });
+    weekly.push({
+      id: "clean-makeup-brushes",
+      action: "Clean makeup brushes",
+      instruction: {
+        en: "Wash makeup brushes once weekly and dry fully before use.",
+        ne: "Makeup brush weekly wash garnuhos ra ramrari dry bhaye pachi matra use garnuhos."
+      },
+      frequency: "Weekly"
+    });
+  }
+
+  if (profile.lifestyle.smoking === "yes") {
+    evening.push({
+      id: "smoking-repair-note",
+      action: "Smoking repair support",
+      instruction: {
+        en: "Smoking can slow healing and break collagen. Add antioxidant foods today and avoid picking pimples.",
+        ne: "Smoking le healing slow ra collagen break garna sakcha. Aaja antioxidant foods thapnuhos ra pimple na-nichornu."
+      }
+    });
+  }
+
+  if (profile.lifestyle.alcohol === "yes") {
+    evening.push({
+      id: "alcohol-recovery-hydration",
+      action: "Alcohol recovery hydration",
+      instruction: {
+        en: "Alcohol can dehydrate skin and worsen puffiness. Drink water, keep routine gentle, and sleep earlier tonight.",
+        ne: "Alcohol le skin dry/puffy banauna sakcha. Pani piunuhos, routine gentle rakhnu ra aaja chhito sutnu."
+      }
+    });
+  }
+
+  if (location === "terai") {
+    morning.push({
+      id: "terai-light-moisturizer",
+      action: "Light non-comedogenic moisturizer",
+      instruction: {
+        en: "Use a light gel or lotion so sweat and heat do not make skin feel heavy.",
+        ne: "Terai heat ma light gel/lotion use garnuhos, heavy feel hunna."
+      }
+    });
+    evening.push({
+      id: "terai-sweat-rinse",
+      action: "Sweat rinse",
+      instruction: {
+        en: "After heavy sweat, rinse gently and keep skin folds dry to lower heat-and-humidity bumps.",
+        ne: "Dherai pasina pachi gentle rinse garnuhos ra skin folds dry rakhnu hos."
+      }
+    });
+  }
+
+  if (location === "mountain" || location === "hilly") {
+    morning.push({
+      id: "altitude-barrier-moisturizer",
+      action: "Barrier moisturizer",
+      instruction: {
+        en: "Cold, wind, and altitude dry skin faster. Moisturize while skin is still damp.",
+        ne: "Cold, wind ra altitude le skin dry banauchha. Skin damp huda moisturizer lagaunuhos."
+      }
+    });
+    evening.push({
+      id: "lukewarm-water-only",
+      action: "Lukewarm water only",
+      instruction: {
+        en: "Avoid hot water on face; it strips the barrier faster in dry weather.",
+        ne: "Face ma hot water avoid garnuhos; dry weather ma barrier chhito weak hunchha."
+      }
+    });
+  }
+
+  return { morning, evening, weekly };
+}
+
+function buildLifestyleContextTips(profile: QuizProfile) {
+  const tips: Array<{ category: string; text: Record<Language, string> }> = [];
+  const location = profile.environment.location_type;
+  if (profile.lifestyle.smoking === "yes") {
+    tips.push({
+      category: "smoking",
+      text: {
+        en: "Smoking can reduce oxygen flow, slow pimple healing, darken lips/under-eyes, and break collagen faster. Reduce gently, no shame.",
+        ne: "Smoking le oxygen flow kam, pimple healing slow, lips/under-eye dark ra collagen break garna sakcha. Bistarai reduce garnu, shame haina."
+      }
+    });
+  }
+  if (profile.lifestyle.alcohol === "yes") {
+    tips.push({
+      category: "alcohol",
+      text: {
+        en: "Alcohol can dehydrate skin, disturb sleep, and worsen puffiness the next day. Add water and keep the routine simple.",
+        ne: "Alcohol le dehydration, sleep disturb ra puffiness badhauna sakcha. Pani thapnu ra routine simple rakhnu."
+      }
+    });
+  }
+  if (profile.currentRoutine.uses_makeup_daily === "yes" || profile.currentRoutine.uses_makeup_daily === "sometimes") {
+    tips.push({
+      category: "makeup",
+      text: {
+        en: "Daily makeup is okay, but choose non-comedogenic products, remove it before sleep, and clean brushes weekly.",
+        ne: "Daily makeup okay ho, tara non-comedogenic product, sutnu aghi remove, ra weekly brush clean garnu."
+      }
+    });
+  }
+  if (location === "terai") {
+    tips.push({ category: "terai", text: { en: "For Terai heat, think sweat control and light layers, not harsh scrubbing.", ne: "Terai heat ma sweat control ra light layers sochnu, harsh scrub haina." } });
+  } else if (location === "mountain" || location === "hilly") {
+    tips.push({ category: "barrier", text: { en: "For hills and mountains, barrier repair matters because wind and dry air pull water from skin.", ne: "Hills/mountain ma wind ra dry air le skin dry banauchha, barrier repair important." } });
+  }
+  return tips;
 }
 
 function toGeneratedStep(step: KnowledgeRoutineStep): GeneratedStep {
@@ -495,4 +660,50 @@ export function humanize(value: string) {
 
 export function localized(language: Language, en: string, ne?: string) {
   return language === "ne" ? ne ?? en : en;
+}
+
+export function contextualConditionDescription(condition: KnowledgeCondition, profile: QuizProfile, language: Language) {
+  const base = localized(language, condition.description_en, condition.description_ne);
+  const location = profile.environment.location_type;
+  if (language === "ne") return base;
+  if (location === "kathmandu_valley") return explainHardTerms(base);
+
+  const locationCause =
+    location === "terai"
+      ? "Terai heat, sweat, humidity, dust, and hard or well water can irritate skin and clog pores."
+      : location === "mountain"
+        ? "Mountain cold, wind, strong UV, and dry air can weaken the skin barrier and make marks look worse."
+        : "Hilly sun, wind, dust, changing weather, and water quality can stress the skin barrier.";
+
+  return explainHardTerms(
+    base
+      .replace(/Kathmandu's PM2\.5 pollution[^,.]*(?:[,.])/gi, `${locationCause} `)
+      .replace(/Kathmandu pollution[^,.]*(?:[,.])/gi, `${locationCause} `)
+      .replace(/Kathmandu's PM2\.5 creates a visible film of particles on skin by end of day[^,.]*(?:[,.])/gi, `${locationCause} `)
+      .replace(/Specific to people living in Kathmandu and other polluted valleys\./gi, "Can happen in Nepal when local weather, dust, water, and lifestyle triggers stack up.")
+  );
+}
+
+function explainHardTerms(text: string) {
+  return text
+    .replace(/\bmelasma\b/gi, "melasma (gaala/upper lip tira aaune brown patch problem)")
+    .replace(/\bPIH\b/g, "PIH (pimple pachi basne daag)")
+    .replace(/\bPM2\.5\b/g, "PM2.5 (sano dhulo/pollution particle)");
+}
+
+function sanitizeTextForProfile(text: string, profile: QuizProfile) {
+  if (profile.environment.location_type === "kathmandu_valley") return explainHardTerms(text);
+  const locationCause =
+    profile.environment.location_type === "terai"
+      ? "Terai heat, sweat, humidity, dust, and water quality"
+      : profile.environment.location_type === "mountain"
+        ? "Mountain cold, wind, dry air, strong UV, and water quality"
+        : "Hilly sun, wind, dust, changing weather, and water quality";
+  return explainHardTerms(
+    text
+      .replace(/Kathmandu's PM2\.5/gi, locationCause)
+      .replace(/Kathmandu pollution/gi, locationCause)
+      .replace(/Kathmandu AQI/gi, "local AQI")
+      .replace(/one night of sleeping with Kathmandu pollution on your face/gi, "one night of sleeping with dust, sweat, sunscreen, or pollution on your face")
+  );
 }

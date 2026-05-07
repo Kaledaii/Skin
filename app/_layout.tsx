@@ -22,6 +22,7 @@ function RootStack() {
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="onboarding" options={{ title: "Onboarding" }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="learn/[id]" options={{ title: "Learn" }} />
         </Stack>
       </AppAtmosphere>
     </>

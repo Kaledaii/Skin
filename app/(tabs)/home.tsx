@@ -6,7 +6,7 @@ import { useApp } from "@/shared/AppContext";
 import { Body, BrandMark, Button, Card, FloatingBadge, H1, H2, Pill, ProgressBar, Screen, SectionLabel, ToggleGroup } from "@/shared/components";
 import { products } from "@/shared/data";
 import { t } from "@/shared/i18n";
-import { generateRoutine, localized } from "@/shared/knowledge/engine";
+import { contextualConditionDescription, generateRoutine, localized } from "@/shared/knowledge/engine";
 import { GeneratedStep, HomeRemedy } from "@/shared/knowledge/types";
 import { getAqiGuidance, useEnvironmentalData } from "@/shared/services/environment";
 import { palettes, spacing } from "@/shared/theme";
@@ -92,7 +92,7 @@ export default function Home() {
                 <Pill>{topMatch.condition.severity}</Pill>
               </View>
               <H2>{localized(language, topMatch.condition.name_en, topMatch.condition.name_ne)}</H2>
-              <Body muted>{localized(language, topMatch.condition.description_en, topMatch.condition.description_ne)}</Body>
+              <Body muted>{contextualConditionDescription(topMatch.condition, profile.quiz, language)}</Body>
               <Body>{language === "en" ? "Recommended guidance only, not a medical diagnosis." : "यो recommended guidance मात्र हो, medical diagnosis होइन।"}</Body>
             </>
           ) : (
@@ -136,10 +136,22 @@ export default function Home() {
                     <Feather name={expanded ? "chevron-up" : "chevron-down"} color={c.muted} size={18} />
                   </View>
                   <Body>{localized(language, match.condition.name_en, match.condition.name_ne)}</Body>
-                  {expanded ? <Body muted>{localized(language, match.condition.description_en, match.condition.description_ne)}</Body> : null}
+                  {expanded ? <Body muted>{contextualConditionDescription(match.condition, profile.quiz, language)}</Body> : null}
                 </Pressable>
               );
             })}
+          </Card>
+        ) : null}
+
+        {result.contextTips.length > 0 ? (
+          <Card>
+            <H2>{language === "en" ? "Lifestyle notes for your plan" : "Lifestyle notes"}</H2>
+            {result.contextTips.map((tip) => (
+              <View key={`${tip.category}-${tip.text.en}`} style={styles.tipLine}>
+                <Pill tone={tip.category === "smoking" || tip.category === "alcohol" ? "accent" : "secondary"}>{tip.category}</Pill>
+                <Body>{tip.text[language]}</Body>
+              </View>
+            ))}
           </Card>
         ) : null}
 
