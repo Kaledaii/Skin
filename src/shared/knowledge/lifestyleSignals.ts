@@ -15,19 +15,22 @@ export function buildLifestyleSignals(profile: UserProfile, checkIn?: DailyCheck
   const quiz = profile.quiz;
   const lifestyle = quiz.lifestyle;
   const routine = quiz.currentRoutine;
+  const stressToday = checkIn?.stressToday ?? lifestyle.stress_level;
+  const movementToday = checkIn?.movementToday ?? lifestyle.exercise;
+  const screenTimeToday = checkIn?.screenTimeToday ?? lifestyle.screen_time_hours;
   const signals: LifestyleSignal[] = [];
   const usesMakeup = routine.uses_makeup_daily === "yes" || routine.uses_makeup_daily === "sometimes";
   const makeupRemoved = checkIn?.makeupRemoved || routine.removes_makeup_before_bed === "yes";
 
-  if (lifestyle.stress_level === "high") {
+  if (stressToday === "high") {
     signals.push(signal("stress", "warning", "activity", "Stress", "High stress is active", "Stress can worsen pimples, sensitivity, oiliness, dullness, and under-eye puffiness. Try 5 minutes breathing before sleep."));
-  } else if (lifestyle.stress_level === "moderate") {
+  } else if (stressToday === "moderate") {
     signals.push(signal("stress", "tip", "activity", "Stress", "Stress noted", "Keep a small night wind-down. Phone down, cleanser, moisturizer, then sleep plan."));
   }
 
-  if (lifestyle.exercise === "none") {
+  if (movementToday === "none") {
     signals.push(signal("exercise-none", "advice", "activity", "Movement", "No exercise logged", "A 15-minute walk, dancing, stairs, or home chores counts. Movement helps circulation and stress."));
-  } else if (lifestyle.exercise === "regular") {
+  } else if (movementToday === "regular") {
     signals.push(signal("exercise-regular", "success", "activity", "Movement", "Regular movement is helping", "After sweat-heavy workouts, rinse gently and change sweaty clothes so pores stay calmer."));
   }
 
@@ -51,7 +54,7 @@ export function buildLifestyleSignals(profile: UserProfile, checkIn?: DailyCheck
     signals.push(signal("sleep-medium", "tip", "moon", "Sleep", "Sleep could improve", "Even a small sleep upgrade can reduce puffiness, stress, and picking urges."));
   }
 
-  if (lifestyle.screen_time_hours === "more_than_6") {
+  if (screenTimeToday === "more_than_6") {
     signals.push(signal("screen-time", "advice", "smartphone", "Screen", "High screen time", "Screen time can push late sleep and phone-touch breakouts. Wipe phone and keep it away for first 20 minutes in bed."));
   }
 

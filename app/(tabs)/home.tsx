@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { router } from "expo-router";
 import type { ComponentProps, ReactNode } from "react";
 import { useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -7,7 +8,9 @@ import { Body, BrandMark, Button, Card, FloatingBadge, H1, H2, Pill, ProgressBar
 import { products } from "@/shared/data";
 import { t } from "@/shared/i18n";
 import { contextualConditionDescription, generateRoutine, localized } from "@/shared/knowledge/engine";
+import { dailyHabitTips } from "@/shared/knowledge/education";
 import { buildLifestyleSignals } from "@/shared/knowledge/lifestyleSignals";
+import { calculateSkinHabitScore } from "@/shared/knowledge/tracking";
 import { GeneratedStep, HomeRemedy } from "@/shared/knowledge/types";
 import { buildWeatherActions, WeatherAction } from "@/shared/knowledge/weatherGuidance";
 import { getAqiGuidance, useEnvironmentalData } from "@/shared/services/environment";
@@ -24,10 +27,14 @@ export default function Home() {
   const result = useMemo(() => generateRoutine(profile.quiz), [profile.quiz]);
   const lifestyleSignals = useMemo(() => buildLifestyleSignals(profile, todayCheckIn), [profile, todayCheckIn]);
   const weatherActions = useMemo(() => (environment.data ? buildWeatherActions(environment.data) : []), [environment.data]);
-  const visibleEvening = tier === "premium" ? result.evening : result.evening.slice(0, 4);
-  const routineSteps = [...result.morning, ...visibleEvening];
+  const visibleEvening = useMemo(() => (tier === "premium" ? result.evening : result.evening.slice(0, 4)), [result.evening, tier]);
+  const routineSteps = useMemo(() => [...result.morning, ...visibleEvening], [result.morning, visibleEvening]);
   const completed = routineSteps.filter((step) => completion[step.id]).length;
   const percent = routineSteps.length ? Math.round((completed / routineSteps.length) * 100) : 0;
+  const habitScore = useMemo(
+    () => calculateSkinHabitScore({ completion, routineSteps, profile, checkIn: todayCheckIn, weatherActions }),
+    [completion, profile, routineSteps, todayCheckIn, weatherActions]
+  );
   const topMatch = result.matches[0];
   const activeSteps = routinePeriod === "morning" ? result.morning : visibleEvening;
   const remedies = useMemo(() => collectRemedies(topMatch ? [topMatch.condition] : []), [topMatch]);
@@ -39,20 +46,23 @@ export default function Home() {
   return (
     <Screen>
       <View style={styles.quickActions}>
-        <QuickIconButton
-          icon={themeMode === "dark" ? "sun" : "moon"}
-          onPress={() => setThemeMode(themeMode === "dark" ? "light" : "dark")}
-          background={c.surface}
-          color={c.primary}
-          border={c.borderStrong}
-        />
-        <QuickTextButton
-          label={language === "en" ? "EN" : "ने"}
-          onPress={() => setLanguage(language === "en" ? "ne" : "en")}
-          background={c.surface}
-          color={c.text}
-          border={c.borderStrong}
-        />
+        <View style={styles.quickButtonRow}>
+          <QuickIconButton
+            icon={themeMode === "dark" ? "sun" : "moon"}
+            onPress={() => setThemeMode(themeMode === "dark" ? "light" : "dark")}
+            background={c.surface}
+            color={c.primary}
+            border={c.borderStrong}
+          />
+          <QuickTextButton
+            label={language === "en" ? "EN" : "ने"}
+            onPress={() => setLanguage(language === "en" ? "ne" : "en")}
+            background={c.surface}
+            color={c.text}
+            border={c.borderStrong}
+          />
+        </View>
+        <ScoreBubble score={habitScore.score} percent={percent} completed={completed} total={routineSteps.length} colors={c} />
       </View>
 
       <ScrollView
@@ -62,7 +72,7 @@ export default function Home() {
         contentContainerStyle={styles.content}
       >
         <View style={styles.header}>
-          <View>
+          <View style={styles.headerCopy}>
             <Pill tone={tier === "premium" ? "accent" : "primary"}>{tier === "premium" ? t(language, "premium") : t(language, "free")}</Pill>
             <H1>{language === "en" ? `Namaste, ${profile.name}` : `नमस्ते, ${profile.name}`}</H1>
             <View style={styles.badgeRow}>
@@ -184,16 +194,34 @@ export default function Home() {
         ) : null}
 
         <Card>
+          <View style={styles.sectionTitleBetween}>
+            <View style={styles.sectionTitle}>
+              <Feather name="check-circle" color={c.secondary} size={22} />
+              <H2>Daily healthy habits</H2>
+            </View>
+            <Button label="View all" onPress={() => router.push("/(tabs)/learn" as never)} secondary />
+          </View>
+          <Body muted>Small Nepal-friendly habits that support the routine you are completing today.</Body>
+          {dailyHabitTips.slice(0, 3).map((tip) => (
+            <HabitPreviewCard key={tip.id} tip={tip} colors={c} />
+          ))}
+        </Card>
+
+        <Card>
           <H2>{language === "en" ? "Routine streak" : "Routine streak"}</H2>
           <Body>{language === "en" ? `You followed ${percent}% of today's generated routine. Missed a step? No stress, restart with cleanser.` : `आजको generated routine ${percent}% पूरा भयो। छुट्यो भने cleanser बाट restart गर्नुहोस्।`}</Body>
           <ProgressBar value={percent} color={c.secondary} />
         </Card>
 
         <Card>
-          <View style={styles.sectionTitle}>
-            <Feather name={routinePeriod === "morning" ? "sun" : "droplet"} color={routinePeriod === "morning" ? c.accent : c.secondary} size={22} />
-            <H2>{language === "en" ? "Routine ritual" : "Routine ritual"}</H2>
+          <View style={styles.scoreHeader}>
+            <View style={styles.sectionTitle}>
+              <Feather name={routinePeriod === "morning" ? "sun" : "droplet"} color={routinePeriod === "morning" ? c.accent : c.secondary} size={22} />
+              <H2>{language === "en" ? "Routine ritual" : "Routine ritual"}</H2>
+            </View>
+            <Pill tone="secondary">{`Today ${percent}% • ${completed}/${routineSteps.length} done`}</Pill>
           </View>
+          <ProgressBar value={percent} color={c.primary} />
           <ToggleGroup
             value={routinePeriod}
             options={[
@@ -348,6 +376,67 @@ function collectRemedies(conditions: Array<{ home_remedies_verdict?: { effective
   return Array.from(byName.values());
 }
 
+function ScoreBubble({
+  score,
+  percent,
+  completed,
+  total,
+  colors
+}: {
+  score: number;
+  percent: number;
+  completed: number;
+  total: number;
+  colors: (typeof palettes)["light"];
+}) {
+  const scoreColor = score >= 75 ? colors.secondary : score >= 50 ? colors.accent : colors.primary;
+
+  return (
+    <Pressable
+      onPress={() => router.push("/(tabs)/progress" as never)}
+      accessibilityRole="button"
+      accessibilityLabel={`Today score ${score} out of 100. ${completed} of ${total} routine steps done.`}
+      style={({ pressed }) => [
+        styles.scoreBubble,
+        {
+          backgroundColor: colors.surface,
+          borderColor: colors.borderStrong,
+          transform: [{ scale: pressed ? 0.98 : 1 }]
+        }
+      ]}
+    >
+      <View style={[styles.scoreBubbleDot, { backgroundColor: scoreColor }]}>
+        <Text style={[styles.scoreBubbleScore, { color: colors.deep }]}>{score}</Text>
+      </View>
+      <View style={styles.scoreBubbleCopy}>
+        <Text style={[styles.scoreBubbleLabel, { color: colors.muted }]}>Today score</Text>
+        <Text style={[styles.scoreBubbleValue, { color: colors.text }]}>{percent}% routine</Text>
+        <Text style={[styles.scoreBubbleMeta, { color: colors.muted }]}>{completed}/{total} done</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function HabitPreviewCard({
+  tip,
+  colors
+}: {
+  tip: { id: string; title: string; why: string; how: string; tags: string[] };
+  colors: (typeof palettes)["light"];
+}) {
+  return (
+    <View style={[styles.habitPreview, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+      <View style={styles.row}>
+        <Pill tone="accent">{tip.tags[0]}</Pill>
+        <Feather name="check-circle" color={colors.secondary} size={18} />
+      </View>
+      <H2>{tip.title}</H2>
+      <Body>{tip.why}</Body>
+      <Body muted>{tip.how}</Body>
+    </View>
+  );
+}
+
 function EnvironmentalCard({
   environment,
   colors
@@ -475,16 +564,21 @@ function QuickTextButton({
 }
 
 const styles = StyleSheet.create({
-  content: { gap: spacing.md, paddingBottom: 120, paddingTop: 56 },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  content: { gap: spacing.md, paddingBottom: 120, paddingTop: 122 },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: spacing.sm, flexWrap: "wrap" },
+  headerCopy: { flex: 1, minWidth: 220 },
   badgeRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.sm },
   heroRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   flex: { flex: 1, gap: spacing.xs },
   quickActions: {
     position: "absolute",
-    right: 56,
+    right: 44,
     top: spacing.md,
-    zIndex: 20,
+    zIndex: 40,
+    alignItems: "flex-end",
+    gap: spacing.xs
+  },
+  quickButtonRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs
@@ -508,6 +602,33 @@ const styles = StyleSheet.create({
   },
   row: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
   sectionTitle: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  sectionTitleBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm, flexWrap: "wrap" },
+  scoreHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm, flexWrap: "wrap" },
+  scoreBubble: {
+    minWidth: 154,
+    maxWidth: 190,
+    minHeight: 64,
+    borderWidth: 1,
+    borderRadius: 999,
+    padding: spacing.xs,
+    paddingRight: spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    alignSelf: "flex-start"
+  },
+  scoreBubbleDot: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  scoreBubbleScore: { fontSize: 16, fontWeight: "900" },
+  scoreBubbleCopy: { flex: 1, minWidth: 0 },
+  scoreBubbleLabel: { fontSize: 10, fontWeight: "900", textTransform: "uppercase" },
+  scoreBubbleValue: { fontSize: 14, fontWeight: "900" },
+  scoreBubbleMeta: { fontSize: 11, fontWeight: "800" },
   environmentHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: spacing.sm },
   metricGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
   metricTile: { minWidth: 92, flex: 1, borderWidth: 1, borderRadius: 8, padding: spacing.sm, gap: 2 },
@@ -519,6 +640,7 @@ const styles = StyleSheet.create({
   tipLine: { gap: spacing.xs },
   routineGroup: { gap: spacing.sm },
   routineStep: { gap: spacing.xs },
+  habitPreview: { borderWidth: 1, borderRadius: 8, padding: spacing.sm, gap: spacing.xs },
   dietBlock: { gap: spacing.xs },
   dietRow: { gap: 2 },
   remedyCard: { borderWidth: 1, borderRadius: 8, padding: spacing.sm, gap: spacing.xs },

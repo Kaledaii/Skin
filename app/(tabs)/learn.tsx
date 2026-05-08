@@ -64,6 +64,21 @@ export default function Learn() {
         </Card>
 
         <Card>
+          <H2>Daily healthy habits</H2>
+          {dailyHabitTips.map((tip) => (
+            <View key={tip.id} style={[styles.infoTile, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+              <View style={styles.row}>
+                <Pill tone="accent">{tip.tags[0]}</Pill>
+                <Feather name="check-circle" color={c.secondary} size={18} />
+              </View>
+              <H2>{tip.title}</H2>
+              <Body>{tip.why}</Body>
+              <Body muted>{tip.how}</Body>
+            </View>
+          ))}
+        </Card>
+
+        <Card>
           <H2>Readable articles</H2>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
             {categories.map((category) => {
@@ -112,21 +127,6 @@ export default function Learn() {
               </View>
             ))}
           </View>
-        </Card>
-
-        <Card>
-          <H2>Daily healthy habits</H2>
-          {dailyHabitTips.map((tip) => (
-            <View key={tip.id} style={[styles.infoTile, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
-              <View style={styles.row}>
-                <Pill tone="accent">{tip.tags[0]}</Pill>
-                <Feather name="check-circle" color={c.secondary} size={18} />
-              </View>
-              <H2>{tip.title}</H2>
-              <Body>{tip.why}</Body>
-              <Body muted>{tip.how}</Body>
-            </View>
-          ))}
         </Card>
 
         <Card>

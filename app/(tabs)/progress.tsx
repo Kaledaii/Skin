@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import type { ComponentProps } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { LineChart } from "react-native-chart-kit";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useApp } from "@/shared/AppContext";
 import { Body, BrandMark, Button, Card, H1, H2, Pill, ProgressBar, Screen, SectionLabel, SignalCard, ToggleGroup } from "@/shared/components";
 import { routineLogs } from "@/shared/data";
@@ -13,12 +13,23 @@ import { calculateSkinHabitScore } from "@/shared/knowledge/tracking";
 import { buildWeatherActions } from "@/shared/knowledge/weatherGuidance";
 import { useEnvironmentalData } from "@/shared/services/environment";
 import { palettes, spacing } from "@/shared/theme";
+import { DailyCheckIn } from "@/shared/types";
+
+const scoreExplanations = {
+  Routine: "Up to 30 points from completed routine steps.",
+  Care: "Up to 20 points from SPF and makeup removal.",
+  Lifestyle: "Up to 20 points from stress, movement, junk food, screen time, smoking, and alcohol.",
+  Weather: "Up to 10 points from today's UV, AQI, rain, humidity, and weather actions.",
+  "Food/water/sleep": "Up to 15 points from today's water and sleep.",
+  Logs: "Up to 5 points from selfie, skin note, and mood note."
+} satisfies Record<string, string>;
 
 export default function Progress() {
   const { language, themeMode, tier, setTier, profile, completion, todayCheckIn, updateTodayCheckIn, pickSelfie } = useApp();
   const c = palettes[themeMode];
   const premiumLocked = tier !== "premium";
   const environment = useEnvironmentalData();
+  const [activeScoreInfo, setActiveScoreInfo] = useState<string | null>(null);
   const routine = useMemo(() => generateRoutine(profile.quiz), [profile.quiz]);
   const weatherActions = useMemo(() => (environment.data ? buildWeatherActions(environment.data) : []), [environment.data]);
   const habitScore = calculateSkinHabitScore({ completion, routineSteps: [...routine.morning, ...routine.evening], profile, checkIn: todayCheckIn, weatherActions });
@@ -83,6 +94,36 @@ export default function Progress() {
               { label: "8h+", value: "more_than_8" }
             ]}
             onChange={(sleep) => updateTodayCheckIn({ sleep })}
+          />
+          <H2>Stress today</H2>
+          <ToggleGroup
+            value={todayCheckIn.stressToday ?? profile.quiz.lifestyle.stress_level}
+            options={[
+              { label: "Low", value: "low" },
+              { label: "Moderate", value: "moderate" },
+              { label: "High", value: "high" }
+            ]}
+            onChange={(stressToday) => updateTodayCheckIn({ stressToday: stressToday as DailyCheckIn["stressToday"] })}
+          />
+          <H2>Screen time today</H2>
+          <ToggleGroup
+            value={todayCheckIn.screenTimeToday ?? profile.quiz.lifestyle.screen_time_hours}
+            options={[
+              { label: "<3h", value: "less_than_3" },
+              { label: "3-6h", value: "3_to_6" },
+              { label: "6h+", value: "more_than_6" }
+            ]}
+            onChange={(screenTimeToday) => updateTodayCheckIn({ screenTimeToday: screenTimeToday as DailyCheckIn["screenTimeToday"] })}
+          />
+          <H2>Movement today</H2>
+          <ToggleGroup
+            value={todayCheckIn.movementToday ?? profile.quiz.lifestyle.exercise}
+            options={[
+              { label: "None", value: "none" },
+              { label: "Some", value: "occasional" },
+              { label: "Regular", value: "regular" }
+            ]}
+            onChange={(movementToday) => updateTodayCheckIn({ movementToday: movementToday as DailyCheckIn["movementToday"] })}
           />
           <TextInput
             value={todayCheckIn.skinNote ?? ""}
@@ -182,12 +223,30 @@ export default function Progress() {
     </Screen>
   );
 
-  function ScoreTile({ label, value, total }: { label: string; value: number; total: number }) {
+  function ScoreTile({ label, value, total }: { label: keyof typeof scoreExplanations; value: number; total: number }) {
+    const active = activeScoreInfo === label;
     return (
-      <View style={[styles.scoreTile, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+      <Pressable
+        onPress={() => setActiveScoreInfo(active ? null : label)}
+        onHoverIn={() => setActiveScoreInfo(label)}
+        onHoverOut={() => setActiveScoreInfo((current) => (current === label ? null : current))}
+        style={({ pressed }) => [
+          styles.scoreTile,
+          {
+            backgroundColor: c.surfaceAlt,
+            borderColor: active ? c.borderStrong : c.border,
+            transform: [{ scale: pressed ? 0.98 : 1 }]
+          }
+        ]}
+      >
         <Text style={[styles.scoreValue, { color: c.text }]}>{value}/{total}</Text>
         <Text style={[styles.scoreLabel, { color: c.muted }]}>{label}</Text>
-      </View>
+        {active ? (
+          <View style={[styles.scoreTooltip, { backgroundColor: c.deep, borderColor: c.borderStrong }]}>
+            <Text style={styles.scoreTooltipText}>{scoreExplanations[label]}</Text>
+          </View>
+        ) : null}
+      </Pressable>
     );
   }
 
@@ -216,9 +275,22 @@ const styles = StyleSheet.create({
   heroRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   flex: { flex: 1, gap: spacing.xs },
   scoreGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
-  scoreTile: { minWidth: 96, flex: 1, borderWidth: 1, borderRadius: 12, padding: spacing.sm, gap: 2 },
+  scoreTile: { minWidth: 96, flex: 1, borderWidth: 1, borderRadius: 12, padding: spacing.sm, gap: 2, position: "relative", zIndex: 1 },
   scoreValue: { fontSize: 17, fontWeight: "900" },
   scoreLabel: { fontSize: 12, fontWeight: "800" },
+  scoreTooltip: {
+    position: "absolute",
+    left: 4,
+    right: 4,
+    bottom: "100%",
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: spacing.xs,
+    marginBottom: 6,
+    zIndex: 30,
+    elevation: 6
+  },
+  scoreTooltipText: { color: "#FFFFFF", fontSize: 12, lineHeight: 16, fontWeight: "700" },
   checkRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
   checkPill: { minHeight: 38, borderWidth: 1, borderRadius: 999, paddingHorizontal: spacing.md, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: spacing.xs },
   checkText: { fontSize: 13, fontWeight: "800" },

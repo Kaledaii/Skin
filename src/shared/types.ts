@@ -66,6 +66,9 @@ export type DailyCheckIn = {
   completedStepIds: string[];
   water: "less_than_1" | "1_to_2" | "more_than_2";
   sleep: "less_than_5" | "5_to_6" | "6_to_8" | "more_than_8";
+  stressToday?: "low" | "moderate" | "high";
+  screenTimeToday?: "less_than_3" | "3_to_6" | "more_than_6";
+  movementToday?: "none" | "occasional" | "regular";
   sunscreen: boolean;
   makeupRemoved: boolean;
   smoked: boolean;
