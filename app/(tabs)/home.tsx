@@ -3,16 +3,18 @@ import type { ComponentProps, ReactNode } from "react";
 import { useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useApp } from "@/shared/AppContext";
-import { Body, BrandMark, Button, Card, FloatingBadge, H1, H2, Pill, ProgressBar, Screen, SectionLabel, ToggleGroup } from "@/shared/components";
+import { Body, BrandMark, Button, Card, FloatingBadge, H1, H2, Pill, ProgressBar, Screen, SectionLabel, SignalCard, ToggleGroup } from "@/shared/components";
 import { products } from "@/shared/data";
 import { t } from "@/shared/i18n";
 import { contextualConditionDescription, generateRoutine, localized } from "@/shared/knowledge/engine";
+import { buildLifestyleSignals } from "@/shared/knowledge/lifestyleSignals";
 import { GeneratedStep, HomeRemedy } from "@/shared/knowledge/types";
+import { buildWeatherActions, WeatherAction } from "@/shared/knowledge/weatherGuidance";
 import { getAqiGuidance, useEnvironmentalData } from "@/shared/services/environment";
 import { palettes, spacing } from "@/shared/theme";
 
 export default function Home() {
-  const { language, setLanguage, themeMode, setThemeMode, tier, setTier, profile, completion, toggleCompletion } = useApp();
+  const { language, setLanguage, themeMode, setThemeMode, tier, setTier, profile, completion, toggleCompletion, todayCheckIn } = useApp();
   const c = palettes[themeMode];
   const scrollRef = useRef<ScrollView>(null);
   const [showTopButton, setShowTopButton] = useState(false);
@@ -20,6 +22,8 @@ export default function Home() {
   const [expandedConcernId, setExpandedConcernId] = useState<string | null>(null);
   const environment = useEnvironmentalData();
   const result = useMemo(() => generateRoutine(profile.quiz), [profile.quiz]);
+  const lifestyleSignals = useMemo(() => buildLifestyleSignals(profile, todayCheckIn), [profile, todayCheckIn]);
+  const weatherActions = useMemo(() => (environment.data ? buildWeatherActions(environment.data) : []), [environment.data]);
   const visibleEvening = tier === "premium" ? result.evening : result.evening.slice(0, 4);
   const routineSteps = [...result.morning, ...visibleEvening];
   const completed = routineSteps.filter((step) => completion[step.id]).length;
@@ -82,6 +86,18 @@ export default function Home() {
         </Card>
 
         <EnvironmentalCard environment={environment} colors={c} />
+
+        {weatherActions.length > 0 ? (
+          <Card>
+            <View style={styles.sectionTitle}>
+              <Feather name="cloud" color={c.secondary} size={22} />
+              <H2>Today's weather actions</H2>
+            </View>
+            {weatherActions.slice(0, 4).map((action) => (
+              <WeatherActionCard key={action.id} action={action} />
+            ))}
+          </Card>
+        ) : null}
 
         <Card>
           <H2>{language === "en" ? "Matched skin concern" : "Matched skin concern"}</H2>
@@ -151,6 +167,18 @@ export default function Home() {
                 <Pill tone={tip.category === "smoking" || tip.category === "alcohol" ? "accent" : "secondary"}>{tip.category}</Pill>
                 <Body>{tip.text[language]}</Body>
               </View>
+            ))}
+          </Card>
+        ) : null}
+
+        {lifestyleSignals.length > 0 ? (
+          <Card>
+            <H2>Your Lifestyle Signals</H2>
+            <Body muted>Every quiz and check-in answer should visibly change your plan. These are the strongest signals today.</Body>
+            {lifestyleSignals.slice(0, 6).map((signal) => (
+              <SignalCard key={signal.id} tone={signal.tone} icon={signal.icon} label={signal.label} title={signal.title}>
+                {signal.body}
+              </SignalCard>
             ))}
           </Card>
         ) : null}
@@ -369,6 +397,8 @@ function EnvironmentalCard({
 
       <Body>{guidance.message}</Body>
       <View style={styles.metricGrid}>
+        <Metric label="Temp" value={`${Math.round(environment.data.temperature)}C`} colors={colors} />
+        <Metric label="Rain" value={`${Math.round(environment.data.rainProbability)}%`} colors={colors} />
         <Metric label="UV" value={environment.data.uv.toFixed(1)} colors={colors} />
         <Metric label="Humidity" value={`${Math.round(environment.data.humidity)}%`} colors={colors} />
         <Metric label="Wind" value={`${Math.round(environment.data.wind)} km/h`} colors={colors} />
@@ -384,6 +414,14 @@ function EnvironmentalCard({
 
       <Pill tone="primary">{environment.data.source === "gps" ? "Using your location" : "Using Kathmandu fallback"}</Pill>
     </Card>
+  );
+}
+
+function WeatherActionCard({ action }: { action: WeatherAction }) {
+  return (
+    <SignalCard tone={action.tone} icon={action.icon} label={action.label} title={action.title}>
+      {action.message}
+    </SignalCard>
   );
 }
 

@@ -1,4 +1,6 @@
-import { PropsWithChildren, useEffect, useMemo, useRef, useState } from "react";
+import { Feather } from "@expo/vector-icons";
+import type { ComponentProps, PropsWithChildren } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { LinearGradient } from "expo-linear-gradient";
 import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
 import { palettes, spacing } from "./theme";
@@ -300,6 +302,78 @@ export function ProgressBar({ value, color }: { value: number; color?: string })
   );
 }
 
+type SignalTone = "warning" | "advice" | "tip" | "success" | "neutral";
+
+export function SignalCard({
+  tone = "neutral",
+  icon,
+  label,
+  title,
+  children,
+  style
+}: PropsWithChildren<{
+  tone?: SignalTone;
+  icon: ComponentProps<typeof Feather>["name"];
+  label?: string;
+  title: string;
+  style?: ViewStyle;
+}>) {
+  const { themeMode } = useApp();
+  const c = palettes[themeMode];
+  const [hovered, setHovered] = useState(false);
+  const toneColors = {
+    warning: { main: c.danger, soft: themeMode === "dark" ? "#3A1A1D" : "#FFF0ED" },
+    advice: { main: c.secondary, soft: c.secondarySoft },
+    tip: { main: c.accent, soft: c.accentSoft },
+    success: { main: c.secondary, soft: c.secondarySoft },
+    neutral: { main: c.primary, soft: c.surfaceAlt }
+  } satisfies Record<SignalTone, { main: string; soft: string }>;
+  const active = toneColors[tone];
+  return (
+    <Pressable onHoverIn={() => setHovered(true)} onHoverOut={() => setHovered(false)}>
+      {({ pressed }) => (
+        <Animated.View
+          style={[
+            styles.signalCard,
+            {
+              backgroundColor: active.soft,
+              borderColor: hovered || tone === "warning" ? active.main : c.border,
+              shadowColor: active.main,
+              shadowOpacity: hovered ? 0.18 : tone === "warning" ? 0.12 : 0.06,
+              transform: [{ translateY: hovered ? -2 : pressed ? 1 : 0 }, { scale: pressed ? 0.99 : 1 }]
+            },
+            style
+          ]}
+        >
+          <View style={[styles.signalEdge, styles.noPointerEvents, { backgroundColor: active.main, opacity: tone === "warning" ? 0.95 : 0.65 }]} />
+          <View style={styles.signalHeader}>
+            <View style={[styles.signalIcon, { backgroundColor: active.main }]}>
+              <Feather name={icon} color={themeMode === "dark" && tone !== "warning" ? "#181514" : "#FFFFFF"} size={16} />
+            </View>
+            <View style={styles.signalTitleBlock}>
+              {label ? <Text style={[styles.signalLabel, { color: active.main }]}>{label}</Text> : null}
+              <Text style={[styles.signalTitle, { color: c.text }]}>{title}</Text>
+            </View>
+          </View>
+          <Text style={[styles.signalBody, { color: tone === "warning" ? c.text : c.muted }]}>{children}</Text>
+        </Animated.View>
+      )}
+    </Pressable>
+  );
+}
+
+export function WarningCard(props: Omit<Parameters<typeof SignalCard>[0], "tone">) {
+  return <SignalCard {...props} tone="warning" />;
+}
+
+export function AdviceCard(props: Omit<Parameters<typeof SignalCard>[0], "tone">) {
+  return <SignalCard {...props} tone="advice" />;
+}
+
+export function TipCard(props: Omit<Parameters<typeof SignalCard>[0], "tone">) {
+  return <SignalCard {...props} tone="tip" />;
+}
+
 const styles = StyleSheet.create({
   atmosphere: {
     flex: 1,
@@ -470,6 +544,57 @@ const styles = StyleSheet.create({
   progressFill: {
     height: 11,
     borderRadius: 999
+  },
+  signalCard: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: spacing.md,
+    gap: spacing.xs,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    overflow: "hidden"
+  },
+  signalEdge: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4
+  },
+  signalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm
+  },
+  signalIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  signalTitleBlock: {
+    flex: 1,
+    gap: 1
+  },
+  signalLabel: {
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 0,
+    textTransform: "uppercase",
+    fontFamily: Platform.select({ web: "DM Sans, Inter, system-ui, sans-serif", default: undefined })
+  },
+  signalTitle: {
+    fontSize: 16,
+    lineHeight: 21,
+    fontWeight: "900",
+    fontFamily: Platform.select({ web: "DM Sans, Inter, system-ui, sans-serif", default: undefined })
+  },
+  signalBody: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "600",
+    fontFamily: Platform.select({ web: "DM Sans, Inter, system-ui, sans-serif", default: undefined })
   },
   sectionLabelRow: {
     flexDirection: "row",

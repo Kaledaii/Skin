@@ -171,8 +171,9 @@ function createDefaultCheckIn(date: string, profile: UserProfile): DailyCheckIn 
     sleep: (profile.quiz.lifestyle.sleep_hours as DailyCheckIn["sleep"]) ?? "6_to_8",
     sunscreen: profile.quiz.currentRoutine.uses_sunscreen === "yes",
     makeupRemoved: profile.quiz.currentRoutine.removes_makeup_before_bed === "yes",
-    smoked: profile.quiz.lifestyle.smoking === "yes",
-    alcohol: profile.quiz.lifestyle.alcohol === "yes",
+    smoked: false,
+    alcohol: false,
+    weatherActionIds: [],
     selfieUri: profile.selfieUri
   };
 }

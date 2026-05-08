@@ -98,6 +98,62 @@ export const glossaryTerms: GlossaryTerm[] = [
     meaning_en: "The outer shield of your skin that keeps water in and irritants out.",
     meaning_ne: "skin ko outer shield; pani vitra rakhcha ra irritants bahira rakhcha.",
     example_en: "If skin burns with every product, the barrier may be weak."
+  },
+  {
+    id: "cleanser",
+    term: "Cleanser",
+    meaning_en: "A face wash that removes sweat, sunscreen, oil, and dust more gently than body soap.",
+    meaning_ne: "mukha dhune product; body soap bhanda gentle, sunscreen/oil/dhulo hatauna baneko.",
+    example_en: "Use morning and evening. Avoid harsh bath soap on the face."
+  },
+  {
+    id: "toner",
+    term: "Toner",
+    meaning_en: "A watery step after cleansing that can calm skin, balance feel, and prep for serum.",
+    meaning_ne: "cleanser pachi lagाउने pani jasto step; gulab jal jasto gentle option pani huna sakcha.",
+    example_en: "Use after cleanser and before serum. Rose water can be a simple local option."
+  },
+  {
+    id: "serum",
+    term: "Serum",
+    meaning_en: "A concentrated treatment step for a specific goal like marks, oil, acne, or hydration.",
+    meaning_ne: "specific problem ko lagi strong treatment step; vitamin C, niacinamide jasto.",
+    example_en: "Use only one new serum at a time so irritation is easier to track."
+  },
+  {
+    id: "hyaluronic-acid",
+    term: "Hyaluronic acid",
+    meaning_en: "A humectant that pulls water into skin so it feels plumper and less tight.",
+    meaning_ne: "pani tanne sponge jasto ingredient; skin hydrated feel garauna help.",
+    example_en: "Apply on damp skin, then seal with moisturizer."
+  },
+  {
+    id: "aha",
+    term: "AHA",
+    meaning_en: "A water-soluble exfoliating acid that helps dullness, roughness, and surface texture.",
+    meaning_ne: "dead skin hataune acid; glow ra texture ma help, tara overuse garda irritation.",
+    example_en: "Use at night only, usually weekly at first, and wear sunscreen."
+  },
+  {
+    id: "bha",
+    term: "BHA",
+    meaning_en: "An oil-soluble exfoliating acid, usually salicylic acid, that can clean inside oily pores.",
+    meaning_ne: "oil bhitra ghulne acid; oily skin, blackhead, whitehead ma useful.",
+    example_en: "Good for blackheads, but start slowly to avoid dryness."
+  },
+  {
+    id: "double-cleansing",
+    term: "Double cleansing",
+    meaning_en: "Two-step evening cleansing: first remove sunscreen/makeup/oil, then wash the skin.",
+    meaning_ne: "beluka dui step cleanse: pahile sunscreen/makeup/oil hataune, ani face wash.",
+    example_en: "Most useful after makeup, SPF, heavy sweat, dust, or pollution."
+  },
+  {
+    id: "ph-balance",
+    term: "pH balance",
+    meaning_en: "Skin naturally prefers a slightly acidic surface; harsh soap and hard water can disturb it.",
+    meaning_ne: "skin halka acidic huna ramro; kado soap ra hard water le disturb garna sakcha.",
+    example_en: "Gentle cleanser, toner, and avoiding bath soap can help."
   }
 ];
 
@@ -111,7 +167,12 @@ export const nutrientGuides: NutrientGuide[] = [
   { id: "folate", name: "Folate", skin_benefit: "Supports cell renewal and is important for pigmentation-prone skin health.", meaning_ne: "cell renewal support; pigmentation prone skin ko lagi important.", nepali_foods: ["saag", "lentils", "beans", "citrus", "broccoli"] },
   { id: "omega-3", name: "Omega-3", skin_benefit: "Supports calmer skin, less dryness, and a healthier barrier.", meaning_ne: "calmer skin, less dryness ra barrier support.", nepali_foods: ["machha", "walnuts", "flaxseed", "chia"] },
   { id: "water", name: "Water", skin_benefit: "Helps skin feel plump and supports normal body repair.", meaning_ne: "skin plump feel ra body repair support.", nepali_foods: ["plain water", "lemon water", "soups", "water-rich fruits"] },
-  { id: "probiotics", name: "Probiotics", skin_benefit: "Supports gut-skin balance and may help calmer skin.", meaning_ne: "gut-skin balance support; skin calm rakhna help.", nepali_foods: ["dahi", "mohi", "kinema", "gundruk", "fermented achar"] }
+  { id: "probiotics", name: "Probiotics", skin_benefit: "Supports gut-skin balance and may help calmer skin.", meaning_ne: "gut-skin balance support; skin calm rakhna help.", nepali_foods: ["dahi", "mohi", "kinema", "gundruk", "fermented achar"] },
+  { id: "biotin", name: "Biotin", skin_benefit: "Supports healthy hair, nails, and normal skin repair.", meaning_ne: "kपाल, nang ra normal skin health support.", nepali_foods: ["eggs", "nuts", "mushroom", "cauliflower", "beans"] },
+  { id: "selenium", name: "Selenium", skin_benefit: "Antioxidant mineral that supports elasticity and UV-stress defense.", meaning_ne: "antioxidant mineral; sun stress ra elasticity support.", nepali_foods: ["eggs", "fish", "garlic", "nuts when available"] },
+  { id: "beta-carotene", name: "Beta-carotene", skin_benefit: "Converts to vitamin A and supports glow, repair, and sun-stress resilience.", meaning_ne: "body ma vitamin A banna sakcha; glow ra repair support.", nepali_foods: ["carrot", "pumpkin", "papaya", "sweet potato", "saag"] },
+  { id: "lycopene", name: "Lycopene", skin_benefit: "Antioxidant that supports sun-stress protection and even-looking skin.", meaning_ne: "sun stress bata support garne antioxidant.", nepali_foods: ["tomato", "watermelon", "guava", "pink grapefruit"] },
+  { id: "polyphenols", name: "Polyphenols", skin_benefit: "Plant antioxidants that help defend against pollution, smoke, UV, and inflammation.", meaning_ne: "plant antioxidant; pollution, smoke, UV ra inflammation support.", nepali_foods: ["green tea", "black tea", "amla", "berries", "cocoa"] }
 ];
 
 export const dailyHabitTips: DailyHabitTip[] = [
@@ -173,6 +234,126 @@ export const learnQAs: LearnQA[] = [
     answer_en: "Avoid lemon on melasma. It can irritate and make patches darker in sun. Daily sunscreen and gentle pigment-safe care work better.",
     answer_ne: "Melasma ma lemon avoid garnu. Irritation bhayera sun ma patch ajhai dark huna sakcha. Daily sunscreen better.",
     tags: ["melasma", "pigmentation"]
+  },
+  {
+    id: "pimple-popping",
+    question_en: "Why should I not pop pimples?",
+    question_ne: "मुहासो फुटाउँदा किन हुँदैन? सबैले फुटाएको देख्छु त?",
+    answer_en: "Popping can push bacteria deeper, spread inflammation to nearby skin, and leave dark pits or marks. Let it heal, ice gently, or use spot care.",
+    answer_ne: "फुटाउँदा ब्याक्टेरिया गहिरो धकेलिन्छ, छेउछाउमा संक्रमण फैलिन्छ, र गाढा दाग/खाल्डो रहन सक्छ। आफैँ निको हुन दिनुस् वा spot care प्रयोग गर्नुस्।",
+    tags: ["acne", "safety"]
+  },
+  {
+    id: "bath-soap-face",
+    question_en: "Can I wash my face with bath soap?",
+    question_ne: "नुहाउने साबुनले मुहा धुन हुन्छ?",
+    answer_en: "Better not. Bath soap is usually too alkaline for facial skin, can weaken the barrier, and may trigger more oil or irritation. Use a gentle face wash.",
+    answer_ne: "हुँदैन भन्नु राम्रो। साबुन धेरै कडा/pH high हुन सक्छ, barrier बिगार्छ, अनि सुख्खा/जलन वा बढी तेल आउन सक्छ। Gentle face wash राम्रो।",
+    tags: ["cleanser", "barrier"]
+  },
+  {
+    id: "lemon-on-face",
+    question_en: "Does lemon juice fix acne marks?",
+    question_ne: "कागतीको रस मुहामा लगाउँदा ठीक हुन्छ भनेको - काम गर्छ?",
+    answer_en: "Avoid lemon on the face. It is very acidic, can burn skin, and can make dark marks worse in sunlight. Use sunscreen and safer pigment care instead.",
+    answer_ne: "नगर्नुस्। कागती धेरै acidic हुन्छ, छाला जलाउन सक्छ, र घाममा गएपछि दाग झन् गाढा हुन सक्छ। Sunscreen र safe pigment care राम्रो।",
+    tags: ["myth", "pigmentation"]
+  },
+  {
+    id: "toothpaste-pimple",
+    question_en: "Can toothpaste dry a pimple overnight?",
+    question_ne: "दाँतमाझ्ने मञ्जन मुहासोमा लगाएर सुत्दा काम गर्छ?",
+    answer_en: "Do not use toothpaste on pimples. Fluoride, SLS, and fragrance can irritate and leave marks. Use benzoyl peroxide, salicylic acid, pimple patch, or neem carefully.",
+    answer_ne: "नगर्नुस्। Toothpaste मा fluoride/SLS/fragrance हुन सक्छ, छाला जलाएर दाग छोड्न सक्छ। Benzoyl peroxide, salicylic acid, pimple patch वा neem सावधानीसाथ राम्रो।",
+    tags: ["myth", "acne"]
+  },
+  {
+    id: "cheap-facewash",
+    question_en: "Do I need expensive products?",
+    question_ne: "महँगो प्रोडक्ट चाहिन्छ? Rs. 200 को face wash काम गर्दैन?",
+    answer_en: "Not always. A simple low-cost cleanser can work if it suits your skin and you use it consistently. Ingredient fit matters more than price.",
+    answer_ne: "सधैं चाहिँदैन। Rs. 200 को face wash पनि suit भयो र नियमित प्रयोग भयो भने काम गर्छ। Price भन्दा ingredient र consistency महत्वपूर्ण।",
+    tags: ["budget", "products"]
+  },
+  {
+    id: "fake-online-products",
+    question_en: "Are online Korean skincare products safe to buy?",
+    question_ne: "Korean products Daraz मा राम्रो छ भनेको - लिने?",
+    answer_en: "Some are good, but fake products are a real risk. Check verified seller, batch number, expiry, packaging, and avoid deals that look too cheap.",
+    answer_ne: "केही राम्रो हुन्छन्, तर नकलीको risk छ। Verified seller, batch number, expiry, packaging हेर्नुस्। धेरै सस्तो छ भने शंका गर्नुस्।",
+    tags: ["products", "shopping"]
+  },
+  {
+    id: "sleep-exam-skin",
+    question_en: "I sleep only 3 hours during exams/work. Does it affect skin?",
+    question_ne: "दैनिक ३ घण्टा मात्र सुत्छु (exam/job) - छालामा कति असर छ?",
+    answer_en: "Yes. Very low sleep can worsen acne, under-eye darkness, puffiness, dullness, and slow healing. Even 30 minutes earlier is a useful first step.",
+    answer_ne: "धेरै असर पर्छ। कम निद्राले मुहासो, आँखा मुनि कालो/सुन्निने, dullness र healing slow बनाउन सक्छ। ३० मिनेट चाँडो सुत्नु पनि राम्रो सुरुवात।",
+    tags: ["sleep", "stress"]
+  },
+  {
+    id: "milk-tea-skin",
+    question_en: "Does drinking milk tea many times a day affect skin?",
+    question_ne: "दिनमा ३ पटक चिया (दूध चिया) पिउँछु - छालामा खराब?",
+    answer_en: "Tea itself is not the main issue. Too much sugar and too much dairy can worsen acne for some people. Try less sugar or swap one cup for green tea/water.",
+    answer_ne: "चिया आफैं समस्या होइन। धेरै चिनी र धेरै dairy ले केहीमा acne बढाउन सक्छ। चिनी घटाउनुस् वा एक कप green tea/water सँग swap गर्नुस्।",
+    tags: ["diet", "acne"]
+  },
+  {
+    id: "phone-cheek-acne",
+    question_en: "Can mobile phones cause cheek acne?",
+    question_ne: "mobile फोन छालामा खराब छ भनेको सुनें - साँचो हो?",
+    answer_en: "It can contribute. Phone screens collect oil, dust, and microbes, and cheek pressure can trigger bumps. Wipe the screen and use speaker/earphones when possible.",
+    answer_ne: "साँचो हुन सक्छ। Phone screen मा oil/dust/microbes हुन्छ, गालामा pressure पनि पर्छ। Screen wipe गर्नुस् र सके speaker/earphone use गर्नुस्।",
+    tags: ["hygiene", "acne"]
+  },
+  {
+    id: "gym-sweat-acne",
+    question_en: "Sweat after gym worsens my acne. What should I do?",
+    question_ne: "gym जाँदा पसिना आएपछि मुहासो बढ्छ - के गर्ने?",
+    answer_en: "Exercise is good, but trapped sweat is the issue. Rinse or use micellar water after sweating, change clothes, and do not wipe your face with shared towels.",
+    answer_ne: "Exercise राम्रो हो, trapped sweat समस्या हो। Sweat पछि rinse/micellar water, कपडा change, र shared towel ले face नपुछ्नु।",
+    tags: ["sweat", "acne"]
+  },
+  {
+    id: "kathmandu-pollution-acne",
+    question_en: "Does Kathmandu pollution really worsen acne?",
+    question_ne: "काठमाडौँको धुलो-धुवाँले मुहासो बढाउँछ भनेको साँचो?",
+    answer_en: "Yes. Fine dust can sit in pores and increase irritation. Mask outdoors when needed and double cleanse after dusty commutes.",
+    answer_ne: "साँचो। PM2.5/dust पोरमा बस्न सक्छ र irritation बढाउन सक्छ। बाहिर mask, घर आएपछि double cleansing राम्रो।",
+    tags: ["kathmandu", "pollution"]
+  },
+  {
+    id: "monsoon-skin-worse",
+    question_en: "Why does monsoon make skin worse?",
+    question_ne: "मनसुनमा (असार-साउन) छाला किन झन् खराब हुन्छ?",
+    answer_en: "Humidity traps sweat and oil, bacteria/yeast grow faster, and fungal bumps can flare. Use light layers, rinse sweat, keep towels dry, and avoid heavy oils.",
+    answer_ne: "उमसले पसिना/oil trap गर्छ, bacteria/yeast बढ्छ, fungal bumps आउन सक्छ। Light layers, sweat rinse, dry towel, heavy oil avoid।",
+    tags: ["monsoon", "fungal-acne"]
+  },
+  {
+    id: "haldi-safe-use",
+    question_en: "Should I use turmeric on my face?",
+    question_ne: "बुढाबुढीले हल्दी लगाउनु भन्नुहुन्छ - लगाउने?",
+    answer_en: "Turmeric can help inflammation, but use very little and mix with honey/curd/aloe. Do not leave it for hours, and patch test first.",
+    answer_ne: "हल्दीले inflammation मा help गर्न सक्छ, तर थोरै मात्र honey/curd/aloe सँग मिसाएर। घण्टौं नराख्नुस्, पहिले patch test।",
+    tags: ["ayurveda", "safety"]
+  },
+  {
+    id: "festival-recovery",
+    question_en: "I broke out after Dashain/Tihar food. Now what?",
+    question_ne: "तिहार/दशैंमा धेरै भुटेको खाएर मुहासो भयो - अब के गर्ने?",
+    answer_en: "Do a gentle reset for 3 days: dal/saag/fruit, more water, proper sleep, double cleansing, and no picking. One breakout does not need panic.",
+    answer_ne: "३ दिन gentle reset: दाल/साग/फलफूल, पानी, निद्रा, double cleansing, no picking। एक breakout ले panic गर्नु पर्दैन।",
+    tags: ["festival", "acne"]
+  },
+  {
+    id: "holi-color-safety",
+    question_en: "How should I protect skin during Holi?",
+    question_ne: "होलीको रङ लगाउँदा छालामा खराब? कसरी जोगिने?",
+    answer_en: "Colors can irritate. Before playing, use moisturizer/oil and sunscreen as a protective layer. Afterward, cleanse gently and do not scrub harshly.",
+    answer_ne: "रङले irritation गर्न सक्छ। खेल्नुअघि moisturizer/oil + sunscreen protective layer। पछि gentle cleanse, harsh scrub नगर्नुस्।",
+    tags: ["festival", "safety"]
   }
 ];
 
@@ -280,11 +461,14 @@ function section(heading_en: string, body_en: string, bullets?: string[]): Conte
 export function enrichArticle(article: ContentArticle): ContentArticle {
   const fallback = buildFallbackArticle(article);
   const detail = articleDetails[article.id] ?? {};
+  const sections = detail.sections
+    ? [...detail.sections, ...(fallback.sections ?? []).filter((section) => !detail.sections?.some((item) => item.heading_en === section.heading_en))].slice(0, 8)
+    : fallback.sections;
   return {
     ...article,
     ...fallback,
     ...detail,
-    sections: detail.sections ?? fallback.sections,
+    sections,
     takeaways: detail.takeaways ?? fallback.takeaways,
     glossary_terms: detail.glossary_terms ?? fallback.glossary_terms,
     nutrient_ids: detail.nutrient_ids ?? fallback.nutrient_ids,
@@ -298,14 +482,44 @@ function buildFallbackArticle(article: ContentArticle): Partial<ContentArticle> 
   return {
     sections: [
       section("What it means", article.summary_en),
-      section("Nepal-context plan", "Keep the routine simple: gentle cleanse, moisturizer, SPF in the morning, and proper evening cleansing after dust, sweat, sunscreen, or makeup."),
-      section("Food and habit support", "Add dal, saag, dahi, amla or lemon, enough water, and better sleep where possible. Small daily habits beat extreme routines.")
+      section(
+        "Nepal lifestyle context",
+        "Skin triggers here often stack together: dal bhat timing, sugary chiya, mithai, cold drinks, momo/chowmein, fried khaja, hostel or college late nights, exam stress, festival makeup, travel dust, tanker/well water, Terai sweat, Kathmandu valley pollution, and hilly or mountain UV/dryness."
+      ),
+      section(
+        "Why it affects skin",
+        "High sugar or refined maida can spike oil and inflammation for some acne-prone users. Poor sleep and stress can slow repair. Dust, sunscreen, sweat, and makeup can sit inside pores. UV makes PIH (pimple pachi basne daag) and melasma (brown patch problem) last longer."
+      ),
+      section(
+        "What to do this week",
+        "Pick only two changes for 7 days: cleanse gently at night, apply SPF every morning, drink water before chiya, sleep 30 minutes earlier, clean pillowcase, wipe phone, or reduce one sweet drink/fried snack. Consistency beats harsh routines."
+      ),
+      section(
+        "Budget options",
+        "Start with a gentle cleanser, moisturizer, and sunscreen you can actually use daily. Food support can be simple: dal for protein, saag + lemon for iron support, dahi/mohi for gut-skin balance, amla/citrus for vitamin C, nuts or seeds when possible."
+      ),
+      section(
+        "Mistakes to avoid",
+        "Avoid lemon on pigmentation, toothpaste on pimples, daily harsh scrubs, sleeping with makeup, copying too many actives from social media, and bleaching dark patches without guidance. Irritation can leave darker marks on South Asian skin."
+      ),
+      section(
+        "When to see a dermatologist",
+        "Get medical help if acne is painful/cystic, marks are spreading, there is scarring, sudden rash, burning with every product, infection signs, or no improvement after 8-12 weeks of gentle consistent care."
+      ),
+      section(
+        "Research/source note",
+        "This guide follows safety ideas from AAD patient education on acne habits, sweat, makeup, sunscreen, exfoliation, stress and skin, plus WHO healthy diet and physical activity principles. It is guidance, not diagnosis."
+      )
     ],
     takeaways: ["Keep care gentle and consistent.", "Match advice to your location, season, and lifestyle.", "See a dermatologist if symptoms are painful, spreading, scarring, or not improving."],
     glossary_terms: ["barrier", "spf", "antioxidant"],
     nutrient_ids: ["protein", "vitamin-c", "water"],
     related_condition_ids: article.condition_ids,
-    source_notes: ["AAD skin-care and sunscreen patient education", "WHO healthy diet principles"],
+    source_notes: [
+      "AAD acne habits, makeup, sweat, exfoliation, sunscreen, and stress/skin patient education",
+      "WHO healthy diet and physical activity guidance",
+      "Nepal lifestyle risk context: STEPS survey and adolescent diet/sleep/activity research"
+    ],
     when_to_see_doctor: "See a dermatologist if the concern is painful, rapidly worsening, leaving scars, or not improving after 8-12 weeks of consistent gentle care."
   };
 }

@@ -3,6 +3,7 @@ import { useApp } from "@/shared/AppContext";
 import { Body, BrandMark, Button, Card, H1, H2, Pill, Screen, SectionLabel } from "@/shared/components";
 import { questions } from "@/shared/data";
 import { t } from "@/shared/i18n";
+import { learnQAs } from "@/shared/knowledge/education";
 import { spacing } from "@/shared/theme";
 
 export default function Community() {
@@ -15,17 +16,34 @@ export default function Community() {
           <View style={styles.heroRow}>
             <BrandMark compact />
             <View style={styles.flex}>
-              <SectionLabel tone="accent">{language === "en" ? "Trust layer" : "Trust layer"}</SectionLabel>
+              <SectionLabel tone="accent">{language === "en" ? "Q&A" : "Q&A"}</SectionLabel>
               <H1>{t(language, "community")}</H1>
-              <Body muted>{language === "en" ? "Anonymous questions with visible expert signals." : "Expert signal सहित anonymous questions."}</Body>
+              <Body muted>{language === "en" ? "Nepal-context doubts in simple spoken style, plus premium expert signals later." : "Simple spoken-style answers, premium expert signals pachi."}</Body>
             </View>
           </View>
         </Card>
+
+        <Card>
+          <H2>{language === "en" ? "Q&A: Nepal context" : "Q&A: Nepal context"}</H2>
+          <Body muted>{language === "en" ? "Free readable answers for common skincare doubts." : "Common skincare doubt ko free simple answers."}</Body>
+          {learnQAs.map((qa) => (
+            <View key={qa.id} style={styles.qaBlock}>
+              <H2>{language === "ne" ? qa.question_ne : qa.question_en}</H2>
+              <Body>{language === "ne" ? qa.answer_ne : qa.answer_en}</Body>
+              <View style={styles.voteRow}>
+                {qa.tags.map((tag) => (
+                  <Pill key={tag} tone="primary">{tag}</Pill>
+                ))}
+              </View>
+            </View>
+          ))}
+        </Card>
+
         {locked ? (
           <Card>
             <Pill>{t(language, "premium")}</Pill>
-            <H2>{language === "en" ? "Anonymous Q&A is premium" : "Anonymous Q&A premium हो"}</H2>
-            <Body muted>{language === "en" ? "Premium includes community questions, expert validation badges, and clinic referral entry points." : "Premium मा community questions, expert badges र clinic referral entry points छन्।"}</Body>
+            <H2>{language === "en" ? "Ask-an-expert is premium" : "Ask-an-expert premium ho"}</H2>
+            <Body muted>{language === "en" ? "Premium can later include anonymous questions, expert validation badges, and clinic referral entry points." : "Premium ma anonymous questions, expert badges ra clinic referral entry points aauna sakcha."}</Body>
             <Button label={t(language, "upgrade")} onPress={() => setTier("premium")} />
           </Card>
         ) : questions.map((question) => (
@@ -39,6 +57,7 @@ export default function Community() {
             </View>
           </Card>
         ))}
+
         <Card>
           <H2>{language === "en" ? "Clinic escalation" : "Clinic escalation"}</H2>
           <Body>{t(language, "disclaimer")}</Body>
@@ -52,5 +71,6 @@ const styles = StyleSheet.create({
   content: { gap: spacing.md, paddingBottom: spacing.xl },
   heroRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   flex: { flex: 1, gap: spacing.xs },
-  voteRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs }
+  voteRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
+  qaBlock: { gap: spacing.xs, paddingVertical: spacing.sm }
 });

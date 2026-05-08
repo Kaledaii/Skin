@@ -195,6 +195,30 @@ function scoreCondition(condition: KnowledgeCondition, profile: QuizProfile): Co
     score += 2;
     reasons.push("Lifestyle: alcohol can worsen dehydration, puffiness, and redness");
   }
+  if (profile.lifestyle.stress_level === "high" && ["C001", "C006", "C007", "C013", "C014"].includes(condition.id)) {
+    score += 2;
+    reasons.push("Lifestyle: high stress can worsen acne, sensitivity, dullness, and puffiness");
+  }
+  if (profile.lifestyle.exercise === "none" && ["C007", "C013", "C015"].includes(condition.id)) {
+    score += 1;
+    reasons.push("Lifestyle: low movement can reduce glow and stress recovery");
+  }
+  if ((profile.lifestyle.diet === "junk_food_frequent" || profile.lifestyle.junk_food_frequency === "medium" || profile.lifestyle.junk_food_frequency === "high" || profile.lifestyle.junk_food_frequency === "very_high") && ["C001", "C004", "C007", "C009", "C010"].includes(condition.id)) {
+    score += profile.lifestyle.junk_food_frequency === "high" || profile.lifestyle.junk_food_frequency === "very_high" ? 2 : 1;
+    reasons.push("Lifestyle: frequent sweet/maida/fried foods may affect acne, oiliness, dullness, and marks");
+  }
+  if (profile.lifestyle.water_intake_liters === "less_than_1" && ["C003", "C007", "C013"].includes(condition.id)) {
+    score += 2;
+    reasons.push("Lifestyle: low water can show as tightness, dullness, or puffiness");
+  }
+  if (profile.lifestyle.screen_time_hours === "more_than_6" && ["C001", "C007", "C013"].includes(condition.id)) {
+    score += 1;
+    reasons.push("Lifestyle: high screen time can affect sleep, stress, and phone hygiene");
+  }
+  if (profile.lifestyle.diet === "vegetarian" && ["C007", "C013"].includes(condition.id)) {
+    score += 1;
+    reasons.push("Diet pattern: vegetarian users may need protein, iron, zinc, and B12-style support");
+  }
 
   if (condition.id === "C015" && profile.ageGroup === "18_24" && !hasStrongPrematureAgingSignal(profile)) {
     return { condition, score: 0, reasons: ["Premature aging held back: no strong aging signal for this age group"] };
@@ -296,6 +320,79 @@ function buildContextualRoutine(profile: QuizProfile): { morning: GeneratedStep[
     });
   }
 
+  if (profile.lifestyle.stress_level === "high") {
+    evening.push({
+      id: "stress-breathing-reset",
+      action: "5-minute stress reset",
+      instruction: {
+        en: "Before sleep, do 5 slow breaths and keep routine simple. Stress can worsen acne, itch, dullness, and under-eye puffiness.",
+        ne: "Sutnu aghi 5 slow breaths garnuhos ra routine simple rakhnu. Stress le pimple, itch, dullness ra under-eye puffiness badhauna sakcha."
+      }
+    });
+  }
+
+  if (profile.lifestyle.exercise === "none") {
+    morning.push({
+      id: "movement-glow-walk",
+      action: "15-minute easy movement",
+      instruction: {
+        en: "Walk, dance, stairs, or home chores count. Gentle movement helps circulation and stress.",
+        ne: "Walk, dance, stairs wa ghar ko kaam pani count huncha. Movement le circulation ra stress ma help garcha."
+      }
+    });
+  } else if (profile.lifestyle.exercise === "regular") {
+    evening.push({
+      id: "post-sweat-cleanse",
+      action: "Post-sweat cleanse",
+      instruction: {
+        en: "After heavy sweat, rinse gently and change sweaty clothes. Exercise is good; trapped sweat is the issue.",
+        ne: "Dherai sweat pachi gentle rinse ra sweaty clothes change garnu. Exercise ramro ho; trapped sweat problem ho."
+      }
+    });
+  }
+
+  if (profile.lifestyle.diet === "junk_food_frequent" || profile.lifestyle.junk_food_frequency === "medium" || profile.lifestyle.junk_food_frequency === "high" || profile.lifestyle.junk_food_frequency === "very_high") {
+    morning.push({
+      id: "low-glycemic-swap",
+      action: "One food swap",
+      instruction: {
+        en: "Swap one cold drink, mithai, chips, or maida snack with dahi, fruit, chana, nuts, or home khaja.",
+        ne: "Ek cold drink, mithai, chips wa maida snack lai dahi, fruit, chana, nuts wa ghar ko khaja sanga swap garnu."
+      }
+    });
+  }
+
+  if (location === "kathmandu_valley") {
+    evening.push({
+      id: "kathmandu-pollution-double-cleanse",
+      action: "Pollution double cleanse",
+      instruction: {
+        en: "After dusty commutes or high AQI, remove sunscreen/dust first, then use gentle cleanser so PM2.5 and roadside film do not sit overnight.",
+        ne: "Dusty commute wa high AQI pachi pahile sunscreen/dhulo hataunu, ani gentle cleanser. PM2.5 ra road dust overnight basna nadinu."
+      }
+    });
+    weekly.push({
+      id: "kathmandu-clay-mask",
+      action: "Clay or multani mitti mask",
+      instruction: {
+        en: "Use a clay or multani mitti mask once weekly on oily/clog-prone zones only. Do not let it crack fully dry.",
+        ne: "Oily/clog-prone zone ma weekly clay/multani mitti mask. Pura crack dry huna nadinu."
+      },
+      frequency: "Weekly"
+    });
+  }
+
+  if (profile.lifestyle.screen_time_hours === "more_than_6") {
+    evening.push({
+      id: "phone-hygiene-sleep",
+      action: "Phone hygiene + sleep guard",
+      instruction: {
+        en: "Wipe phone screen and keep it away for the first 20 minutes in bed to protect sleep and cheek acne.",
+        ne: "Phone screen wipe garnu ra bed ma first 20 min phone tada rakhnu, sleep ra cheek acne protect garna."
+      }
+    });
+  }
+
   if (location === "terai") {
     morning.push({
       id: "terai-light-moisturizer",
@@ -312,6 +409,15 @@ function buildContextualRoutine(profile: QuizProfile): { morning: GeneratedStep[
         en: "After heavy sweat, rinse gently and keep skin folds dry to lower heat-and-humidity bumps.",
         ne: "Dherai pasina pachi gentle rinse garnuhos ra skin folds dry rakhnu hos."
       }
+    });
+    weekly.push({
+      id: "terai-fungal-check",
+      action: "Fungal bump check",
+      instruction: {
+        en: "In hot humid weeks, check forehead, chest, back, neck folds for itchy same-size bumps. Keep cotton clothes and dry towels.",
+        ne: "Hot humid week ma forehead, chest, back, neck folds ma itchy same-size bumps check garnu. Cotton clothes ra dry towel."
+      },
+      frequency: "Weekly"
     });
   }
 
@@ -331,6 +437,15 @@ function buildContextualRoutine(profile: QuizProfile): { morning: GeneratedStep[
         en: "Avoid hot water on face; it strips the barrier faster in dry weather.",
         ne: "Face ma hot water avoid garnuhos; dry weather ma barrier chhito weak hunchha."
       }
+    });
+    weekly.push({
+      id: "wind-barrier-check",
+      action: "Wind barrier check",
+      instruction: {
+        en: "Check cheeks, lips, and nose corners for wind burn or flaky patches. Add richer moisturizer before cold/windy exposure.",
+        ne: "Cheeks, lips ra nose corner ma wind burn/flaky patch check garnu. Cold/windy exposure aghi richer moisturizer."
+      },
+      frequency: "Weekly"
     });
   }
 
@@ -367,10 +482,68 @@ function buildLifestyleContextTips(profile: QuizProfile) {
       }
     });
   }
+  if (profile.lifestyle.stress_level === "high") {
+    tips.push({
+      category: "stress",
+      text: {
+        en: "High stress can worsen pimples, itch, redness, dullness, and under-eye puffiness. Add a tiny breathing and sleep routine.",
+        ne: "High stress le pimple, itch, redness, dullness ra under-eye puffiness badhauna sakcha. Sano breathing ra sleep routine thapnu."
+      }
+    });
+  }
+  if (profile.lifestyle.exercise === "none") {
+    tips.push({
+      category: "movement",
+      text: {
+        en: "No gym needed: 15 minutes walking, dancing, stairs, or home chores can support circulation and stress.",
+        ne: "Gym chahidaina: 15 min walk, dance, stairs wa ghar ko kaam le circulation ra stress support garcha."
+      }
+    });
+  }
+  if (profile.lifestyle.diet === "junk_food_frequent" || profile.lifestyle.junk_food_frequency === "medium" || profile.lifestyle.junk_food_frequency === "high" || profile.lifestyle.junk_food_frequency === "very_high") {
+    tips.push({
+      category: "food",
+      text: {
+        en: "Frequent cold drinks, mithai, maida, momo/chowmein, and fried snacks can affect acne/oiliness for some users. Reduce one trigger first.",
+        ne: "Cold drinks, mithai, maida, momo/chowmein ra fried snacks frequent bhaye acne/oiliness ma effect parna sakcha. Pahile ek trigger kam garnu."
+      }
+    });
+  } else if (profile.lifestyle.diet === "home_cooked" || profile.lifestyle.diet === "mostly_dal_bhat") {
+    tips.push({
+      category: "food",
+      text: {
+        en: "Dal bhat is a strong base. Add protein, saag + lemon, dahi, and seasonal fruit for glow support.",
+        ne: "Dal bhat ramro base ho. Protein, saag + lemon, dahi ra seasonal fruit thapda glow support huncha."
+      }
+    });
+  }
+  if (profile.lifestyle.diet === "vegetarian") {
+    tips.push({
+      category: "vegetarian",
+      text: {
+        en: "Vegetarian routine can work well; watch protein, iron, zinc, and B12-style support without fear.",
+        ne: "Vegetarian routine ramro huncha; protein, iron, zinc ra B12-style support calmly hernu."
+      }
+    });
+  }
+  if (profile.lifestyle.screen_time_hours === "more_than_6") {
+    tips.push({
+      category: "screen",
+      text: {
+        en: "High screen time can push late sleep and phone-touch breakouts. Wipe phone and protect bedtime.",
+        ne: "High screen time le late sleep ra phone-touch breakouts badhauna sakcha. Phone wipe ra bedtime protect garnu."
+      }
+    });
+  }
   if (location === "terai") {
     tips.push({ category: "terai", text: { en: "For Terai heat, think sweat control and light layers, not harsh scrubbing.", ne: "Terai heat ma sweat control ra light layers sochnu, harsh scrub haina." } });
+    tips.push({ category: "fungal", text: { en: "Terai heat plus humidity can trigger itchy same-size fungal bumps on forehead, chest, back, or neck folds. Keep cotton clothes and dry towels.", ne: "Terai heat ra humidity le forehead/chest/back/neck folds ma itchy same-size fungal bumps aauna sakcha. Cotton clothes ra dry towel rakhnu." } });
   } else if (location === "mountain" || location === "hilly") {
     tips.push({ category: "barrier", text: { en: "For hills and mountains, barrier repair matters because wind and dry air pull water from skin.", ne: "Hills/mountain ma wind ra dry air le skin dry banauchha, barrier repair important." } });
+    tips.push({ category: "wind", text: { en: "Cold wind can cause tight cheeks, flaky lips, and nose-corner irritation. Lukewarm water and damp-skin moisturizer help.", ne: "Cold wind le cheeks tight, lips flaky, nose-corner irritation garna sakcha. Lukewarm water ra damp-skin moisturizer help." } });
+  } else if (location === "kathmandu_valley") {
+    tips.push({ category: "pollution", text: { en: "Kathmandu dust and PM2.5 can sit in pores by evening. Mask outdoors when needed and double cleanse after dusty commutes.", ne: "Kathmandu dust/PM2.5 beluka pores ma basna sakcha. Bahira mask ra dusty commute pachi double cleanse." } });
+    tips.push({ category: "water", text: { en: "If Kathmandu tap water makes skin tight, use micellar first cleanse, gentle face wash, and filtered final rinse when possible.", ne: "Kathmandu tap water le skin tight bhaye micellar first cleanse, gentle face wash, possible bhaye filtered final rinse." } });
   }
   return tips;
 }
@@ -644,6 +817,18 @@ function buildDailyMicroTips(profile: QuizProfile, matches: ConditionMatch[], wa
   }
   if (profile.currentRoutine.uses_sunscreen === "no" || profile.currentRoutine.uses_sunscreen === "sometimes") {
     tips.push({ id: "uv-sunscreen", tag: "uv", text: { en: "Sunscreen is the non-negotiable step for your selected plan.", ne: "tapai ko plan ma sunscreen non-negotiable step ho." } });
+  }
+  if (profile.lifestyle.stress_level === "high") {
+    tips.push({ id: "stress-reset", tag: "stress", text: { en: "Stress high today? Five slow breaths before sleep counts as skin care.", ne: "aaja stress high? sutnu aghi five slow breaths pani skincare nai ho." } });
+  }
+  if (profile.lifestyle.exercise === "none") {
+    tips.push({ id: "movement", tag: "movement", text: { en: "No exercise? 15 minutes walk, dance, stairs, or chores can support glow.", ne: "exercise chaina? 15 min walk, dance, stairs wa kaam le glow support garna sakcha." } });
+  }
+  if (profile.lifestyle.junk_food_frequency === "high" || profile.lifestyle.junk_food_frequency === "very_high") {
+    tips.push({ id: "junk-swap", tag: "food", text: { en: "High junk food week? Reduce cold drinks or maida first, not everything at once.", ne: "junk food high? sabai ekai choti haina, pahile cold drinks wa maida kam garnu." } });
+  }
+  if (profile.lifestyle.screen_time_hours === "more_than_6") {
+    tips.push({ id: "phone-clean", tag: "screen", text: { en: "Wipe your phone tonight; cheek acne can be phone-touch related.", ne: "aaja phone wipe garnu; cheek acne phone-touch related huna sakcha." } });
   }
   tips.push({ id: waterTip.id, tag: "water", text: { en: waterTip.tips.en[0], ne: waterTip.tips.ne[0] } });
 

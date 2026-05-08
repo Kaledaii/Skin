@@ -70,6 +70,7 @@ export type DailyCheckIn = {
   makeupRemoved: boolean;
   smoked: boolean;
   alcohol: boolean;
+  weatherActionIds?: string[];
   moodNote?: string;
   skinNote?: string;
   selfieUri?: string;

@@ -7,9 +7,17 @@ import { Platform } from "react-native";
 export type EnvironmentalSource = "gps" | "fallback";
 
 export type EnvironmentalData = {
+  temperature: number;
+  feelsLike: number;
   uv: number;
   humidity: number;
   wind: number;
+  windGusts: number;
+  precipitation: number;
+  rain: number;
+  rainProbability: number;
+  cloudCover: number;
+  weatherCode: number;
   aqi: number;
   pm25: number;
   pm10: number;
@@ -30,11 +38,19 @@ type Coordinates = {
 
 type WeatherResponse = {
   current?: {
+    temperature_2m?: number;
+    apparent_temperature?: number;
     relative_humidity_2m?: number;
     wind_speed_10m?: number;
+    wind_gusts_10m?: number;
+    precipitation?: number;
+    rain?: number;
+    weather_code?: number;
+    cloud_cover?: number;
   };
   daily?: {
     uv_index_max?: number[];
+    precipitation_probability_max?: number[];
   };
 };
 
@@ -142,7 +158,7 @@ async function fetchEnvironmentalData(coords: Coordinates): Promise<Environmenta
 
 async function fetchForCoordinates(coords: Coordinates): Promise<EnvironmentalData> {
   const params = `latitude=${coords.latitude}&longitude=${coords.longitude}&timezone=auto`;
-  const weatherUrl = `https://api.open-meteo.com/v1/forecast?${params}&current=relative_humidity_2m,wind_speed_10m&daily=uv_index_max`;
+  const weatherUrl = `https://api.open-meteo.com/v1/forecast?${params}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,precipitation,rain,weather_code,cloud_cover&daily=uv_index_max,precipitation_probability_max`;
   const airUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?${params}&current=us_aqi,pm2_5,pm10`;
 
   const [weatherRes, airRes] = await Promise.all([fetch(weatherUrl), fetch(airUrl)]);
@@ -152,9 +168,17 @@ async function fetchForCoordinates(coords: Coordinates): Promise<EnvironmentalDa
 
   const [weather, air] = (await Promise.all([weatherRes.json(), airRes.json()])) as [WeatherResponse, AirQualityResponse];
   return {
+    temperature: requireNumber(weather.current?.temperature_2m, "temperature"),
+    feelsLike: requireNumber(weather.current?.apparent_temperature, "apparent temperature"),
     uv: requireNumber(weather.daily?.uv_index_max?.[0], "UV index"),
     humidity: requireNumber(weather.current?.relative_humidity_2m, "humidity"),
     wind: requireNumber(weather.current?.wind_speed_10m, "wind speed"),
+    windGusts: optionalNumber(weather.current?.wind_gusts_10m),
+    precipitation: optionalNumber(weather.current?.precipitation),
+    rain: optionalNumber(weather.current?.rain),
+    rainProbability: optionalNumber(weather.daily?.precipitation_probability_max?.[0]),
+    cloudCover: optionalNumber(weather.current?.cloud_cover),
+    weatherCode: optionalNumber(weather.current?.weather_code),
     aqi: Math.round(requireNumber(air.current?.us_aqi, "AQI")),
     pm25: requireNumber(air.current?.pm2_5, "PM2.5"),
     pm10: requireNumber(air.current?.pm10, "PM10"),
@@ -167,6 +191,10 @@ function requireNumber(value: unknown, label: string) {
     throw new Error(`${label} data is unavailable right now.`);
   }
   return value;
+}
+
+function optionalNumber(value: unknown) {
+  return typeof value === "number" && !Number.isNaN(value) ? value : 0;
 }
 
 async function schedulePollutionReminder(aqi: number) {

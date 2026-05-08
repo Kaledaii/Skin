@@ -6,7 +6,7 @@ import { useApp } from "@/shared/AppContext";
 import { Body, BrandMark, Card, FloatingBadge, H1, H2, Pill, ProgressBar, Screen, SectionLabel } from "@/shared/components";
 import { getAllArticles, getRecommendedArticles, getSeasonalCalendar } from "@/shared/knowledge/content";
 import { ContentArticle } from "@/shared/knowledge/contentTypes";
-import { dailyHabitTips, glossaryTerms, learnQAs, nutrientGuides } from "@/shared/knowledge/education";
+import { dailyHabitTips, glossaryTerms, nutrientGuides } from "@/shared/knowledge/education";
 import { generateRoutine } from "@/shared/knowledge/engine";
 import { calculateSkinHabitScore } from "@/shared/knowledge/tracking";
 import { palettes, spacing } from "@/shared/theme";
@@ -41,7 +41,7 @@ export default function Learn() {
             <View style={styles.flex}>
               <SectionLabel tone="accent">Learn hub</SectionLabel>
               <H1>{language === "en" ? "Learn what your skin needs next" : "Skin lai ke chahinchha, sajilo tarika le bujhnuhos"}</H1>
-              <Body muted>Articles, glossary, nutrients, Q&A, and daily habits tuned for Nepal's weather, water, budget, and lifestyle.</Body>
+              <Body muted>Articles, glossary, nutrients, and daily habits tuned for Nepal's weather, water, budget, and lifestyle.</Body>
               <View style={styles.badgeRow}>
                 <FloatingBadge label="Readable articles" />
                 <FloatingBadge label="Roman Nepali help" tone="secondary" />
@@ -55,7 +55,7 @@ export default function Learn() {
           <View style={styles.row}>
             <View style={styles.flex}>
               <H2>Skin Habit Score</H2>
-              <Body muted>Gentle score from routine, SPF, makeup removal, water, sleep, lifestyle risk, and photo logs.</Body>
+              <Body muted>Gentle score from routine, care basics, lifestyle, food/water/sleep, weather readiness, and logs.</Body>
             </View>
             <Pill tone={habitScore.score >= 75 ? "secondary" : "accent"}>{habitScore.score}/100</Pill>
           </View>
@@ -125,21 +125,6 @@ export default function Learn() {
               <H2>{tip.title}</H2>
               <Body>{tip.why}</Body>
               <Body muted>{tip.how}</Body>
-            </View>
-          ))}
-        </Card>
-
-        <Card>
-          <H2>Q&A: Nepal context</H2>
-          {learnQAs.map((qa) => (
-            <View key={qa.id} style={[styles.infoTile, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
-              <H2>{language === "ne" ? qa.question_ne : qa.question_en}</H2>
-              <Body>{language === "ne" ? qa.answer_ne : qa.answer_en}</Body>
-              <View style={styles.badgeRow}>
-                {qa.tags.map((tag) => (
-                  <Pill key={tag} tone="primary">{tag}</Pill>
-                ))}
-              </View>
             </View>
           ))}
         </Card>
