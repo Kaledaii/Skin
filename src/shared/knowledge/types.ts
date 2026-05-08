@@ -81,6 +81,9 @@ export type KnowledgeBase = {
     total_conditions: number;
     regions_covered: string[];
     languages: Language[];
+    expanded_context_version?: string;
+    expanded_context_name?: string;
+    new_features?: string[];
   };
   quiz_fields: {
     skin_type: string[];
@@ -99,6 +102,16 @@ export type KnowledgeBase = {
     lifestyle_alerts: Array<Record<string, unknown>>;
     nepal_special_events: Array<Record<string, unknown>>;
   };
+  smart_filtering_rules?: Record<string, unknown>;
+  skincare_glossary?: {
+    description: string;
+    terms: Array<Record<string, unknown>>;
+  };
+  nutrients_for_skin?: Record<string, unknown>;
+  medical_terms_explained?: Record<string, unknown>;
+  expanded_qna_nepali?: Record<string, unknown>;
+  smoking_alcohol_makeup_warnings?: Record<string, unknown>;
+  location_specific_causes?: Record<string, unknown>;
 };
 
 export type QuizProfile = {

@@ -3,6 +3,7 @@ import type { ComponentProps } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { LineChart } from "react-native-chart-kit";
 import { useMemo, useState } from "react";
+import { router } from "expo-router";
 import { useApp } from "@/shared/AppContext";
 import { Body, BrandMark, Button, Card, H1, H2, Pill, ProgressBar, Screen, SectionLabel, SignalCard, ToggleGroup } from "@/shared/components";
 import { routineLogs } from "@/shared/data";
@@ -10,6 +11,7 @@ import { t } from "@/shared/i18n";
 import { generateRoutine } from "@/shared/knowledge/engine";
 import { buildLifestyleSignals } from "@/shared/knowledge/lifestyleSignals";
 import { calculateSkinHabitScore } from "@/shared/knowledge/tracking";
+import { buildWeeklySkinReport } from "@/shared/knowledge/weeklyReport";
 import { buildWeatherActions } from "@/shared/knowledge/weatherGuidance";
 import { useEnvironmentalData } from "@/shared/services/environment";
 import { palettes, spacing } from "@/shared/theme";
@@ -34,6 +36,7 @@ export default function Progress() {
   const weatherActions = useMemo(() => (environment.data ? buildWeatherActions(environment.data) : []), [environment.data]);
   const habitScore = calculateSkinHabitScore({ completion, routineSteps: [...routine.morning, ...routine.evening], profile, checkIn: todayCheckIn, weatherActions });
   const lifestyleSignals = useMemo(() => buildLifestyleSignals(profile, todayCheckIn), [profile, todayCheckIn]);
+  const weeklyReport = useMemo(() => buildWeeklySkinReport(profile, todayCheckIn, habitScore), [profile, todayCheckIn, habitScore]);
 
   return (
     <Screen>
@@ -64,6 +67,24 @@ export default function Progress() {
           {habitScore.reasons.map((reason) => (
             <Body key={reason}>• {reason}</Body>
           ))}
+        </Card>
+
+        <Card variant="seasonal">
+          <View style={styles.heroRow}>
+            <Feather name="file-text" color={c.primary} size={22} />
+            <View style={styles.flex}>
+              <H2>Weekly Skin Report</H2>
+              <Body muted>{premiumLocked ? "Premium preview: unlock the full weekly insight and next-week focus." : weeklyReport.summary}</Body>
+            </View>
+          </View>
+          <View style={styles.reportGrid}>
+            <ReportTile label="Best habit" value={weeklyReport.bestHabit} locked={false} />
+            <ReportTile label="Weakest habit" value={weeklyReport.weakestHabit} locked={premiumLocked} />
+            <ReportTile label="Likely trigger" value={weeklyReport.likelyTrigger} locked={premiumLocked} />
+            <ReportTile label="Next week focus" value={weeklyReport.nextWeekFocus} locked={premiumLocked} />
+            <ReportTile label="Suggested mode" value={weeklyReport.modeSuggestion} locked={premiumLocked} />
+          </View>
+          {premiumLocked ? <Button label="Unlock weekly report" onPress={() => router.push("/paywall" as never)} /> : null}
         </Card>
 
         <Card>
@@ -250,6 +271,15 @@ export default function Progress() {
     );
   }
 
+  function ReportTile({ label, value, locked }: { label: string; value: string; locked: boolean }) {
+    return (
+      <View style={[styles.reportTile, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+        <Pill tone={locked ? "accent" : "secondary"}>{locked ? "Premium" : label}</Pill>
+        <Body muted>{locked ? "Unlock to see personalized weekly detail." : value}</Body>
+      </View>
+    );
+  }
+
   function CheckPill({ label, icon, active, danger = false, onPress }: { label: string; icon: ComponentProps<typeof Feather>["name"]; active: boolean; danger?: boolean; onPress: () => void }) {
     return (
       <Pressable
@@ -291,6 +321,8 @@ const styles = StyleSheet.create({
     elevation: 6
   },
   scoreTooltipText: { color: "#FFFFFF", fontSize: 12, lineHeight: 16, fontWeight: "700" },
+  reportGrid: { gap: spacing.xs },
+  reportTile: { borderWidth: 1, borderRadius: 8, padding: spacing.sm, gap: spacing.xs },
   checkRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
   checkPill: { minHeight: 38, borderWidth: 1, borderRadius: 999, paddingHorizontal: spacing.md, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: spacing.xs },
   checkText: { fontSize: 13, fontWeight: "800" },

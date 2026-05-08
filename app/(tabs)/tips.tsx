@@ -1,11 +1,14 @@
 import { Feather } from "@expo/vector-icons";
-import { useMemo } from "react";
-import { Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import { useMemo, useState } from "react";
+import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
+import { router } from "expo-router";
 import { useApp } from "@/shared/AppContext";
 import { Body, BrandMark, Card, H1, H2, Pill, Screen, SectionLabel } from "@/shared/components";
 import { tips } from "@/shared/data";
 import { t } from "@/shared/i18n";
 import { generateRoutine, localized } from "@/shared/knowledge/engine";
+import { buildBudgetRoutine, buildSkinTwin, checkIngredient, premiumModes } from "@/shared/knowledge/sellingFeatures";
+import { launchProducts } from "@/shared/productCatalog";
 import { palettes, spacing } from "@/shared/theme";
 
 type FeedItem = {
@@ -18,9 +21,12 @@ type FeedItem = {
 };
 
 export default function Tips() {
-  const { language, themeMode, profile, likedTipIds, savedTipIds, toggleLikedTip, toggleSavedTip } = useApp();
+  const { language, themeMode, tier, profile, likedTipIds, savedTipIds, toggleLikedTip, toggleSavedTip } = useApp();
   const c = palettes[themeMode];
+  const [ingredientText, setIngredientText] = useState("");
   const result = useMemo(() => generateRoutine(profile.quiz), [profile.quiz]);
+  const budgetRoutine = useMemo(() => buildBudgetRoutine(profile, launchProducts), [profile]);
+  const skinTwin = useMemo(() => buildSkinTwin(profile), [profile]);
 
   const feedItems: FeedItem[] = [
     ...result.dailyMicroTips.map((tip) => ({
@@ -57,6 +63,56 @@ export default function Tips() {
               <Body muted>{language === "en" ? "Short skincare nudges you can like, save, and share." : "Like, save र share गर्न मिल्ने छोटा skincare nudges."}</Body>
             </View>
           </View>
+        </Card>
+
+        <Card variant="seasonal">
+          <H2>Skin Twin</H2>
+          <Body>{skinTwin}</Body>
+          <Pill tone={tier === "premium" ? "secondary" : "accent"}>{tier === "premium" ? "Personalized" : "Premium preview"}</Pill>
+        </Card>
+
+        <Card>
+          <H2>Budget Routine Builder</H2>
+          <Pill tone="secondary">{budgetRoutine.label}</Pill>
+          <Body muted>{budgetRoutine.note}</Body>
+          {budgetRoutine.picks.map((product) => (
+            <View key={product.id} style={[styles.modeCard, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+              <Body>{product.name}</Body>
+              <Body muted>{product.category} - {product.price}</Body>
+            </View>
+          ))}
+          {tier !== "premium" ? <ButtonLabel text="Unlock full budget alternatives" /> : null}
+        </Card>
+
+        <Card>
+          <H2>Ingredient Checker</H2>
+          <Body muted>Type lemon, retinol, niacinamide, fragrance, SPF, salicylic acid, etc.</Body>
+          <TextInput
+            value={ingredientText}
+            onChangeText={setIngredientText}
+            placeholder="Type ingredient or product claim"
+            placeholderTextColor={c.muted}
+            style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]}
+          />
+          <Body>{checkIngredient(ingredientText)}</Body>
+          {tier !== "premium" ? <ButtonLabel text="Premium later: scan full product ingredient lists" /> : null}
+        </Card>
+
+        <Card>
+          <H2>Modes that sell</H2>
+          <Body muted>Special routines for real Nepali life moments.</Body>
+          {premiumModes.map((mode, index) => {
+            const locked = tier !== "premium" && index >= 2;
+            return (
+              <Pressable key={mode.id} onPress={() => locked ? router.push("/paywall" as never) : undefined} style={[styles.modeCard, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+                <View style={styles.cardTopRow}>
+                  <H2>{locked ? "Premium mode" : mode.title}</H2>
+                  <Pill tone={locked ? "accent" : "secondary"}>{locked ? "locked" : "ready"}</Pill>
+                </View>
+                <Body muted>{locked ? "Unlock event, hostel, winter, festival, exam, and budget-specific routines." : mode.body}</Body>
+              </Pressable>
+            );
+          })}
         </Card>
 
         {favoriteItems.length > 0 ? (
@@ -100,6 +156,10 @@ export default function Tips() {
       </ScrollView>
     </Screen>
   );
+}
+
+function ButtonLabel({ text }: { text: string }) {
+  return <Pill tone="accent">{text}</Pill>;
 }
 
 function FeedCard({
@@ -193,5 +253,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1
   },
-  badgeRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs }
+  badgeRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
+  modeCard: { borderWidth: 1, borderRadius: 8, padding: spacing.sm, gap: spacing.xs },
+  input: { borderWidth: 1, borderRadius: 8, minHeight: 46, paddingHorizontal: spacing.md, fontSize: 15 }
 });

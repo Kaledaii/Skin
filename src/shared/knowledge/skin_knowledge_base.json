@@ -1,6 +1,6 @@
 {
   "meta": {
-    "version": "2.0.0",
+    "version": "3.0.0",
     "description": "15 Nepal-specific skin conditions. Each follows the flow: what it is (plain language) → causes (Nepal lifestyle/weather/habits) → symptoms (how you know you have it) → fix (diet first, habits second, ayurveda third, products/medicine last). References content_database condition IDs C001–C007 and adds C008–C015.",
     "total_conditions": 15,
     "regions_covered": [
@@ -13,7 +13,17 @@
       "en",
       "ne"
     ],
-    "philosophy": "Lifestyle and diet are the root fix. Ayurveda and home remedies are the primary treatment. Chemical products are the last resort."
+    "philosophy": "Lifestyle and diet are the root fix. Ayurveda and home remedies are the primary treatment. Chemical products are the last resort.",
+    "expanded_context_version": "3.0.0",
+    "expanded_context_name": "Nepal Skin Database - Expanded & Context-Aware",
+    "new_features": [
+      "Location-aware filtering (no Kathmandu tips if user is in Terai)",
+      "Age-appropriate suggestions (no anti-aging for 20-25)",
+      "Smoking/alcohol/makeup impact sections",
+      "Skincare glossary in simple Nepali",
+      "Nutrient guide for skin",
+      "Expanded Q&A in colloquial Nepali"
+    ]
   },
   "quiz_fields": {
     "skin_type": [
@@ -3918,6 +3928,887 @@
         "C003"
       ],
       "abroad": []
+    }
+  },
+  "smart_filtering_rules": {
+    "description": "Apply these rules BEFORE showing any content to user",
+    "location_filters": {
+      "kathmandu": {
+        "show": [
+          "pollution_tips",
+          "hard_water_tips",
+          "dust_protection"
+        ],
+        "hide": [
+          "terai_humidity_tips",
+          "mountain_cold_tips"
+        ]
+      },
+      "terai": {
+        "show": [
+          "humidity_tips",
+          "heat_protection",
+          "fungal_prevention"
+        ],
+        "hide": [
+          "kathmandu_pollution",
+          "hard_water_kathmandu",
+          "altitude_dryness"
+        ]
+      },
+      "hills": {
+        "show": [
+          "cold_weather_tips",
+          "dryness_prevention",
+          "wind_protection"
+        ],
+        "hide": [
+          "kathmandu_pollution",
+          "terai_humidity"
+        ]
+      },
+      "mountains": {
+        "show": [
+          "extreme_cold_tips",
+          "altitude_dryness",
+          "wind_burn"
+        ],
+        "hide": [
+          "kathmandu_pollution",
+          "terai_humidity",
+          "heat_protection"
+        ]
+      }
+    },
+    "age_filters": {
+      "13_19": {
+        "focus": [
+          "acne",
+          "oil_control",
+          "school_stress_skin"
+        ],
+        "avoid": [
+          "anti_aging",
+          "wrinkles",
+          "fine_lines"
+        ]
+      },
+      "20_29": {
+        "focus": [
+          "acne_scars",
+          "pigmentation",
+          "glow",
+          "prevention"
+        ],
+        "avoid": [
+          "deep_wrinkles",
+          "sagging",
+          "mature_skin"
+        ]
+      },
+      "30_39": {
+        "focus": [
+          "early_aging_signs",
+          "prevention",
+          "dark_spots",
+          "texture"
+        ],
+        "include": [
+          "first_fine_lines",
+          "sun_damage_repair"
+        ]
+      },
+      "40_plus": {
+        "focus": [
+          "anti_aging",
+          "firmness",
+          "deep_hydration",
+          "wrinkle_care"
+        ],
+        "include": [
+          "collagen_boosting",
+          "retinol_use"
+        ]
+      }
+    },
+    "habit_impact_scoring": {
+      "smoking": {
+        "severity": "HIGH",
+        "skin_damage": "+40% aging acceleration",
+        "adds_conditions": [
+          "premature_aging",
+          "dullness",
+          "poor_healing"
+        ],
+        "mandatory_warnings": true
+      },
+      "alcohol": {
+        "severity": "MEDIUM",
+        "skin_damage": "+25% dehydration",
+        "adds_conditions": [
+          "dehydration",
+          "redness",
+          "puffiness"
+        ],
+        "frequency_matters": true
+      },
+      "daily_makeup": {
+        "severity": "LOW_TO_MEDIUM",
+        "skin_damage": "Depends on removal habits",
+        "adds_conditions": [
+          "clogged_pores",
+          "breakouts"
+        ],
+        "requires": "double_cleansing_education"
+      }
+    }
+  },
+  "skincare_glossary": {
+    "description": "Simple Nepali explanations of common skincare terms",
+    "terms": [
+      {
+        "term": "Cleanser (क्लिन्जर)",
+        "simple_nepali": "मुहा धुने साबुन - तर साबुन भन्दा हल्का र छालाको लागि सुरक्षित",
+        "when_use": "बिहान र बेलुका दिनमा २ पटक",
+        "nepali_alternatives": "मह (honey), बेसन (gram flour) - तर प्रोडक्ट राम्रो"
+      },
+      {
+        "term": "Toner (टोनर)",
+        "simple_nepali": "मुहा धोएपछि लगाउने पानी जस्तो प्रोडक्ट - बाँकी फोहोर सफा गर्छ र छालाको pH बराबर गर्छ",
+        "when_use": "क्लिन्जरपछि, सेरम अघि",
+        "nepali_alternatives": "गुलाब जल (rose water)"
+      },
+      {
+        "term": "Serum (सेरम)",
+        "simple_nepali": "गाढा तेल जस्तो तर पानी जस्तो - सबैभन्दा शक्तिशाली प्रोडक्ट। छालाभित्र गहिरो पुग्छ",
+        "when_use": "टोनरपछि, मोइस्चराइजर अघि",
+        "examples": "Vitamin C serum, Niacinamide serum"
+      },
+      {
+        "term": "Moisturizer (मोइस्चराइजर)",
+        "simple_nepali": "क्रिम - छालामा ओसिलापन थप्छ र बाहिरी धुलो/घामबाट जोगाउँछ",
+        "when_use": "सेरमपछि अन्तिम चरण (सनस्क्रिन बाहेक)",
+        "all_skin_types": "तेलिलो छाला भए पनि चाहिन्छ - हल्का जेल प्रकार छान्नुस्"
+      },
+      {
+        "term": "Sunscreen (सनस्क्रिन)",
+        "simple_nepali": "घामबाट जोगाउने क्रिम - SPF ३० वा ५० को",
+        "when_use": "बिहान अन्तिम चरण, घाममा जानुभन्दा २० मिनेट अघि",
+        "must_reapply": "हरेक २ घण्टामा फेरि लगाउनुस् (बाहिर भएमा)"
+      },
+      {
+        "term": "Exfoliation (एक्सफोलिएसन)",
+        "simple_nepali": "मृत छालाको कोशिका हटाउने काम - नयाँ चम्किलो छाला प्रकट गर्न",
+        "types": {
+          "physical": "स्क्रब (बीउ/दानाले रगड्ने) - सावधानीसाथ",
+          "chemical": "AHA/BHA एसिड - छालामा लगाउने, रगड्नु पर्दैन"
+        },
+        "frequency": "हप्तामा १-२ पटक मात्र, बढी गर्दा हानि"
+      },
+      {
+        "term": "Micellar Water (माइसेलर वाटर)",
+        "simple_nepali": "मेकअप र फोहोर हटाउने जादुई पानी - धुनु पर्दैन",
+        "how_it_works": "सानो साबुन जस्तो कणले फोहोर समात्छ",
+        "best_for": "यात्रामा, छिटो सफा गर्न, पहिलो क्लिन्ज"
+      },
+      {
+        "term": "Niacinamide (नियासिनामाइड)",
+        "simple_nepali": "Vitamin B3 - मुहासो, पोर, तेल, कालो दाग सबैमा काम गर्ने चमत्कारी तत्व",
+        "concentration": "५-१०% सबैभन्दा राम्रो",
+        "safe_for": "सबै छालाको प्रकार, गर्भवती महिला पनि"
+      },
+      {
+        "term": "Vitamin C (भिटामिन सी)",
+        "simple_nepali": "छाला चम्काउने र कालो दाग हल्का पार्ने शक्तिशाली तत्व",
+        "use_when": "बिहान मात्र (साँझ होइन)",
+        "must_pair_with": "सनस्क्रिन अनिवार्य (नत्र उल्टो असर)"
+      },
+      {
+        "term": "Hyaluronic Acid (ह्यालुरोनिक एसिड)",
+        "simple_nepali": "पानी तान्ने स्पन्ज जस्तो - छालामा ओसिलापन थप्छ",
+        "application_trick": "ओसिलो छालामा लगाउनुस् (धुएपछि सुकाउनु अघि)",
+        "not_acid": "यो एसिड होइन, नाम मात्र - कुनै जलन छैन"
+      },
+      {
+        "term": "Retinol (रेटिनोल)",
+        "simple_nepali": "Vitamin A - झुर्री, मुहासो, दाग सबै हटाउने सबैभन्दा शक्तिशाली तत्व",
+        "warning": "गर्भवतीले प्रयोग नगर्नुस्। सुरुमा जलन हुन सक्छ",
+        "start_slow": "हप्तामा १ पटकबाट सुरु, बिस्तारै बढाउने"
+      },
+      {
+        "term": "SPF (एसपीएफ)",
+        "simple_nepali": "Sun Protection Factor - नम्बर जति बढी त्यति बढी सुरक्षा",
+        "minimum": "SPF ३० चाहिन्छ",
+        "reality_check": "SPF १०० भन्दा SPF ५० धेरै लगाउनु बढी प्रभावकारी"
+      },
+      {
+        "term": "PA++++ (पीए)",
+        "simple_nepali": "UVA किरणबाट सुरक्षा स्तर - + जति बढी त्यति राम्रो",
+        "importance": "UVA ले झुर्री र उमेर बढाउँछ, PA ले यसबाट जोगाउँछ"
+      },
+      {
+        "term": "Peptides (पेप्टाइड)",
+        "simple_nepali": "प्रोटिनको सानो टुक्रा - छालालाई कोलाजेन बनाउन सहयोग गर्छ",
+        "best_for": "३० पछिको उमेर, ढिलो छाला कस्न"
+      },
+      {
+        "term": "Ceramides (सेरामाइड)",
+        "simple_nepali": "छालाको सुरक्षा पर्खाल बनाउने तत्व - पानी नजान दिने",
+        "best_for": "सुख्खा छाला, संवेदनशील छाला"
+      },
+      {
+        "term": "AHA (एएचए)",
+        "simple_nepali": "फलबाट बनेको एसिड - मृत छाला हटाउँछ, चम्काउँछ",
+        "examples": "Glycolic, Lactic, Mandelic acid",
+        "use_when": "साँझ मात्र, सनस्क्रिन अनिवार्य"
+      },
+      {
+        "term": "BHA (बीएचए)",
+        "simple_nepali": "तेलमा घुल्ने एसिड - पोरभित्र पसेर सफा गर्छ",
+        "main_type": "Salicylic Acid",
+        "best_for": "तेलिलो छाला, मुहासो, ब्ल्याकहेड"
+      },
+      {
+        "term": "Double Cleansing (डबल क्लिन्जिङ)",
+        "simple_nepali": "२ पटक मुहा धुने - पहिला तेलले (मेकअप/सनस्क्रिन हटाउन), अनि साबुनले",
+        "when_must": "मेकअप लगाएको, सनस्क्रिन लगाएको, बाहिर धेरै घुमेको दिन"
+      },
+      {
+        "term": "pH Balance (पीएच ब्यालेन्स)",
+        "simple_nepali": "छाला अलि अम्लीय (खट्टा) हुनुपर्छ - ५.५ भन्ने नम्बर चाहिन्छ",
+        "disrupted_by": "साबुन, कडा पानी",
+        "fixed_by": "टोनर, गुलाब जल"
+      }
+    ]
+  },
+  "nutrients_for_skin": {
+    "description": "कुन पोषक तत्वले छालामा के गर्छ - खानामा र प्रोडक्टमा",
+    "vitamins": [
+      {
+        "name": "Vitamin A (भिटामिन ए)",
+        "skin_benefits": [
+          "मुहासो रोक्छ",
+          "झुर्री कम गर्छ",
+          "नयाँ कोशिका बनाउँछ"
+        ],
+        "food_sources_nepal": [
+          "कागती (papaya)",
+          "गाजर",
+          "पालक",
+          "कलेजो",
+          "अण्डाको पहेंलो भाग"
+        ],
+        "in_products": "Retinol, Retinoids",
+        "daily_need": "७००-९०० mcg"
+      },
+      {
+        "name": "Vitamin C (भिटामिन सी)",
+        "skin_benefits": [
+          "चमक ल्याउँछ",
+          "कालो दाग हल्का पार्छ",
+          "कोलाजेन बनाउन मद्दत गर्छ",
+          "घामको हानिबाट जोगाउँछ"
+        ],
+        "food_sources_nepal": [
+          "अमला (आँप)",
+          "सुन्तला",
+          "कागती",
+          "भुइँकटहर",
+          "लसुन पालुङ्गो"
+        ],
+        "in_products": "Vitamin C Serum (10-20%)",
+        "daily_need": "७५-९० mg",
+        "tip": "बिहानको खानासँगै खानुस् - शरीरले राम्रो सोस्छ"
+      },
+      {
+        "name": "Vitamin E (भिटामिन इ)",
+        "skin_benefits": [
+          "छालाको सुरक्षा पर्खाल बलियो बनाउँछ",
+          "दाग मर्मत गर्छ",
+          "सुख्खा छाला निको पार्छ"
+        ],
+        "food_sources_nepal": [
+          "बदाम",
+          "अखरोट",
+          "घ्यू",
+          "तेल (सूर्यमुखी, तोरी)",
+          "पालक"
+        ],
+        "in_products": "Tocopherol",
+        "daily_need": "१५ mg"
+      },
+      {
+        "name": "Vitamin B3/Niacinamide (नियासिनामाइड)",
+        "skin_benefits": [
+          "तेल नियन्त्रण",
+          "पोर सानो देखाउँछ",
+          "कालो दाग हटाउँछ",
+          "मुहासो रोक्छ"
+        ],
+        "food_sources_nepal": [
+          "दाल",
+          "कुखुरा",
+          "माछा",
+          "बदाम",
+          "मुसुरो"
+        ],
+        "in_products": "Niacinamide Serum (5-10%)",
+        "daily_need": "१४-१६ mg"
+      },
+      {
+        "name": "Biotin (Vitamin B7 - बायोटिन)",
+        "skin_benefits": [
+          "कपाल र नङ बलियो",
+          "छाला स्वस्थ",
+          "सूजन कम"
+        ],
+        "food_sources_nepal": [
+          "अण्डा",
+          "बदाम",
+          "गेडागुडी (cauliflower)",
+          "मशरुम"
+        ],
+        "daily_need": "३० mcg"
+      }
+    ],
+    "minerals": [
+      {
+        "name": "Zinc (जिङ्क)",
+        "skin_benefits": [
+          "मुहासोको ब्याक्टेरिया मार्छ",
+          "सूजन कम गर्छ",
+          "छाला छिटो निको पार्छ"
+        ],
+        "food_sources_nepal": [
+          "कद्दूको बीउ",
+          "चना",
+          "काजू",
+          "माछा",
+          "दाल"
+        ],
+        "deficiency_signs": "मुहासो निको हुन ढिलो, कपाल झर्ने, स्वाद थाहा नपाउने",
+        "daily_need": "८-११ mg",
+        "warning": "धेरै खादा पेट दुख्छ - खानासँगै खानुस्"
+      },
+      {
+        "name": "Iron (फलाम)",
+        "skin_benefits": [
+          "रगतमा अक्सिजन - छाला गुलाफी र चम्किलो",
+          "कालो घेरा कम"
+        ],
+        "food_sources_nepal": [
+          "पालक",
+          "रातो मासु",
+          "कलेजो",
+          "भटमास (soybeans)",
+          "अनार"
+        ],
+        "deficiency_signs": "पहेंलो छाला, आँखामुनि कालो, थकाइ",
+        "daily_need": "१८ mg (महिला), ८ mg (पुरुष)",
+        "absorption_tip": "भिटामिन C सँगै खानुस् (दाल + कागती)"
+      },
+      {
+        "name": "Selenium (सेलेनियम)",
+        "skin_benefits": [
+          "घामको क्षतिबाट जोगाउँछ",
+          "छाला लचिलो राख्छ"
+        ],
+        "food_sources_nepal": [
+          "ब्राजिल नट",
+          "माछा",
+          "अण्डा",
+          "लसुन"
+        ],
+        "daily_need": "५५ mcg"
+      }
+    ],
+    "omega_fatty_acids": [
+      {
+        "name": "Omega-3 Fatty Acids",
+        "skin_benefits": [
+          "सूजन घटाउँछ",
+          "छाला मुलायम",
+          "मुहासो कम",
+          "छालाको बेरियर बलियो"
+        ],
+        "food_sources_nepal": [
+          "अलसीको बीउ (flaxseeds)",
+          "चिया सीड",
+          "माछा (rohu, katla)",
+          "अखरोट"
+        ],
+        "daily_need": "२५०-५०० mg",
+        "tip": "अलसी पिसेर दहीमा मिसाउनुस्"
+      }
+    ],
+    "antioxidants": [
+      {
+        "name": "Beta-carotene (बिटा क्यारोटिन)",
+        "skin_benefits": [
+          "घामबाट प्राकृतिक सुरक्षा",
+          "छाला स्वस्थ रातो रंग"
+        ],
+        "food_sources_nepal": [
+          "गाजर",
+          "कागती",
+          "साग",
+          "गोलभेडा"
+        ],
+        "converts_to": "Vitamin A"
+      },
+      {
+        "name": "Lycopene (लाइकोपिन)",
+        "skin_benefits": [
+          "घामको हानि कम",
+          "झुर्री रोक्छ"
+        ],
+        "food_sources_nepal": [
+          "गोलभेडा (पाकेको, पकाएको बढी राम्रो)",
+          "तरबुजा"
+        ],
+        "cooking_tip": "तेलमा पकाउँदा शरीरले बढी सोस्छ"
+      },
+      {
+        "name": "Polyphenols (पोलिफेनोल)",
+        "skin_benefits": [
+          "उमेर बढ्न ढिलो",
+          "सूजन कम"
+        ],
+        "food_sources_nepal": [
+          "हरियो चिया",
+          "कालो चिया",
+          "सुन्तला",
+          "अनार"
+        ],
+        "best_source": "हरियो चिया - दिनमा २-३ कप"
+      }
+    ],
+    "collagen_boosters": [
+      {
+        "name": "Protein (प्रोटिन)",
+        "skin_benefits": [
+          "कोलाजेन र इलास्टिन बनाउँछ",
+          "छाला कस्दो",
+          "घाउ छिटो निको"
+        ],
+        "food_sources_nepal": [
+          "दाल",
+          "राजमा",
+          "चना",
+          "अण्डा",
+          "माछा",
+          "कुखुरा",
+          "दही"
+        ],
+        "daily_need": "०.८-१ gram प्रति kg शरीरको तौल",
+        "veg_combo": "दाल + भात = complete protein"
+      },
+      {
+        "name": "Vitamin C + Protein",
+        "why_together": "Vitamin C बिना कोलाजेन बन्दैन - दुवै सँगै खानुस्",
+        "perfect_meal": "दाल + कागती, चिकन + सलाद (कागती ड्रेसिङसहित)"
+      }
+    ],
+    "water": {
+      "name": "पानी (Water)",
+      "skin_benefits": [
+        "छाला मुलायम र भरिएको",
+        "विषाक्त पदार्थ बाहिर",
+        "रगत बग्ने राम्रो - पोषक तत्व पुग्छ"
+      ],
+      "daily_need": "२.५-३ लिटर (नेपालको मौसम अनुसार)",
+      "signs_dehydration": [
+        "छाला सुख्खो",
+        "निधारमा झुर्री",
+        "ओठ फुट्ने",
+        "पिसाब पहेंलो"
+      ],
+      "nepal_tip": "काठमाडौँको पानी कडा छ - फिल्टर गरेर पिउनुस्"
+    }
+  },
+  "medical_terms_explained": {
+    "description": "कोष्ठकमा अर्थ राखिएको छ - छिटो बुझ्न मद्दत गर्न",
+    "conditions": [
+      {
+        "term": "Melasma (मेलाज्मा)",
+        "nepali_meaning": "गालामा ठूला खैरो दल्लो - प्रायः महिलामा, घाम र हर्मोनको कारणले",
+        "looks_like": "सममितीय (दुवै गालामा एउटै ठाउँमा) खैरो दाग"
+      },
+      {
+        "term": "Hyperpigmentation (हाइपरपिग्मेन्टेसन)",
+        "nepali_meaning": "छालामा कुनै ठाउँ अरुभन्दा कालो भएको - मुहासोपछि, घामबाट, वा आघातबाट",
+        "common_nepal": "मुहासो निको भएपछि कालो दाग रहने"
+      },
+      {
+        "term": "Acne Vulgaris (एक्ने भल्गारिस)",
+        "nepali_meaning": "सामान्य मुहासो - किशोरावस्थामा र २०को दशकमा आउने",
+        "not_same_as": "Cystic acne (धेरै गहिरो र पीडादायी)"
+      },
+      {
+        "term": "Rosacea (रोजेशिया)",
+        "nepali_meaning": "गाल र नाक रातो भएर बस्ने - कहिलेकाहीँ पोल्ने जस्तो",
+        "triggers": "पिरो खाना, रक्सी, तनाव, घाम"
+      },
+      {
+        "term": "Eczema (एक्जिमा / चिलाउने छाला)",
+        "nepali_meaning": "छाला सुख्खा, रातो, धेरै चिलाउने - वंशाणुगत हुन सक्छ",
+        "common_areas": "हात, कुइनो, घुँडाको पछाडि"
+      },
+      {
+        "term": "Dermatitis (डर्माटाइटिस)",
+        "nepali_meaning": "छालाको सूजन - एलर्जी वा जलनबाट",
+        "types": "संपर्क (contact), एटोपिक (atopic), सेबोरिक (seborrheic)"
+      },
+      {
+        "term": "Seborrheic Dermatitis (सेबोरिक डर्माटाइटिस)",
+        "nepali_meaning": "कपाल र निधारमा पहेंलो छालाको परत - ढुसी जस्तो",
+        "common_nepal": "जाडोमा बढ्छ, तनावले बढ्छ"
+      },
+      {
+        "term": "Keratosis Pilaris (केराटोसिस पिलारिस)",
+        "nepali_meaning": "हातमा र फिलामा साना दाना - कुखुराको छाला जस्तो देखिने",
+        "harmless": "हानिरहित तर बदसूरत - जाडोमा बढ्छ"
+      },
+      {
+        "term": "Perioral Dermatitis (पेरिओरल डर्माटाइटिस)",
+        "nepali_meaning": "मुखको वरिपरि साना रातो दाना - स्टेरोइड क्रिम वा कपडाले हुन सक्छ",
+        "common_in": "२०-४० उमेरका महिला"
+      }
+    ],
+    "symptoms": [
+      {
+        "term": "Papule (प्यापुल)",
+        "meaning": "रातो उठेको दाना - पिप नभएको, ५mm भन्दा सानो"
+      },
+      {
+        "term": "Pustule (पस्चुल)",
+        "meaning": "पहेंलो वा सेतो पिपसहितको दाना"
+      },
+      {
+        "term": "Nodule (नोड्युल)",
+        "meaning": "छालामुनि गहिरो, ठूलो दाना - पीडादायी"
+      },
+      {
+        "term": "Cyst (सिस्ट)",
+        "meaning": "छालामुनि पिपले भरिएको ठूलो गाँठो - सबैभन्दा पीडादायी, दाग छोड्छ"
+      },
+      {
+        "term": "Comedone (कमेडोन)",
+        "meaning": "बन्द पोर - ब्ल्याकहेड र ह्वाइटहेड दुवै"
+      },
+      {
+        "term": "Blackhead (ब्ल्याकहेड)",
+        "meaning": "खुल्ला पोर तेलले भरिएको - हावाबाट कालो देखिन्छ"
+      },
+      {
+        "term": "Whitehead (ह्वाइटहेड)",
+        "meaning": "बन्द पोर तेलले भरिएको - सेतो/शरीरको रङको"
+      }
+    ]
+  },
+  "expanded_qna_nepali": {
+    "description": "बोलचालको नेपालीमा प्रश्न-उत्तर - नेपालको सन्दर्भमा",
+    "acne_related": [
+      {
+        "q": "मुहासो फुटाउँदा किन हुँदैन? सबैले फुटाएको देख्छु त?",
+        "a": "फुटाउँदा ३ खराब कुरा हुन्छ: १) ब्याक्टेरिया छालाभित्र गहिरो धकेलिन्छ - अझ ठूलो मुहासो बन्छ, २) स्थायी दाग रहन्छ (गाढा खाल्डो), ३) छेउछाउको सफा छालामा संक्रमण फैलिन्छ। आफैँ निको हुन दिनुस् वा डाक्टर कहाँ जानुस्।"
+      },
+      {
+        "q": "मुहासो रोक्न के खाने के नखाने? सबैले फरक भन्छन",
+        "a": "पक्कै नखाने: १) चिनीको चिनी (cold drink, मिठाई धेरै), २) रोजको भुटेको (समोसा, sel roti, फ्राइड चिकन), ३) धेरै दूध (दिनमा १ गिलासभन्दा बढी)। खाने: दाल, दही, पालक, गाजर, भुटेको मासुभन्दा उमालेको। पानी ३ लिटर पिउने।"
+      },
+      {
+        "q": "नुहाउने साबुनले मुहा धुन हुन्छ?",
+        "a": "हुँदैन! साबुन धेरै कडा हुन्छ (pH ९-१० हुन्छ), छालाको सुरक्षा पर्खाल नष्ट गर्छ। छाला झन् सुख्खो र जलन भयो भने शरीरले झन् तेल बनाउँछ - अझ मुहासो बढ्छ। Face wash किन्नुस् (Rs. 150-300) - साबुनभन्दा राम्रो।"
+      },
+      {
+        "q": "कागतीको रस मुहामा लगाउँदा ठीक हुन्छ भनेको सुनेको - काम गर्छ?",
+        "a": "नगर्नुस्! कागतीको एसिड (pH २) धेरै बलियो छ - छाला जलाउँछ र गाढा दाग छोड्छ (कालो धब्बा)। घाममा गएमा झन् खराब। Vitamin C चाहियो भने Vitamin C serum लगाउनुस् - सुरक्षित र प्रभावकारी।"
+      },
+      {
+        "q": "दाँतमाख्ने मास्जन मुहासोमा लगाएर सुत्दा काम गर्छ भनेको सुनें",
+        "a": "नगर्नुस् - यो पुरानो गलत उपाय हो। टूथपेस्टमा fluoride र SLS छ जसले छाला जलाउँछ। खराब दाग छोड्छ। मुहासोको लागि benzoyl peroxide २.५% वा tea tree oil प्रयोग गर्नुस् (pharmacy मा पाइन्छ)।"
+      }
+    ],
+    "product_related": [
+      {
+        "q": "Fair & Lovely/Glow & Lovely ले गोरो बनाउँछ? काम गर्छ?",
+        "a": "होइन - यो मार्केटिङ हो। यी क्रिममा हल्का छाला चम्किलो बनाउने तत्व छ तर गोरो बनाउँदैन। केही mercury वा स्टेरोइड राख्छन् - सुरुमा राम्रो देखियो तर पछि कालो र पातलो छाला। प्रयोग नगर्नुस्। आफ्नो natural छालाको रङ स्वीकार गर्नुस् - स्वस्थ र चम्किलो बनाउनुस्।"
+      },
+      {
+        "q": "महँगो प्रोडक्ट चाहिन्छ? Bhatbhateni को Rs. 200 को face wash काम गर्दैन?",
+        "a": "Rs. 200 को पनि काम गर्छ! महत्त्वपूर्ण के छ भने - सही ingredient र consistent प्रयोग। Himalaya Neem Face Wash (Rs. 200) ले पनि मुहासोमा राम्रो काम गर्छ। प्रोडक्टको मूल्यभन्दा नियमित प्रयोग महत्वपूर्ण।"
+      },
+      {
+        "q": "Korean products Daraz मा राम्रो छ भनेको सुन्छु - लिने?",
+        "a": "Korean products राम्रो छन् तर Daraz मा नक्कली धेरै छ। किन्नुभन्दा अघि: १) verified seller हेर्नुस्, २) hologram sticker चेक गर्नुस्, ३) batch number र expiry date हेर्नुस्, ४) धेरै सस्तो छ भने (real price को ५०% भन्दा कम) नक्कली सम्भावना। Salesberry वा beauty store बाट किन्नु सुरक्षित।"
+      },
+      {
+        "q": "रातमा मोइस्चराइजर नलगाए हुन्छ? तेलिलो छाला छ मेरो",
+        "a": "हुँदैन! तेलिलो छाला भए पनि moisturizer चाहिन्छ - हल्का gel type लगाउनुस्। मोइस्चराइजर नलगाउँदा छालाले 'पानी गुम्यो!' सोचेर झन् तेल बनाउन थाल्छ। Neutrogena Hydro Boost वा Himalaya Oil-Free Gel जस्तो किन्नुस्।"
+      }
+    ],
+    "lifestyle_related": [
+      {
+        "q": "दैनिक ३ घण्टा मात्र सुत्छु (exam/job) - छालामा कति असर छ?",
+        "a": "धेरै खराब असर! रात १०-२ बजे छाला मर्मत हुन्छ - त्यो समय miss गरे: १) मुहासो बढ्छ, २) आँखामुनि कालो घेरा, ३) छाला फुस्रो र थकित देखिन्छ, ४) झुर्री छिटो आउँछ। कम्तीमा ६ घण्टा सुत्नै पर्छ - exam छ भने दिनमा २० मिनेट power nap लिनुस्।"
+      },
+      {
+        "q": "दिनमा ३ पटक चिया (दूध चिया) पिउँछु - छालामा खराब?",
+        "a": "३ पटक चिया ठीक छ तर: १) प्रत्येकमा ३ चम्चा चिनी हालेमा धेरै - १ चम्चा मात्र राख्नुस्, २) दूध चिया धेरै भयो भने मुहासो बढाउन सक्छ - हरियो चिया वा कालो चिया (बिना दूध) राम्रो। ३) caffeine ले पानी सुकाउँछ - प्रत्येक चिया पछि १ गिलास पानी पिउनुस्।"
+      },
+      {
+        "q": "mobile फोन छालामा खराब छ भनेको सुनें - साँचो हो?",
+        "a": "साँचो! मोबाइल स्क्रिनमा ब्याक्टेरिया हुन्छ (toilet seat भन्दा १० गुणा बढी!)। गालामा राखेर कुरा गर्दा - ब्याक्टेरिया + तेल + pressure = मुहासो। समाधान: १) हप्तामा २-३ पटक फोन sanitizer ले सफा गर्नुस्, २) earphone/headphone प्रयोग गर्नुस्, ३) फोनमा कुरा गर्नुअघि मुहा नछुनुस्।"
+      },
+      {
+        "q": "gym जाँदा पसिना आएपछि मुहासो बढ्छ - के गर्ने?",
+        "a": "gym राम्रो छ छालाको लागि तर: १) व्यायाम सकेपछि तुरुन्तै मुहा धुनुस् (वा micellar water ले पुछ्नुस्), २) gym को तौलिया आफ्नो मुहामा नराख्नुस् (ब्याक्टेरिया), ३) कपाल पछाडि बाँध्नुस् (अनुहारमा नछुने गरी), ४) पानी धेरै पिउनुस्। पसिना नै समस्या होइन - सफा नगर्नु समस्या हो।"
+      }
+    ],
+    "weather_nepal": [
+      {
+        "q": "काठमाडौँको धुलो-धुवाँले मुहासो बढाउँछ भनेको साँचो?",
+        "a": "एकदम साँचो! काठमाडौँको PM2.5 धुलो निकै सानो छ - पोरभित्र पस्छ र बन्द गर्छ। समाधान: १) बाहिर जाँदा मास्क लगाउनुस्, २) घर फर्किएपछि तुरुन्तै मुहा धुनुस्, ३) रातमा double cleansing अनिवार्य गर्नुस्, ४) हप्तामा १ पटक clay mask (multani mitti) गर्नुस्।"
+      },
+      {
+        "q": "मनसुनमा (असार-साउन) छाला किन झन् खराब हुन्छ?",
+        "a": "मनसुनमा ३ समस्या: १) उमस (humidity) ले पोर बन्द गर्छ र ब्याक्टेरिया बढाउँछ, २) पसिना + तेल + ब्याक्टेरिया = मुहासो, ३) फंगल इन्फेक्सन बढ्छ। समाधान: हल्का gel moisturizer प्रयोग गर्नुस्, दिनमा २ पटक मुहा धुनुस्, oil blotting paper राख्नुस्, ओसिलो कपाल मुहामा नराख्नुस्।"
+      },
+      {
+        "q": "पोखरा वा विदेश गएपछि छाला राम्रो हुन्छ - किन?",
+        "a": "काठमाडौँको ३ समस्या त्यहाँ छैन: १) धुलो-धुवाँ (pollution) कम, २) पानी नरम (soft water), ३) हावामा ओसिलापन राम्रो। तर फर्किएपछि फेरि उस्तै - स्थायी समाधान: filtered पानी, double cleansing, sunscreen नियमित।"
+      }
+    ],
+    "cultural_nepal": [
+      {
+        "q": "बुढाबुढीले हल्दी लगाउनु भन्नुहुन्छ - लगाउने?",
+        "a": "हल्दी (turmeric) सूजन कम गर्छ - यो ठीक छ। तर: १) सुख्खा पाउडर सोझै नलगाउनुस् - दहीमा मिसाउनुस्, २) १० मिनेटमा धुनुस् (घण्टौं नराख्नुस्), ३) पहेंलो दाग छोड्न सक्छ - घाममा जानुअघि नलगाउनुस्। हल्दी दूध (haldi doodh) पिउनु बढी राम्रो - भित्रैबाट काम गर्छ।"
+      },
+      {
+        "q": "तिहार/दशैंमा धेरै भुटेको खाएर मुहासो भयो - अब के गर्ने?",
+        "a": "चाड सकिएपछि recovery: १) ३ दिन सफा खाना - दाल, भात, साग, फलफूल, २) पानी ३-४ लिटर, ३) ८ घण्टा सुत्ने, ४) double cleansing नियमित, ५) हप्तामा १ पटक clay mask। २ हप्तामा सुधार हुन्छ - patience राख्नुस्।"
+      },
+      {
+        "q": "होलीको रङ लगाउँदा छालामा खराब? कसरी जोगिने?",
+        "a": "होलीको रङमा heavy metal र chemical हुन्छ - छाला जलाउन सक्छ। जोगिने तरिका: १) खेल्नुअघि नरिवल तेल वा तेलिलो sunscreen को बाक्लो layer लगाउनुस्, २) eyes र lips वरिपरि petroleum jelly लगाउनुस्, ३) खेलिसकेपछि तुरुन्त बेसन + दही ले धुनुस् (साबुन होइन), ४) अर्को दिन नरम moisturizer लगाउनुस्।"
+      }
+    ]
+  },
+  "smoking_alcohol_makeup_warnings": {
+    "description": "यदि quiz मा यी कुरा select गरेमा देखाउने विशेष चेतावनी र समाधान",
+    "smoking": {
+      "detected_when": "quiz.habits.smoking === true",
+      "severity": "CRITICAL",
+      "warning_nepali": "⚠️ धुम्रपान तपाईंको छालाको सबैभन्दा ठूलो दुश्मन हो",
+      "impacts": [
+        {
+          "problem": "Premature Aging (समयभन्दा अघि बुढ्यौली)",
+          "detail": "धुम्रपानले collagen र elastin नष्ट गर्छ - २५ वर्षमा ४० को जस्तो देखिन थाल्छ। झुर्री, ढिलो छाला, आँखामुनि थैला।"
+        },
+        {
+          "problem": "कालो ओठ र हात",
+          "detail": "निकोटिनले ओठ र औंलाहरू गाढा बनाउँछ - स्थायी दाग।"
+        },
+        {
+          "problem": "घाउ निको हुन ढिलो",
+          "detail": "रगतमा अक्सिजन कम हुन्छ - मुहासो वा कुनै काटिएको ६ गुणा ढिलो निको हुन्छ।"
+        },
+        {
+          "problem": "मुहासो र रोगको जोखिम",
+          "detail": "धुम्रपानीको मुहासो गहिरो र दाग बढी छोड्छ। Skin cancer को risk ३ गुणा बढ्छ।"
+        }
+      ],
+      "solutions": [
+        {
+          "action": "छोड्ने (Best solution)",
+          "help": "Quitline Nepal: १६६००२६१६६१ (free counseling). Nicotine patch pharmacy मा पाइन्छ।"
+        },
+        {
+          "action": "कम्तीमा antioxidant बढाउनुस्",
+          "detail": "Vitamin C, E धेरै लिनुस् - खानामा र serum दुवै। धुवाँको damage केही कम होस्।"
+        },
+        {
+          "action": "रातको routine कडा पालना",
+          "detail": "Double cleansing, retinol (३० पछि), नियमित sunscreen SPF ५० - damage control।"
+        }
+      ],
+      "reality_check": "सुन्न गाह्रो तर सत्य: यदि तपाईं धुम्रपान गर्नुहुन्छ र सँगै Rs. 5000 को serum लगाउनुहुन्छ भने - धुवाँले त्यो प्रोडक्ट बेकार बनाइदिन्छ। पैसा बचत गर्नुस्, धुम्रपान छोड्नुस्।"
+    },
+    "alcohol": {
+      "detected_when": "quiz.habits.alcohol === 'frequent' OR 'occasional'",
+      "severity": "MEDIUM_TO_HIGH",
+      "warning_nepali": "🍺 रक्सीको लत छालाको लागि हानिकारक",
+      "impacts": [
+        {
+          "problem": "Dehydration (निर्जलीकरण)",
+          "detail": "रक्सीले शरीरबाट पानी निकाल्छ - छाला सुख्खा, फुस्रो, झुर्रीदार देखिन्छ। आँखामुनि सुन्निएको।"
+        },
+        {
+          "problem": "लालो, फुलेको अनुहार",
+          "detail": "रगतका नली फैलिन्छ - गाल रातो र सुन्निन्छ। लामो समय पछि रोजेशिया हुन सक्छ।"
+        },
+        {
+          "problem": "कमजोर छाला बेरियर",
+          "detail": "Alcohol ले Vitamin A, B, C नष्ट गर्छ - छालाको मर्मत ढिलो हुन्छ।"
+        },
+        {
+          "problem": "मुहासो र फंगल इन्फेक्सन",
+          "detail": "चिनी धेरै भएको रक्सी (beer, rum+coke) ले मुहासो बढाउँछ।"
+        }
+      ],
+      "damage_by_frequency": {
+        "daily": "Critical - छाला स्थायी रूपमा क्षतिग्रस्त हुँदैछ। Immediate medical help चाहिन्छ।",
+        "weekly_2_3_times": "High - aging ३ गुणा छिटो। कम गर्नुस्।",
+        "monthly_social": "Low to Medium - पिएको रात र अर्को दिन skincare extra राम्रो गर्नुस्।"
+      },
+      "solutions": [
+        {
+          "action": "पिउनुअघि",
+          "steps": [
+            "खाना राम्रोसँग खानुस् (खाली पेट नपिउनुस्)",
+            "पानी २ गिलास पिउनुस्",
+            "Vitamin B complex लिनुस्"
+          ]
+        },
+        {
+          "action": "पिउँदा",
+          "steps": [
+            "१ पेग = १ गिलास पानी (alternating)",
+            "चिनी धेरै भएको mix (coke, sprite) नलिनुस्",
+            "१२ बजेपछि नपिउनुस् - निद्रा खलबल हुन्छ"
+          ]
+        },
+        {
+          "action": "पिइसकेपछि",
+          "steps": [
+            "सुत्नुअघि मुहा अनिवार्य धुनुस्",
+            "Hydrating serum + thick moisturizer लगाउनुस्",
+            "अर्को दिन पानी ४ लिटर, coconut water पिउनुस्",
+            "Vitamin C serum लगाउनुस् - damage repair"
+          ]
+        }
+      ],
+      "nepal_context": "रक्सी नेपालमा सामाजिक छ - पूर्ण छोड्न गाह्रो। तर frequency कम गर्नुस्: हप्तामा ३ बाट हप्तामा १ मा ल्याउनुस्। छाला २ हप्तामै सुधार देखिन्छ।"
+    },
+    "daily_makeup": {
+      "detected_when": "quiz.habits.makeup_frequency === 'daily' OR 'most_days'",
+      "severity": "LOW_TO_MEDIUM",
+      "warning_nepali": "💄 दैनिक मेकअप हानिकारक छैन - तर सफा नगरे खराब छ",
+      "impacts": [
+        {
+          "problem": "Clogged Pores (बन्द पोर)",
+          "detail": "Foundation, powder, lipstick - सबै पोरमा जम्छ। राम्रोसँग नहटाए - ब्ल्याकहेड र मुहासो।"
+        },
+        {
+          "problem": "Premature Aging",
+          "detail": "मेकअपमा silicone र chemical हुन्छ - लामो समय लगाउँदा छाला सास फेर्न सक्दैन। बुढ्यौली छिटो।"
+        },
+        {
+          "problem": "एलर्जी र जलन",
+          "detail": "सस्तो/नक्कली मेकअपमा heavy metal - छाला जल्न, रातो हुन, चिलाउन सक्छ।"
+        },
+        {
+          "problem": "Eyes irritation",
+          "detail": "पुरानो mascara, eyeliner ब्याक्टेरिया हुन्छ - आँखा रातो, infection।"
+        }
+      ],
+      "safe_makeup_rules": [
+        {
+          "rule": "सधैं primer लगाउनुस्",
+          "why": "Primer ले मेकअप र छालाबीच बेरियर बनाउँछ - direct contact कम।"
+        },
+        {
+          "rule": "Non-comedogenic मेकअप किन्नुस्",
+          "meaning": "पोर बन्द नगर्ने - label मा लेखिएको हुन्छ।"
+        },
+        {
+          "rule": "Expiry चेक गर्नुस्",
+          "timeline": "Mascara: ३ महिना, Foundation: १ वर्ष, Lipstick: २ वर्ष, Powder: २ वर्ष"
+        },
+        {
+          "rule": "ब्रश/स्पन्ज सफा गर्नुस्",
+          "frequency": "हप्तामा १ पटक baby shampoo ले धुनुस् - ब्याक्टेरिया हट्छ।"
+        },
+        {
+          "rule": "साथीसँग share नगर्नुस्",
+          "why": "Lipstick, mascara share गर्दा - herpes, conjunctivitis सर्न सक्छ।"
+        }
+      ],
+      "mandatory_removal_routine": {
+        "step_1": "Makeup remover / Cleansing oil (तेलिलो) - मेकअप घुलाउन",
+        "step_2": "Foaming cleanser - बाँकी फोहोर सफा गर्न",
+        "step_3": "Toner - पोरमा जमेको सानो particle हटाउन",
+        "step_4": "Serum + Moisturizer - छालालाई पोषण फिर्ता दिन",
+        "warning": "⚠️ यदि थकित हुनुभयो र सफा गर्न मन लागेन भने - कम्तीमा micellar water ले पुछ्नुस्। NEVER सुत्नुस् मेकअप लगाएर - १ रात = १ हप्ताको damage।"
+      },
+      "product_recommendations_nepal": [
+        {
+          "category": "Makeup Remover",
+          "budget": "Garnier Micellar Water - Rs. 350",
+          "premium": "Banila Co Clean It Zero (Daraz) - Rs. 1500"
+        },
+        {
+          "category": "Cleansing Oil",
+          "budget": "DHC Deep Cleansing Oil - Rs. 800 (sample size)",
+          "diy": "Coconut oil पनि काम गर्छ - Rs. 200"
+        },
+        {
+          "category": "Makeup Brush Cleaner",
+          "budget": "Johnson's Baby Shampoo - Rs. 150",
+          "premium": "Real Techniques Brush Cleaner - Rs. 600"
+        }
+      ],
+      "nepal_office_culture": "काठमाडौँको office मा light makeup common छ। Safe approach: BB cream (light coverage) + lipstick + kajal। Heavy foundation daily नलगाउनुस् - skin break चाहिन्छ। हप्तामा २-३ दिन makeup-free जानुस्।"
+    }
+  },
+  "location_specific_causes": {
+    "description": "Location अनुसार causes dynamically देखाउने - गलत location को tips नदेखाउने",
+    "kathmandu": {
+      "pollution": {
+        "show_only_if": "user.location === 'kathmandu'",
+        "cause": "PM2.5 धुलो (३०० AQI+) पोरभित्र पस्छ र बन्द गर्छ",
+        "solution": "मास्क, double cleansing, weekly clay mask"
+      },
+      "hard_water": {
+        "show_only_if": "user.location === 'kathmandu'",
+        "cause": "धाराको पानी कडा (२००-४०० mg/L minerals) - pH बिगार्छ",
+        "solution": "Filtered water, micellar water first cleanse, pH balancing toner"
+      },
+      "dust": {
+        "show_only_if": "user.location === 'kathmandu'",
+        "cause": "सडक निर्माण, खुल्ला फोहोर - निरन्तर धुलो",
+        "solution": "सुत्नुअघि अनिवार्य सफा गर्ने"
+      }
+    },
+    "terai": {
+      "humidity": {
+        "show_only_if": "user.location === 'terai'",
+        "cause": "उमस ८०%+ (monsoon) - पसिना र तेल जम्छ",
+        "solution": "Oil-free products, frequent cleansing, powder"
+      },
+      "heat": {
+        "show_only_if": "user.location === 'terai'",
+        "cause": "तातो ४२°C+ (गर्मी) - पसिना बढ्छ, ब्याक्टेरिया multiply",
+        "solution": "Lightweight gel products, hydration, aloe vera"
+      },
+      "fungal_risk": {
+        "show_only_if": "user.location === 'terai'",
+        "cause": "गर्मी + उमस = fungal infection (गर्दन, पीठ)",
+        "solution": "Antifungal powder, cotton clothes, frequent shower"
+      }
+    },
+    "hills": {
+      "cold_dryness": {
+        "show_only_if": "user.location === 'hills' OR 'mountains'",
+        "cause": "जाडो र सुख्खा हावा - छाला crack गर्छ",
+        "solution": "Heavy moisturizer, facial oil, petroleum jelly"
+      },
+      "wind": {
+        "show_only_if": "user.location === 'hills' OR 'mountains'",
+        "cause": "चिसो हावा - छालाको ओसिलापन उडाउँछ",
+        "solution": "Barrier cream, scarf ले मुख छोप्ने"
+      }
     }
   }
 }

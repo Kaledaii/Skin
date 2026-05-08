@@ -23,6 +23,8 @@ function RootStack() {
           <Stack.Screen name="onboarding" options={{ title: "Onboarding" }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="learn/[id]" options={{ title: "Learn" }} />
+          <Stack.Screen name="paywall" options={{ title: "Premium" }} />
+          <Stack.Screen name="legal" options={{ title: "Privacy + safety" }} />
         </Stack>
       </AppAtmosphere>
     </>

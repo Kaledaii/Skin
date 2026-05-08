@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from "react";
 import { getDefaultQuizProfile } from "./knowledge/engine";
-import { BudgetTier, DailyCheckIn, Language, SkinType, SubscriptionTier, ThemeMode, UserProfile } from "./types";
+import { BudgetTier, DailyCheckIn, Language, SkinType, SubscriptionInfo, SubscriptionTier, ThemeMode, UserProfile } from "./types";
 
 type AppState = {
   language: Language;
@@ -11,6 +11,8 @@ type AppState = {
   setThemeMode: (value: ThemeMode) => void;
   tier: SubscriptionTier;
   setTier: (value: SubscriptionTier) => void;
+  subscription: SubscriptionInfo;
+  activatePremium: (source?: SubscriptionInfo["source"], plan?: SubscriptionInfo["plan"]) => void;
   profile: UserProfile;
   updateProfile: (patch: Partial<UserProfile>) => void;
   updateQuiz: (section: "lifestyle" | "environment" | "currentRoutine", key: string, value: string) => void;
@@ -49,6 +51,7 @@ export function AppProvider({ children }: PropsWithChildren) {
   const [language, setLanguageState] = useState<Language>("en");
   const [themeMode, setThemeModeState] = useState<ThemeMode>("light");
   const [tier, setTierState] = useState<SubscriptionTier>("free");
+  const [subscription, setSubscription] = useState<SubscriptionInfo>({ status: "free", tier: "free", source: "demo" });
   const [profile, setProfile] = useState<UserProfile>(defaultProfile);
   const [completion, setCompletion] = useState<Record<string, boolean>>({});
   const [likedTipIds, setLikedTipIds] = useState<string[]>([]);
@@ -60,10 +63,11 @@ export function AppProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     AsyncStorage.getItem("skin-nepal-state").then((raw) => {
       if (!raw) return;
-      const parsed = JSON.parse(raw) as Partial<Pick<AppState, "language" | "themeMode" | "tier" | "profile" | "completion">>;
+      const parsed = JSON.parse(raw) as Partial<Pick<AppState, "language" | "themeMode" | "tier" | "profile" | "completion" | "subscription">>;
       if (parsed.language) setLanguageState(parsed.language);
       if (parsed.themeMode) setThemeModeState(parsed.themeMode);
       if (parsed.tier) setTierState(parsed.tier);
+      if (parsed.subscription) setSubscription(parsed.subscription);
       if (parsed.profile) {
         const nextProfile = { ...defaultProfile, ...parsed.profile };
         const legacySeed =
@@ -84,8 +88,8 @@ export function AppProvider({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
-    AsyncStorage.setItem("skin-nepal-state", JSON.stringify({ language, themeMode, tier, profile, completion, likedTipIds, savedTipIds, dailyCheckIns }));
-  }, [language, themeMode, tier, profile, completion, likedTipIds, savedTipIds, dailyCheckIns]);
+    AsyncStorage.setItem("skin-nepal-state", JSON.stringify({ language, themeMode, tier, subscription, profile, completion, likedTipIds, savedTipIds, dailyCheckIns }));
+  }, [language, themeMode, tier, subscription, profile, completion, likedTipIds, savedTipIds, dailyCheckIns]);
 
   const value = useMemo<AppState>(() => ({
     language,
@@ -93,7 +97,30 @@ export function AppProvider({ children }: PropsWithChildren) {
     themeMode,
     setThemeMode: setThemeModeState,
     tier,
-    setTier: setTierState,
+    setTier: (value) => {
+      setTierState(value);
+      setSubscription((current) => ({
+        ...current,
+        tier: value,
+        status: value === "premium" ? "premium" : "free",
+        source: value === "premium" ? current.source : "demo"
+      }));
+    },
+    subscription,
+    activatePremium: (source = "beta", plan = "beta") => {
+      const now = new Date();
+      const expires = new Date(now);
+      expires.setMonth(expires.getMonth() + (plan === "yearly" ? 12 : plan === "monthly" ? 1 : 3));
+      setTierState("premium");
+      setSubscription({
+        status: plan === "beta" ? "trial" : "premium",
+        tier: "premium",
+        source,
+        plan,
+        startedAt: now.toISOString(),
+        expiresAt: expires.toISOString()
+      });
+    },
     profile,
     updateProfile: (patch) => setProfile((current) => ({ ...current, ...patch })),
     updateQuiz: (section, key, optionValue) => setProfile((current) => ({
@@ -139,13 +166,14 @@ export function AppProvider({ children }: PropsWithChildren) {
       setLanguageState("en");
       setThemeModeState("light");
       setTierState("free");
+      setSubscription({ status: "free", tier: "free", source: "demo" });
       setProfile(defaultProfile);
       setCompletion({});
       setLikedTipIds([]);
       setSavedTipIds([]);
       setDailyCheckIns({});
     }
-  }), [completion, language, profile, themeMode, tier, likedTipIds, savedTipIds, dailyCheckIns, today, todayCheckIn]);
+  }), [completion, language, profile, themeMode, tier, subscription, likedTipIds, savedTipIds, dailyCheckIns, today, todayCheckIn]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

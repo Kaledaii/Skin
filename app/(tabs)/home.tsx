@@ -1,19 +1,22 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import type { ComponentProps, ReactNode } from "react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useApp } from "@/shared/AppContext";
 import { Body, BrandMark, Button, Card, FloatingBadge, H1, H2, Pill, ProgressBar, Screen, SectionLabel, SignalCard, ToggleGroup } from "@/shared/components";
-import { products } from "@/shared/data";
 import { t } from "@/shared/i18n";
 import { contextualConditionDescription, generateRoutine, localized } from "@/shared/knowledge/engine";
 import { dailyHabitTips } from "@/shared/knowledge/education";
 import { buildLifestyleSignals } from "@/shared/knowledge/lifestyleSignals";
+import { buildPlanSections, buildTrustReasons, doctorWarning, getMatchConfidence } from "@/shared/knowledge/resultTrust";
 import { calculateSkinHabitScore } from "@/shared/knowledge/tracking";
 import { GeneratedStep, HomeRemedy } from "@/shared/knowledge/types";
 import { buildWeatherActions, WeatherAction } from "@/shared/knowledge/weatherGuidance";
+import { premiumPreviewLabel } from "@/shared/monetization";
+import { launchProducts } from "@/shared/productCatalog";
 import { getAqiGuidance, useEnvironmentalData } from "@/shared/services/environment";
+import { trackEvent } from "@/shared/services/analytics";
 import { palettes, spacing } from "@/shared/theme";
 
 export default function Home() {
@@ -39,9 +42,17 @@ export default function Home() {
   const activeSteps = routinePeriod === "morning" ? result.morning : visibleEvening;
   const remedies = useMemo(() => collectRemedies(topMatch ? [topMatch.condition] : []), [topMatch]);
   const topAction = result.morning[0]?.action ?? result.evening[0]?.action ?? "Start with a gentle cleanser";
-  const productMatches = products
+  const productMatches = launchProducts
     .filter((item) => item.fit.includes(profile.skinType) && (tier === "premium" || item.budgetTier === profile.budgetTier))
     .slice(0, 3);
+  const trustReasons = topMatch ? buildTrustReasons(topMatch, profile.quiz) : [];
+  const planSections = useMemo(() => buildPlanSections(result, productMatches), [result, productMatches]);
+
+  useEffect(() => {
+    if (topMatch) {
+      trackEvent("result_viewed", { condition: topMatch.condition.id, score: topMatch.score, tier });
+    }
+  }, [topMatch, tier]);
 
   return (
     <Screen>
@@ -115,6 +126,7 @@ export default function Home() {
             <>
               <View style={styles.row}>
                 <Pill tone="secondary">Score {topMatch.score}</Pill>
+                <Pill tone={topMatch.score >= 8 ? "secondary" : topMatch.score >= 5 ? "accent" : "primary"}>{getMatchConfidence(topMatch.score)}</Pill>
                 <Pill>{topMatch.condition.severity}</Pill>
               </View>
               <H2>{localized(language, topMatch.condition.name_en, topMatch.condition.name_ne)}</H2>
@@ -125,6 +137,45 @@ export default function Home() {
             <Body muted>{language === "en" ? "No strong condition match yet. Add more symptoms in onboarding." : "अहिले strong match छैन। onboarding मा थप symptoms छान्नुहोस्।"}</Body>
           )}
         </Card>
+
+        {topMatch ? (
+          <Card variant="seasonal">
+            <View style={styles.sectionTitle}>
+              <Feather name="shield" color={c.secondary} size={22} />
+              <H2>Why we think this</H2>
+            </View>
+            <Body muted>Transparent reasons from your symptoms, location, lifestyle, water, age, and current routine.</Body>
+            {trustReasons.map((reason) => (
+              <View key={reason} style={styles.reasonLine}>
+                <Feather name="check-circle" color={c.secondary} size={16} />
+                <Body>{reason}</Body>
+              </View>
+            ))}
+          </Card>
+        ) : null}
+
+        {topMatch ? (
+          <Card>
+            <View style={styles.sectionTitleBetween}>
+              <View style={styles.sectionTitle}>
+                <Feather name="map" color={c.primary} size={22} />
+                <H2>Your Plan</H2>
+              </View>
+              <Pill tone={tier === "premium" ? "secondary" : "accent"}>{premiumPreviewLabel(tier)}</Pill>
+            </View>
+            {planSections.map((section, index) => {
+              const locked = tier !== "premium" && index >= 2;
+              return (
+                <View key={section.title} style={[styles.planTile, { borderColor: c.border, backgroundColor: c.surfaceAlt }]}>
+                  <Pill tone={locked ? "accent" : "primary"}>{locked ? "Premium depth" : `Step ${index + 1}`}</Pill>
+                  <H2>{section.title}</H2>
+                  <Body muted>{locked ? "Unlock full personalized detail, local product alternatives, and weekly adjustment logic." : section.body}</Body>
+                  {locked ? <Button label="See premium value" onPress={() => router.push("/paywall" as never)} secondary /> : null}
+                </View>
+              );
+            })}
+          </Card>
+        ) : null}
 
         {result.matches.length > 0 ? (
           <Card>
@@ -162,10 +213,27 @@ export default function Home() {
                     <Feather name={expanded ? "chevron-up" : "chevron-down"} color={c.muted} size={18} />
                   </View>
                   <Body>{localized(language, match.condition.name_en, match.condition.name_ne)}</Body>
-                  {expanded ? <Body muted>{contextualConditionDescription(match.condition, profile.quiz, language)}</Body> : null}
+                  {expanded ? (
+                    <>
+                      <Pill tone={match.score >= 8 ? "secondary" : match.score >= 5 ? "accent" : "primary"}>{getMatchConfidence(match.score)}</Pill>
+                      <Body muted>{contextualConditionDescription(match.condition, profile.quiz, language)}</Body>
+                      <Body muted>Why: {buildTrustReasons(match, profile.quiz).slice(0, 3).join(" ")}</Body>
+                    </>
+                  ) : null}
                 </Pressable>
               );
             })}
+          </Card>
+        ) : null}
+
+        {topMatch ? (
+          <Card>
+            <View style={styles.sectionTitle}>
+              <Feather name="alert-triangle" color={c.danger} size={22} />
+              <H2>Doctor warning signs</H2>
+            </View>
+            <Body>{doctorWarning(topMatch)}</Body>
+            <Body muted>Guidance only, not diagnosis. Painful, spreading, infected, or scarring concerns deserve medical care.</Body>
           </Card>
         ) : null}
 
@@ -355,13 +423,27 @@ export default function Home() {
           {icon ? icon : null}
           <H2>{title}</H2>
         </View>
-        {steps.map((step) => (
-          <View key={step.id} style={styles.routineStep}>
-            <Button label={`${completion[step.id] ? "Done: " : ""}${step.action}`} onPress={() => toggleCompletion(step.id)} secondary={!completion[step.id]} />
-            <Body muted>{step.instruction[language]}</Body>
-            {step.durationSeconds ? <Pill tone="primary">{step.durationSeconds}s</Pill> : null}
-          </View>
-        ))}
+        {steps.map((step, index) => {
+          const locked = tier !== "premium" && index >= 3;
+          return (
+            <View key={step.id} style={[styles.routineStep, locked && { borderColor: c.border, backgroundColor: c.surfaceAlt }]}>
+              {locked ? (
+                <>
+                  <Pill tone="accent">Premium step</Pill>
+                  <Body>{step.action}</Body>
+                  <Body muted>Unlock the full routine so lifestyle, weather, water, and product logic can adjust every step.</Body>
+                  <Button label="Unlock full routine" onPress={() => router.push("/paywall" as never)} secondary />
+                </>
+              ) : (
+                <>
+                  <Button label={`${completion[step.id] ? "Done: " : ""}${step.action}`} onPress={() => toggleCompletion(step.id)} secondary={!completion[step.id]} />
+                  <Body muted>{step.instruction[language]}</Body>
+                  {step.durationSeconds ? <Pill tone="primary">{step.durationSeconds}s</Pill> : null}
+                </>
+              )}
+            </View>
+          );
+        })}
       </View>
     );
   }
@@ -636,10 +718,12 @@ const styles = StyleSheet.create({
   metricValue: { fontSize: 17, fontWeight: "900" },
   ingredientBlock: { gap: spacing.xs },
   concernCard: { borderWidth: 1, borderRadius: 8, padding: spacing.sm, gap: spacing.xs },
+  reasonLine: { flexDirection: "row", alignItems: "flex-start", gap: spacing.xs },
+  planTile: { borderWidth: 1, borderRadius: 8, padding: spacing.sm, gap: spacing.xs },
   productLine: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: spacing.sm },
   tipLine: { gap: spacing.xs },
   routineGroup: { gap: spacing.sm },
-  routineStep: { gap: spacing.xs },
+  routineStep: { gap: spacing.xs, borderWidth: 0, borderRadius: 8, padding: spacing.xs },
   habitPreview: { borderWidth: 1, borderRadius: 8, padding: spacing.sm, gap: spacing.xs },
   dietBlock: { gap: spacing.xs },
   dietRow: { gap: 2 },

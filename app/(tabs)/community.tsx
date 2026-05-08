@@ -1,4 +1,5 @@
 import { ScrollView, StyleSheet, View } from "react-native";
+import { router } from "expo-router";
 import { useApp } from "@/shared/AppContext";
 import { Body, BrandMark, Button, Card, H1, H2, Pill, Screen, SectionLabel } from "@/shared/components";
 import { questions } from "@/shared/data";
@@ -26,17 +27,20 @@ export default function Community() {
         <Card>
           <H2>{language === "en" ? "Q&A: Nepal context" : "Q&A: Nepal context"}</H2>
           <Body muted>{language === "en" ? "Free readable answers for common skincare doubts." : "Common skincare doubt ko free simple answers."}</Body>
-          {learnQAs.map((qa) => (
+          {learnQAs.map((qa, index) => {
+            const gated = locked && index >= 12;
+            return (
             <View key={qa.id} style={styles.qaBlock}>
-              <H2>{language === "ne" ? qa.question_ne : qa.question_en}</H2>
-              <Body>{language === "ne" ? qa.answer_ne : qa.answer_en}</Body>
+              <H2>{gated ? "Premium Q&A archive" : language === "ne" ? qa.question_ne : qa.question_en}</H2>
+              <Body>{gated ? "Unlock 50+ Nepal-context Q&As covering periods, makeup, hostel life, sunscreen, water, food, festivals, and product shopping." : language === "ne" ? qa.answer_ne : qa.answer_en}</Body>
               <View style={styles.voteRow}>
-                {qa.tags.map((tag) => (
+                {(gated ? ["premium"] : qa.tags).map((tag) => (
                   <Pill key={tag} tone="primary">{tag}</Pill>
                 ))}
+                {gated ? <Button label="Unlock Q&A" onPress={() => router.push("/paywall" as never)} secondary /> : null}
               </View>
             </View>
-          ))}
+          );})}
         </Card>
 
         {locked ? (

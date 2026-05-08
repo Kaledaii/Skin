@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useApp } from "@/shared/AppContext";
-import { Body, BrandMark, Card, FloatingBadge, H1, H2, Pill, ProgressBar, Screen, SectionLabel } from "@/shared/components";
+import { Body, BrandMark, Button, Card, FloatingBadge, H1, H2, Pill, ProgressBar, Screen, SectionLabel } from "@/shared/components";
 import { getAllArticles, getRecommendedArticles, getSeasonalCalendar } from "@/shared/knowledge/content";
 import { ContentArticle } from "@/shared/knowledge/contentTypes";
 import { dailyHabitTips, glossaryTerms, nutrientGuides } from "@/shared/knowledge/education";
@@ -14,9 +14,10 @@ import { palettes, spacing } from "@/shared/theme";
 const categories = ["recommended", "all", "education", "seasonal", "diet", "glow_up", "product_review", "motivation"];
 
 export default function Learn() {
-  const { language, themeMode, profile, completion, todayCheckIn } = useApp();
+  const { language, themeMode, tier, profile, completion, todayCheckIn } = useApp();
   const router = useRouter();
   const c = palettes[themeMode];
+  const premiumLocked = tier !== "premium";
   const [selectedCategory, setSelectedCategory] = useState("recommended");
   const routine = useMemo(() => generateRoutine(profile.quiz), [profile.quiz]);
   const conditionIds = routine.matches.map((match) => match.condition.id);
@@ -97,8 +98,8 @@ export default function Learn() {
               );
             })}
           </ScrollView>
-          {articles.map((article) => (
-            <ArticleCard key={article.id} article={article} />
+          {articles.map((article, index) => (
+            <ArticleCard key={article.id} article={article} locked={premiumLocked && index >= 4} />
           ))}
         </Card>
 
@@ -148,11 +149,11 @@ export default function Learn() {
     </Screen>
   );
 
-  function ArticleCard({ article }: { article: ContentArticle }) {
+  function ArticleCard({ article, locked }: { article: ContentArticle; locked: boolean }) {
     const title = language === "ne" ? article.title_ne ?? article.title_en : article.title_en;
     return (
       <Pressable
-        onPress={() => router.push(`/learn/${article.id}` as never)}
+        onPress={() => locked ? router.push("/paywall" as never) : router.push(`/learn/${article.id}` as never)}
         style={({ pressed }) => [
           styles.articleCard,
           { backgroundColor: c.surfaceAlt, borderColor: c.border, transform: [{ scale: pressed ? 0.99 : 1 }] }
@@ -161,13 +162,15 @@ export default function Learn() {
         <View style={styles.row}>
           <Pill tone={article.category === "diet" ? "accent" : article.category === "seasonal" ? "secondary" : "primary"}>{labelForCategory(article.category)}</Pill>
           <Pill tone="primary">{article.reading_time_min} min</Pill>
+          {locked ? <Pill tone="accent">Premium guide</Pill> : null}
         </View>
         <H2>{title}</H2>
-        <Body muted>{article.summary_en}</Body>
+        <Body muted>{locked ? "Unlock the full long-form guide with budget options, local product examples, warning signs, and source notes." : article.summary_en}</Body>
         <View style={styles.row}>
-          <Body muted>Tap to read full guide</Body>
+          <Body muted>{locked ? "Tap to unlock" : "Tap to read full guide"}</Body>
           <Feather name="arrow-right" color={c.primary} size={18} />
         </View>
+        {locked ? <Button label="See premium value" onPress={() => router.push("/paywall" as never)} secondary /> : null}
       </Pressable>
     );
   }

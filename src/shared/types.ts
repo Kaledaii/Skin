@@ -1,6 +1,8 @@
 export type Language = "en" | "ne";
 export type ThemeMode = "light" | "dark";
 export type SubscriptionTier = "free" | "premium";
+export type SubscriptionStatus = "free" | "trial" | "premium" | "expired";
+export type SubscriptionSource = "manual" | "beta" | "esewa" | "khalti" | "stripe" | "demo";
 export type SkinType = "oily" | "dry" | "combination" | "sensitive";
 export type Gender = "female" | "male" | "nonbinary" | "preferNot";
 export type BudgetTier = "under200" | "200to500" | "500plus";
@@ -24,6 +26,15 @@ export type UserProfile = {
   consentAccepted: boolean;
 };
 
+export type SubscriptionInfo = {
+  status: SubscriptionStatus;
+  tier: SubscriptionTier;
+  source: SubscriptionSource;
+  startedAt?: string;
+  expiresAt?: string;
+  plan?: "monthly" | "yearly" | "beta";
+};
+
 export type RoutineStep = {
   id: string;
   title: Record<Language, string>;
@@ -37,8 +48,19 @@ export type Product = {
   name: string;
   category: string;
   price: string;
+  priceMin?: number;
+  priceMax?: number;
   budgetTier: BudgetTier;
   fit: SkinType[];
+  concernFit?: string[];
+  ingredients?: string[];
+  whereToBuy?: string[];
+  localAvailability?: boolean;
+  fakeRisk?: "low" | "medium" | "high";
+  whyMatched?: Record<Language, string>;
+  whyNot?: Record<Language, string>;
+  budgetAlternative?: string;
+  safetyNote?: Record<Language, string>;
   ingredientLabel: Record<Language, string>;
   trustScore: number;
   sponsored: boolean;

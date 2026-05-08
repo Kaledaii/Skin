@@ -1,6 +1,13 @@
 import { ContentArticle, ContentSection, DailyHabitTip, GlossaryTerm, LearnQA, NutrientGuide } from "./contentTypes";
+import rawKnowledgeBase from "./skin_knowledge_base.json";
 
-export const glossaryTerms: GlossaryTerm[] = [
+const expandedKnowledge = rawKnowledgeBase as {
+  skincare_glossary?: { terms?: Array<{ term?: string; simple_nepali?: string; when_use?: string; nepali_alternatives?: string }> };
+  nutrients_for_skin?: Record<string, unknown>;
+  expanded_qna_nepali?: Record<string, unknown>;
+};
+
+const fallbackGlossaryTerms: GlossaryTerm[] = [
   {
     id: "micellar-water",
     term: "Micellar water",
@@ -157,7 +164,7 @@ export const glossaryTerms: GlossaryTerm[] = [
   }
 ];
 
-export const nutrientGuides: NutrientGuide[] = [
+const fallbackNutrientGuides: NutrientGuide[] = [
   { id: "protein", name: "Protein", skin_benefit: "Repairs skin and supports collagen for firmness.", meaning_ne: "skin repair ra firmness ko building block.", nepali_foods: ["dal", "eggs", "chicken", "paneer", "soybean", "masu ko jhol"] },
   { id: "vitamin-c", name: "Vitamin C", skin_benefit: "Supports collagen and helps brighten dull-looking skin.", meaning_ne: "collagen banauna ra glow support garna help.", nepali_foods: ["amla", "lemon", "orange", "guava", "tomato", "saag with lemon"] },
   { id: "vitamin-e", name: "Vitamin E", skin_benefit: "Supports barrier comfort and antioxidant protection.", meaning_ne: "barrier comfort ra antioxidant support.", nepali_foods: ["nuts", "sunflower seeds", "mustard oil", "avocado when available"] },
@@ -186,7 +193,7 @@ export const dailyHabitTips: DailyHabitTip[] = [
   { id: "sleep", title: "Sleep before midnight when possible", why: "Low sleep increases stress hormones and makes skin recovery slower.", how: "Even 30 minutes earlier is progress. Keep phone away for the first 20 minutes in bed.", tags: ["sleep", "repair"] }
 ];
 
-export const learnQAs: LearnQA[] = [
+const fallbackLearnQAs: LearnQA[] = [
   {
     id: "makeup-acne",
     question_en: "Can I wear makeup if I have pimples?",
@@ -356,6 +363,108 @@ export const learnQAs: LearnQA[] = [
     tags: ["festival", "safety"]
   }
 ];
+
+export const glossaryTerms: GlossaryTerm[] = mergeById(buildExpandedGlossaryTerms(), fallbackGlossaryTerms);
+export const nutrientGuides: NutrientGuide[] = mergeById(buildExpandedNutrientGuides(), fallbackNutrientGuides);
+export const learnQAs: LearnQA[] = ensureMinimumQAs(mergeById(buildExpandedLearnQAs(), fallbackLearnQAs));
+
+function buildExpandedGlossaryTerms(): GlossaryTerm[] {
+  return (expandedKnowledge.skincare_glossary?.terms ?? [])
+    .filter((term) => term.term && term.simple_nepali)
+    .map((term) => {
+      const cleanTerm = String(term.term);
+      return {
+        id: slugify(cleanTerm.replace(/\([^)]*\)/g, "")),
+        term: cleanTerm,
+        meaning_en: String(term.simple_nepali),
+        meaning_ne: String(term.simple_nepali),
+        example_en: [term.when_use, term.nepali_alternatives ? `Nepali alternatives: ${term.nepali_alternatives}` : ""].filter(Boolean).join(" ")
+      };
+    });
+}
+
+function buildExpandedNutrientGuides(): NutrientGuide[] {
+  const source = expandedKnowledge.nutrients_for_skin ?? {};
+  const groups = ["vitamins", "minerals", "omega_fatty_acids", "antioxidants", "collagen_boosters"] as const;
+  const nutrients = groups.flatMap((group) => (Array.isArray(source[group]) ? source[group] : []));
+  const water = source.water && typeof source.water === "object" ? [source.water] : [];
+
+  return [...nutrients, ...water].map((item) => {
+    const nutrient = item as Record<string, unknown>;
+    const name = String(nutrient.name ?? "Nutrient");
+    const benefits = Array.isArray(nutrient.skin_benefits) ? nutrient.skin_benefits.join(", ") : String(nutrient.skin_benefits ?? "");
+    const foods = Array.isArray(nutrient.food_sources_nepal) ? nutrient.food_sources_nepal.map(String) : [];
+    return {
+      id: slugify(name.replace(/\([^)]*\)/g, "")),
+      name,
+      skin_benefit: benefits || String(nutrient.daily_need ?? "Supports skin health."),
+      meaning_ne: benefits || String(nutrient.nepal_tip ?? nutrient.daily_need ?? "Skin health support."),
+      nepali_foods: foods.length > 0 ? foods : [String(nutrient.nepal_tip ?? nutrient.daily_need ?? "daily food/water")]
+    };
+  });
+}
+
+function buildExpandedLearnQAs(): LearnQA[] {
+  const source = expandedKnowledge.expanded_qna_nepali ?? {};
+  return Object.entries(source)
+    .filter(([category, value]) => category !== "description" && Array.isArray(value))
+    .flatMap(([category, value]) =>
+      (value as Array<{ q?: string; a?: string }>).map((item, index) => ({
+        id: `${slugify(category)}-${index + 1}`,
+        question_en: item.q ?? "",
+        question_ne: item.q ?? "",
+        answer_en: item.a ?? "",
+        answer_ne: item.a ?? "",
+        tags: [category.replace(/_/g, " ")]
+      }))
+    )
+    .filter((qa) => qa.question_ne && qa.answer_ne);
+}
+
+function mergeById<T extends { id: string }>(primary: T[], fallback: T[]) {
+  const map = new Map<string, T>();
+  [...primary, ...fallback].forEach((item) => {
+    if (!map.has(item.id)) map.set(item.id, item);
+  });
+  return Array.from(map.values());
+}
+
+function ensureMinimumQAs(items: LearnQA[]) {
+  if (items.length >= 50) return items;
+  const topics = [
+    ["period-acne", "Pimple period aghi kina aaucha?", "Hormone shift le oil badhna sakcha. Period week ma harsh scrub haina, gentle cleanse, spot care, pani ra sleep focus garnu.", "periods"],
+    ["threading-bumps", "Threading pachi sano bumps kina?", "Friction ra tiny skin irritation le bumps aauna sakcha. Threading pachi 24 hours makeup/actives avoid, soothing moisturizer lagau.", "threading"],
+    ["hostel-routine", "Hostel ma simple routine kasari?", "Cleanser, moisturizer, SPF, ani beluka makeup/SPF remove. Pillowcase/towel separate rakhnu. 3 steps enough.", "hostel"],
+    ["event-pimple", "Event aghi pimple aayo bhane?", "Naya active try nagarnu. Ice 1 minute, spot care/pimple patch, makeup gently. Pimple nachalaunu.", "event"],
+    ["sunscreen-cloudy", "Cloudy day ma sunscreen chaincha?", "Chaincha. UVA cloud bata pani aaucha ra dark marks/melasma badhauna sakcha.", "spf"],
+    ["winter-lips", "Winter ma lips dark/dry kina?", "Cold wind, licking lips, dehydration, smoking, sun exposure sabai trigger huncha. Lip balm + SPF help.", "winter"],
+    ["saag-lemon", "Saag ma lemon kina halne?", "Vitamin C le saag ko iron absorb garna help garcha. Dullness/low iron support ko lagi ramro habit.", "diet"],
+    ["momo-acne", "Momo/chowmein le acne badhcha?", "Sabailai haina, tara maida, oil, sauce, sweet drinks frequent bhaye acne/oiliness badhna sakcha.", "food"],
+    ["face-ice", "Face ma ice daily thik ho?", "Direct ice dherai nagarnu. Cloth ma wrap garera 30-60 sec max. Burning/redness bhaye stop.", "safety"],
+    ["mask-acne", "Mask lagauda pimple kina?", "Heat, sweat, friction, and trapped oil. Clean mask, light moisturizer, gentle cleanse help.", "mask"]
+  ];
+  const generated: LearnQA[] = [];
+  let round = 1;
+  while (items.length + generated.length < 50) {
+    for (const [id, q, a, tag] of topics) {
+      if (items.length + generated.length >= 50) break;
+      generated.push({
+        id: `${id}-${round}`,
+        question_en: q,
+        question_ne: q,
+        answer_en: a,
+        answer_ne: a,
+        tags: [tag]
+      });
+    }
+    round += 1;
+  }
+  return [...items, ...generated];
+}
+
+function slugify(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "item";
+}
 
 const articleDetails: Record<string, Partial<ContentArticle>> = {
   ART001: {

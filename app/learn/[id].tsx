@@ -1,9 +1,11 @@
 import { Stack, useLocalSearchParams } from "expo-router";
+import { useEffect } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { useApp } from "@/shared/AppContext";
 import { Body, Card, H1, H2, Pill, Screen, SectionLabel } from "@/shared/components";
 import { getArticleById } from "@/shared/knowledge/content";
 import { glossaryTerms, nutrientGuides } from "@/shared/knowledge/education";
+import { trackEvent } from "@/shared/services/analytics";
 import { palettes, spacing } from "@/shared/theme";
 
 export default function ArticleDetail() {
@@ -14,6 +16,12 @@ export default function ArticleDetail() {
   const title = article ? (language === "ne" ? article.title_ne ?? article.title_en : article.title_en) : "Article not found";
   const articleTerms = glossaryTerms.filter((term) => article?.glossary_terms?.includes(term.id));
   const articleNutrients = nutrientGuides.filter((nutrient) => article?.nutrient_ids?.includes(nutrient.id));
+
+  useEffect(() => {
+    if (article) {
+      trackEvent("article_opened", { id: article.id, category: article.category });
+    }
+  }, [article]);
 
   return (
     <Screen>
