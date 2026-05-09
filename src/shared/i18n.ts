@@ -2,7 +2,7 @@ import { Language } from "./types";
 
 export const copy = {
   en: {
-    appName: "Skin Nepal",
+    appName: "Prabha Skincare",
     tagline: "Simple skincare for Nepal's weather, water, and real budgets.",
     start: "Start quiz",
     dashboard: "Today",
@@ -26,7 +26,7 @@ export const copy = {
     dark: "Dark"
   },
   ne: {
-    appName: "स्किन नेपाल",
+    appName: "प्रभा स्किनकेयर",
     tagline: "नेपालको मौसम, पानी र बजेट अनुसार सजिलो स्किनकेयर।",
     start: "क्विज सुरु गर्नुहोस्",
     dashboard: "आज",

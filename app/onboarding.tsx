@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { budgetTiers, skinTypes, useApp } from "@/shared/AppContext";
-import { Body, BrandMark, Button, Card, H1, H2, Pill, ProgressBar, Screen, SectionLabel } from "@/shared/components";
+import { Body, BrandLogo, BrandMark, Button, Card, H1, H2, Pill, ProgressBar, Screen, SectionLabel } from "@/shared/components";
 import { t } from "@/shared/i18n";
 import { humanize, knowledgeBase } from "@/shared/knowledge/engine";
 import { palettes, spacing } from "@/shared/theme";
@@ -57,6 +57,7 @@ export default function Onboarding() {
     <Screen>
       <ScrollView contentContainerStyle={styles.content}>
         <Card variant="hero" style={styles.heroCard}>
+          <BrandLogo />
           <View style={styles.heroTop}>
             <BrandMark />
             <View style={styles.flex}>

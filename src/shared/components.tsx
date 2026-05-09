@@ -1,12 +1,13 @@
 import { Feather } from "@expo/vector-icons";
 import type { ComponentProps, PropsWithChildren } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LinearGradient } from "expo-linear-gradient";
-import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
+import { Animated, Easing, Image, Platform, Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
 import { palettes, spacing } from "./theme";
 import { useApp } from "./AppContext";
 
 const nativeDriver = Platform.OS !== "web";
+const brandIcon = require("../../assets/brand/prabha-icon-1024.png");
+const brandLogo = require("../../assets/brand/prabha-logo-cream@small.png");
 
 export function Screen({ children }: PropsWithChildren) {
   const { themeMode } = useApp();
@@ -112,15 +113,19 @@ export function BrandMark({ compact = false }: { compact?: boolean }) {
   const { themeMode } = useApp();
   const c = palettes[themeMode];
   return (
-    <LinearGradient
-      colors={[c.primary, themeMode === "dark" ? "#FFADC0" : "#E8849A"]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={[styles.brandMark, compact && styles.brandMarkCompact]}
-    >
-      <Text style={[styles.brandText, compact && styles.brandTextCompact]}>S</Text>
-      <View style={[styles.brandDot, { backgroundColor: c.accent }]} />
-    </LinearGradient>
+    <View style={[styles.brandMark, compact && styles.brandMarkCompact, { borderColor: c.borderStrong, shadowColor: c.primary }]}>
+      <Image source={brandIcon} style={styles.brandIconImage} resizeMode="cover" />
+    </View>
+  );
+}
+
+export function BrandLogo({ compact = false }: { compact?: boolean }) {
+  const { themeMode } = useApp();
+  const c = palettes[themeMode];
+  return (
+    <View style={[styles.brandLogoFrame, compact && styles.brandLogoFrameCompact, { backgroundColor: c.surface, borderColor: c.border }]}>
+      <Image source={brandLogo} style={styles.brandLogoImage} resizeMode="contain" />
+    </View>
   );
 }
 
@@ -412,6 +417,7 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 29,
+    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
@@ -425,19 +431,30 @@ const styles = StyleSheet.create({
     height: 42,
     borderRadius: 21
   },
-  brandText: {
-    color: "#FFFFFF",
-    fontSize: 25,
-    fontWeight: "800",
-    fontFamily: Platform.select({ web: "Cormorant Garamond, Georgia, serif", default: undefined })
+  brandIconImage: {
+    width: "100%",
+    height: "100%"
   },
-  brandTextCompact: { fontSize: 19 },
-  brandDot: {
-    position: "absolute",
-    bottom: 11,
-    width: 8,
-    height: 8,
-    borderRadius: 4
+  brandLogoFrame: {
+    width: "100%",
+    maxWidth: 360,
+    minHeight: 128,
+    borderWidth: 1,
+    borderRadius: 18,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden"
+  },
+  brandLogoFrameCompact: {
+    maxWidth: 240,
+    minHeight: 86,
+    borderRadius: 14
+  },
+  brandLogoImage: {
+    width: "100%",
+    height: 112
   },
   card: {
     borderWidth: 1,
