@@ -263,8 +263,8 @@ export default function Progress() {
         <Text style={[styles.scoreValue, { color: c.text }]}>{value}/{total}</Text>
         <Text style={[styles.scoreLabel, { color: c.muted }]}>{label}</Text>
         {active ? (
-          <View style={[styles.scoreTooltip, { backgroundColor: c.deep, borderColor: c.borderStrong }]}>
-            <Text style={styles.scoreTooltipText}>{scoreExplanations[label]}</Text>
+          <View style={[styles.scoreTooltip, { backgroundColor: themeMode === "dark" ? c.surfaceAlt : c.deep, borderColor: c.borderStrong }]}>
+            <Text style={[styles.scoreTooltipText, { color: themeMode === "dark" ? c.text : "#FFFFFF" }]}>{scoreExplanations[label]}</Text>
           </View>
         ) : null}
       </Pressable>
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
     zIndex: 30,
     elevation: 6
   },
-  scoreTooltipText: { color: "#FFFFFF", fontSize: 12, lineHeight: 16, fontWeight: "700" },
+  scoreTooltipText: { fontSize: 12, lineHeight: 16, fontWeight: "700" },
   reportGrid: { gap: spacing.xs },
   reportTile: { borderWidth: 1, borderRadius: 8, padding: spacing.sm, gap: spacing.xs },
   checkRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },

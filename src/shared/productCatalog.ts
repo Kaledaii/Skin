@@ -64,9 +64,10 @@ function generateProducts(): Product[] {
       const priceMax = priceMin + (budget === "500plus" ? 450 : 120);
       const skinFit = skinFitFor(category, index);
       const ingredients = ingredientsFor(category);
+      const descriptor = productDescriptorFor(category, index);
       out.push({
         id: `launch_${slug(category)}_${index + 1}`,
-        name: `${brand} ${category} Pick ${index + 1}`,
+        name: `${brand} ${descriptor}`,
         category,
         price: `Rs. ${priceMin}-${priceMax}`,
         priceMin,
@@ -132,6 +133,22 @@ function ingredientsFor(category: string) {
   if (category.includes("heat")) return ["calamine", "aloe", "zinc"];
   if (category === "Moisturizer") return ["glycerin", "hyaluronic acid", "ceramides"];
   return ["gentle surfactants", "neem", "glycerin"];
+}
+
+function productDescriptorFor(category: string, index: number) {
+  const descriptors: Record<string, string[]> = {
+    Cleanser: ["Gentle Neem Face Wash", "Low-pH Daily Cleanser", "Hydrating Gel Cleanser", "Oil Control Face Wash"],
+    Moisturizer: ["Light Gel Moisturizer", "Barrier Repair Lotion", "Hydrating Daily Cream", "Oil-Free Moisturizer"],
+    Sunscreen: ["SPF 50 PA+++ Sunscreen", "Matte Daily Sun Gel", "Hydrating Sunscreen Lotion", "No-White-Cast Sun Cream"],
+    "Acne spot treatment": ["Salicylic Acne Gel", "Niacinamide Spot Care", "Zinc Blemish Gel", "Calming Pimple Cream"],
+    "Pigmentation care": ["Vitamin C Brightening Serum", "Niacinamide Marks Serum", "Licorice Spot Corrector", "Even Tone Serum"],
+    "Barrier cream": ["Ceramide Barrier Cream", "Panthenol Repair Balm", "Glycerin Comfort Cream", "Sensitive Skin Barrier Lotion"],
+    "Micellar / oil cleanser": ["Micellar Cleansing Water", "Oil Cleanse Balm", "Makeup Melt Cleanser", "Sunscreen Removal Water"],
+    "Lip balm": ["SPF Lip Balm", "Repair Lip Therapy", "Shea Lip Balm", "Petrolatum Lip Protectant"],
+    "Body acne / heat rash care": ["Calamine Heat Rash Lotion", "Aloe Body Acne Gel", "Zinc Sweat Rash Care", "Back Acne Body Wash"]
+  };
+  const list = descriptors[category] ?? [`${category} Essential`];
+  return list[index % list.length];
 }
 
 function whereToBuyFor(index: number) {

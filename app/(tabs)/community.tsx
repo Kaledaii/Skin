@@ -5,10 +5,11 @@ import { Body, BrandMark, Button, Card, H1, H2, Pill, Screen, SectionLabel } fro
 import { questions } from "@/shared/data";
 import { t } from "@/shared/i18n";
 import { learnQAs } from "@/shared/knowledge/education";
-import { spacing } from "@/shared/theme";
+import { palettes, spacing } from "@/shared/theme";
 
 export default function Community() {
-  const { language, tier, setTier } = useApp();
+  const { language, themeMode, tier, setTier } = useApp();
+  const c = palettes[themeMode];
   const locked = tier !== "premium";
   return (
     <Screen>
@@ -25,12 +26,15 @@ export default function Community() {
         </Card>
 
         <Card>
-          <H2>{language === "en" ? "Q&A: Nepal context" : "Q&A: Nepal context"}</H2>
-          <Body muted>{language === "en" ? "Free readable answers for common skincare doubts." : "Common skincare doubt ko free simple answers."}</Body>
+          <View style={styles.titleRow}>
+            <H2>{language === "en" ? "Q&A: Nepal context" : "Q&A: Nepal context"}</H2>
+            <Pill tone="secondary">{language === "en" ? "Simple English" : "Spoken Nepali"}</Pill>
+          </View>
+          <Body muted>{language === "en" ? "Clear answers without heavy medical words. Switch to NE for spoken Nepali style." : "Common skincare doubt ko free simple answers. EN ma simple English version cha."}</Body>
           {learnQAs.map((qa, index) => {
             const gated = locked && index >= 12;
             return (
-            <View key={qa.id} style={styles.qaBlock}>
+            <View key={qa.id} style={[styles.qaBlock, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
               <H2>{gated ? "Premium Q&A archive" : language === "ne" ? qa.question_ne : qa.question_en}</H2>
               <Body>{gated ? "Unlock 50+ Nepal-context Q&As covering periods, makeup, hostel life, sunscreen, water, food, festivals, and product shopping." : language === "ne" ? qa.answer_ne : qa.answer_en}</Body>
               <View style={styles.voteRow}>
@@ -75,6 +79,7 @@ const styles = StyleSheet.create({
   content: { gap: spacing.md, paddingBottom: spacing.xl },
   heroRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   flex: { flex: 1, gap: spacing.xs },
+  titleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
   voteRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
-  qaBlock: { gap: spacing.xs, paddingVertical: spacing.sm }
+  qaBlock: { gap: spacing.xs, padding: spacing.md, borderWidth: 1, borderRadius: 8, marginTop: spacing.sm }
 });

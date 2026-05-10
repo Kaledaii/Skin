@@ -24,9 +24,11 @@ export default function Tips() {
   const { language, themeMode, tier, profile, likedTipIds, savedTipIds, toggleLikedTip, toggleSavedTip } = useApp();
   const c = palettes[themeMode];
   const [ingredientText, setIngredientText] = useState("");
+  const [activeModeId, setActiveModeId] = useState<string | null>(null);
   const result = useMemo(() => generateRoutine(profile.quiz), [profile.quiz]);
   const budgetRoutine = useMemo(() => buildBudgetRoutine(profile, launchProducts), [profile]);
   const skinTwin = useMemo(() => buildSkinTwin(profile), [profile]);
+  const ingredientResult = checkIngredient(ingredientText);
 
   const feedItems: FeedItem[] = [
     ...result.dailyMicroTips.map((tip) => ({
@@ -86,7 +88,7 @@ export default function Tips() {
 
         <Card>
           <H2>Ingredient Checker</H2>
-          <Body muted>Type lemon, retinol, niacinamide, fragrance, SPF, salicylic acid, etc.</Body>
+          <Body muted>Type lemon, retinol, niacinamide, fragrance, SPF, salicylic acid, etc. It checks live while you type.</Body>
           <TextInput
             value={ingredientText}
             onChangeText={setIngredientText}
@@ -94,22 +96,56 @@ export default function Tips() {
             placeholderTextColor={c.muted}
             style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]}
           />
-          <Body>{checkIngredient(ingredientText)}</Body>
+          <View style={[styles.resultBox, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+            <Pill tone={ingredientText.trim() ? (ingredientResult.toLowerCase().includes("avoid") ? "danger" : "secondary") : "accent"}>
+              {ingredientText.trim() ? "Checker result" : "Waiting"}
+            </Pill>
+            <Body>{ingredientResult}</Body>
+          </View>
           {tier !== "premium" ? <ButtonLabel text="Premium later: scan full product ingredient lists" /> : null}
         </Card>
 
         <Card>
-          <H2>Modes that sell</H2>
-          <Body muted>Special routines for real Nepali life moments.</Body>
+          <H2>Personalized skin modes</H2>
+          <Body muted>Tap a ready mode to preview a focused routine for real Nepali life moments.</Body>
           {premiumModes.map((mode, index) => {
             const locked = tier !== "premium" && index >= 2;
+            const open = activeModeId === mode.id;
             return (
-              <Pressable key={mode.id} onPress={() => locked ? router.push("/paywall" as never) : undefined} style={[styles.modeCard, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+              <Pressable
+                key={mode.id}
+                onPress={() => (locked ? router.push("/paywall" as never) : setActiveModeId(open ? null : mode.id))}
+                style={({ pressed }) => [
+                  styles.modeCard,
+                  {
+                    backgroundColor: open ? c.primarySoft : c.surfaceAlt,
+                    borderColor: open ? c.borderStrong : c.border,
+                    transform: [{ scale: pressed ? 0.99 : 1 }]
+                  }
+                ]}
+              >
                 <View style={styles.cardTopRow}>
                   <H2>{locked ? "Premium mode" : mode.title}</H2>
                   <Pill tone={locked ? "accent" : "secondary"}>{locked ? "locked" : "ready"}</Pill>
                 </View>
                 <Body muted>{locked ? "Unlock event, hostel, winter, festival, exam, and budget-specific routines." : mode.body}</Body>
+                {open ? (
+                  <View style={[styles.modeDetail, { borderColor: c.border, backgroundColor: c.surface }]}>
+                    <Pill tone={tier === "premium" ? "secondary" : "primary"}>{tier === "premium" ? "Premium active" : "Personalized preview"}</Pill>
+                    <Body>{mode.preview}</Body>
+                    <Body muted>{tier === "premium" ? mode.unlockedAction : mode.action}</Body>
+                    {tier === "premium" ? (
+                      <View style={styles.modeSectionGrid}>
+                        {mode.premiumSections.map((section) => (
+                          <View key={section.title} style={[styles.modeSection, { borderColor: c.border, backgroundColor: c.surfaceAlt }]}>
+                            <Pill tone="primary">{section.title}</Pill>
+                            <Body muted>{section.body}</Body>
+                          </View>
+                        ))}
+                      </View>
+                    ) : null}
+                  </View>
+                ) : null}
               </Pressable>
             );
           })}
@@ -255,5 +291,9 @@ const styles = StyleSheet.create({
   },
   badgeRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
   modeCard: { borderWidth: 1, borderRadius: 8, padding: spacing.sm, gap: spacing.xs },
+  modeDetail: { borderWidth: 1, borderRadius: 8, padding: spacing.sm, gap: spacing.xs },
+  modeSectionGrid: { gap: spacing.xs, marginTop: spacing.xs },
+  modeSection: { borderWidth: 1, borderRadius: 8, padding: spacing.sm, gap: spacing.xs },
+  resultBox: { borderWidth: 1, borderRadius: 8, padding: spacing.sm, gap: spacing.xs },
   input: { borderWidth: 1, borderRadius: 8, minHeight: 46, paddingHorizontal: spacing.md, fontSize: 15 }
 });

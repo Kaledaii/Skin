@@ -373,10 +373,11 @@ function buildExpandedGlossaryTerms(): GlossaryTerm[] {
     .filter((term) => term.term && term.simple_nepali)
     .map((term) => {
       const cleanTerm = String(term.term);
+      const englishTerm = cleanTerm.replace(/\([^)]*\)/g, "").trim();
       return {
-        id: slugify(cleanTerm.replace(/\([^)]*\)/g, "")),
+        id: slugify(englishTerm),
         term: cleanTerm,
-        meaning_en: String(term.simple_nepali),
+        meaning_en: glossaryEnglishMeaning(englishTerm, term.when_use),
         meaning_ne: String(term.simple_nepali),
         example_en: [term.when_use, term.nepali_alternatives ? `Nepali alternatives: ${term.nepali_alternatives}` : ""].filter(Boolean).join(" ")
       };
@@ -394,14 +395,63 @@ function buildExpandedNutrientGuides(): NutrientGuide[] {
     const name = String(nutrient.name ?? "Nutrient");
     const benefits = Array.isArray(nutrient.skin_benefits) ? nutrient.skin_benefits.join(", ") : String(nutrient.skin_benefits ?? "");
     const foods = Array.isArray(nutrient.food_sources_nepal) ? nutrient.food_sources_nepal.map(String) : [];
+    const englishName = name.replace(/\([^)]*\)/g, "").trim();
     return {
-      id: slugify(name.replace(/\([^)]*\)/g, "")),
+      id: slugify(englishName),
       name,
-      skin_benefit: benefits || String(nutrient.daily_need ?? "Supports skin health."),
+      skin_benefit: nutrientEnglishBenefit(englishName),
       meaning_ne: benefits || String(nutrient.nepal_tip ?? nutrient.daily_need ?? "Skin health support."),
       nepali_foods: foods.length > 0 ? foods : [String(nutrient.nepal_tip ?? nutrient.daily_need ?? "daily food/water")]
     };
   });
+}
+
+function glossaryEnglishMeaning(term: string, whenUse?: string) {
+  const key = term.toLowerCase();
+  const meanings: Record<string, string> = {
+    cleanser: "A face wash that removes oil, sweat, sunscreen, makeup, and dust more gently than body soap.",
+    toner: "A watery step after cleansing that can calm skin and prepare it for serum or moisturizer.",
+    serum: "A concentrated treatment for one goal, such as acne, marks, oil control, or hydration.",
+    moisturizer: "A cream, lotion, or gel that seals water into skin and protects the barrier.",
+    sunscreen: "UV protection that reduces tanning, dark spots, melasma, sunburn, and early aging.",
+    exfoliation: "A controlled way to remove dead surface cells so skin feels smoother.",
+    "skin barrier": "The outer shield of skin that keeps water in and irritants out.",
+    "ph balance": "Skin’s natural slightly acidic balance; harsh soap and hard water can disturb it.",
+    "active ingredients": "Treatment ingredients that create a skin effect, like retinol, acids, or vitamin C.",
+    "comedogenic": "Likely to clog pores or trigger blackheads, whiteheads, or bumps.",
+    antioxidant: "A protector that helps defend skin from UV, pollution, smoke, and stress damage.",
+    "hyaluronic acid": "A water-binding ingredient that helps skin feel plumper and less tight.",
+    niacinamide: "Vitamin B3 used for oil balance, barrier support, redness, and dark marks.",
+    retinol: "A vitamin A ingredient for acne, texture, and aging signs, but it must be started slowly.",
+    "salicylic acid": "An oil-soluble acid that can clean inside oily pores and help blackheads.",
+    "vitamin c": "An antioxidant ingredient that supports glow, collagen, and pollution defense.",
+    ceramides: "Skin-like fats that strengthen the barrier and reduce dryness or stinging.",
+    "non-comedogenic": "Designed to be less likely to clog pores.",
+    "patch test": "A small test on one area before using a new product all over the face."
+  };
+  return meanings[key] ?? `A skincare term. Common timing: ${whenUse ?? "use only when it fits your routine"}.`;
+}
+
+function nutrientEnglishBenefit(name: string) {
+  const key = name.toLowerCase();
+  const benefits: Record<string, string> = {
+    "vitamin a": "Supports cell turnover, acne balance, texture, and early aging care.",
+    "vitamin c": "Supports collagen, glow, antioxidant protection, and dullness care.",
+    "vitamin e": "Supports barrier comfort and antioxidant defense.",
+    "vitamin d": "Supports immunity and overall skin health when levels are low.",
+    "b complex": "Supports repair, oil balance, and normal skin function.",
+    zinc: "Supports acne recovery, wound healing, and calmer inflammation.",
+    iron: "Supports fresh-looking skin and can help dullness linked with low iron.",
+    selenium: "Supports antioxidant protection and elasticity.",
+    "omega-3 fatty acids": "Supports calmer skin, less dryness, and a healthier barrier.",
+    "beta-carotene": "Converts to vitamin A and supports glow, repair, and sun-stress resilience.",
+    lycopene: "Supports antioxidant defense against sun stress.",
+    polyphenols: "Plant antioxidants that help defend against pollution, smoke, UV, and inflammation.",
+    protein: "Supports collagen, repair, and stronger skin structure.",
+    "vitamin c + protein": "Helps the body build collagen and repair skin.",
+    water: "Supports plump-feeling skin and normal body repair."
+  };
+  return benefits[key] ?? "Supports skin health through diet and consistent care.";
 }
 
 function buildExpandedLearnQAs(): LearnQA[] {
@@ -409,16 +459,114 @@ function buildExpandedLearnQAs(): LearnQA[] {
   return Object.entries(source)
     .filter(([category, value]) => category !== "description" && Array.isArray(value))
     .flatMap(([category, value]) =>
-      (value as Array<{ q?: string; a?: string }>).map((item, index) => ({
-        id: `${slugify(category)}-${index + 1}`,
-        question_en: item.q ?? "",
-        question_ne: item.q ?? "",
-        answer_en: item.a ?? "",
-        answer_ne: item.a ?? "",
-        tags: [category.replace(/_/g, " ")]
-      }))
+      (value as Array<{ q?: string; a?: string }>).map((item, index) => {
+        const english = expandedQAEnglish(category, index);
+        return {
+          id: `${slugify(category)}-${index + 1}`,
+          question_en: english.q,
+          question_ne: item.q ?? english.q,
+          answer_en: english.a,
+          answer_ne: item.a ?? english.a,
+          tags: [category.replace(/_/g, " ")]
+        };
+      })
     )
     .filter((qa) => qa.question_ne && qa.answer_ne);
+}
+
+function expandedQAEnglish(category: string, index: number) {
+  const text: Record<string, Array<{ q: string; a: string }>> = {
+    acne_related: [
+      {
+        q: "Why should I not pop pimples?",
+        a: "Popping can push bacteria deeper, make swelling bigger, spread infection to nearby skin, and leave dark marks or pits. Use a pimple patch, spot treatment, or let it heal."
+      },
+      {
+        q: "What food should I reduce if I get acne?",
+        a: "You do not need to fear all food. First reduce sweet drinks, too much mithai, daily fried snacks, and very frequent milk tea. Add dal, dahi, saag, fruit, and enough water."
+      },
+      {
+        q: "Can I wash my face with bath soap?",
+        a: "Better not. Bath soap is usually too harsh for facial skin. It can damage the skin barrier, make skin dry or irritated, and sometimes trigger more oil. Use a gentle face wash."
+      },
+      {
+        q: "Does lemon juice remove acne marks?",
+        a: "Do not use lemon on the face. It can burn skin and make dark marks worse in sunlight. Sunscreen, gentle care, and safer pigment ingredients work better."
+      },
+      {
+        q: "Can toothpaste dry a pimple overnight?",
+        a: "Avoid toothpaste. It can irritate skin and leave marks. Use a pimple patch, benzoyl peroxide, salicylic acid, or simple spot care instead."
+      }
+    ],
+    product_related: [
+      {
+        q: "Do fairness creams really make skin fair?",
+        a: "No cream can safely change your natural skin color. Some only make skin look temporarily brighter, and unsafe products may contain steroids or mercury. Focus on healthy, even, glowing skin."
+      },
+      {
+        q: "Do I need expensive skincare products?",
+        a: "No. A Rs. 200-500 product can work well if it suits your skin and you use it consistently. Cleanser, moisturizer, and sunscreen matter more than buying many random products."
+      },
+      {
+        q: "Are Korean skincare products from Daraz safe?",
+        a: "Some are good, but fake products are common. Check verified seller, expiry, batch number, reviews, packaging, and avoid deals that look too cheap."
+      },
+      {
+        q: "Should oily skin skip moisturizer at night?",
+        a: "No. Oily skin can still be dehydrated. Use a light gel moisturizer so the skin barrier stays calm and does not overproduce oil."
+      }
+    ],
+    lifestyle_related: [
+      {
+        q: "I sleep only 3 hours during exams or work. Will it affect skin?",
+        a: "Yes. Low sleep can worsen acne, dullness, puffiness, dark under-eyes, and slow healing. Even sleeping 30 minutes earlier is a useful first step."
+      },
+      {
+        q: "Does drinking milk tea many times a day affect skin?",
+        a: "Tea is not the main issue. Too much sugar and too much dairy can trigger acne for some people. Try less sugar, smaller cups, or swap one cup for water or green tea."
+      },
+      {
+        q: "Can my phone cause cheek pimples?",
+        a: "It can contribute. Phone screens collect oil and dust, and pressure on the cheek can trigger bumps. Wipe your phone and use earphones or speaker when possible."
+      },
+      {
+        q: "Sweat after gym makes acne worse. What should I do?",
+        a: "Exercise is good. The problem is trapped sweat. Rinse your face after sweating, change sweaty clothes, keep hair off your face, and do not use shared towels on your face."
+      }
+    ],
+    weather_nepal: [
+      {
+        q: "Does Kathmandu dust and pollution worsen acne?",
+        a: "Yes, it can. Fine dust and PM2.5 can sit on skin and irritate pores. Use a mask when needed, cleanse after dusty travel, and double cleanse at night if you wore sunscreen or makeup."
+      },
+      {
+        q: "Why does monsoon make skin worse?",
+        a: "Humidity, sweat, oil, and damp towels can increase bumps and irritation. Keep layers light, rinse after sweating, dry towels properly, and avoid heavy oils on acne-prone areas."
+      },
+      {
+        q: "Why does my skin look better outside Kathmandu or when traveling?",
+        a: "Lower pollution, softer water, better humidity, and less dust can make skin feel calmer. At home, try filtered final rinse, evening cleansing, and consistent sunscreen."
+      }
+    ],
+    cultural_nepal: [
+      {
+        q: "Should I apply turmeric on my face?",
+        a: "Turmeric can calm inflammation for some people, but use very little and mix it with curd, honey, or aloe. Do not leave it for hours, and patch test first."
+      },
+      {
+        q: "I broke out after Dashain or Tihar food. What now?",
+        a: "Do a gentle 3-day reset: dal bhat, saag, fruit, water, sleep, sunscreen, and no picking. Festival food is okay; your skin just needs recovery."
+      },
+      {
+        q: "How do I protect skin during Holi?",
+        a: "Use moisturizer or oil plus sunscreen before playing. Afterward, cleanse gently and do not scrub hard. If skin burns or rashes appear, keep it simple and see a doctor if it worsens."
+      }
+    ]
+  };
+  return text[category]?.[index] ?? {
+    q: "What should I do for this skin concern?",
+    a: "Keep the routine gentle: cleanse, moisturize, use sunscreen, avoid picking, and watch what triggers your skin. See a dermatologist if it is painful, spreading, or scarring."
+  };
 }
 
 function mergeById<T extends { id: string }>(primary: T[], fallback: T[]) {
@@ -432,28 +580,28 @@ function mergeById<T extends { id: string }>(primary: T[], fallback: T[]) {
 function ensureMinimumQAs(items: LearnQA[]) {
   if (items.length >= 50) return items;
   const topics = [
-    ["period-acne", "Pimple period aghi kina aaucha?", "Hormone shift le oil badhna sakcha. Period week ma harsh scrub haina, gentle cleanse, spot care, pani ra sleep focus garnu.", "periods"],
-    ["threading-bumps", "Threading pachi sano bumps kina?", "Friction ra tiny skin irritation le bumps aauna sakcha. Threading pachi 24 hours makeup/actives avoid, soothing moisturizer lagau.", "threading"],
-    ["hostel-routine", "Hostel ma simple routine kasari?", "Cleanser, moisturizer, SPF, ani beluka makeup/SPF remove. Pillowcase/towel separate rakhnu. 3 steps enough.", "hostel"],
-    ["event-pimple", "Event aghi pimple aayo bhane?", "Naya active try nagarnu. Ice 1 minute, spot care/pimple patch, makeup gently. Pimple nachalaunu.", "event"],
-    ["sunscreen-cloudy", "Cloudy day ma sunscreen chaincha?", "Chaincha. UVA cloud bata pani aaucha ra dark marks/melasma badhauna sakcha.", "spf"],
-    ["winter-lips", "Winter ma lips dark/dry kina?", "Cold wind, licking lips, dehydration, smoking, sun exposure sabai trigger huncha. Lip balm + SPF help.", "winter"],
-    ["saag-lemon", "Saag ma lemon kina halne?", "Vitamin C le saag ko iron absorb garna help garcha. Dullness/low iron support ko lagi ramro habit.", "diet"],
-    ["momo-acne", "Momo/chowmein le acne badhcha?", "Sabailai haina, tara maida, oil, sauce, sweet drinks frequent bhaye acne/oiliness badhna sakcha.", "food"],
-    ["face-ice", "Face ma ice daily thik ho?", "Direct ice dherai nagarnu. Cloth ma wrap garera 30-60 sec max. Burning/redness bhaye stop.", "safety"],
-    ["mask-acne", "Mask lagauda pimple kina?", "Heat, sweat, friction, and trapped oil. Clean mask, light moisturizer, gentle cleanse help.", "mask"]
+    ["period-acne", "Why do pimples come before periods?", "Hormone shifts can increase oil. During period week, avoid harsh scrubs and focus on gentle cleansing, spot care, water, and sleep.", "Pimple period aghi kina aaucha?", "Hormone shift le oil badhna sakcha. Period week ma harsh scrub haina, gentle cleanse, spot care, pani ra sleep focus garnu.", "periods"],
+    ["threading-bumps", "Why do tiny bumps come after threading?", "Friction and tiny irritation can cause bumps. Avoid makeup and strong actives for 24 hours, then use a soothing moisturizer.", "Threading pachi sano bumps kina?", "Friction ra tiny skin irritation le bumps aauna sakcha. Threading pachi 24 hours makeup/actives avoid, soothing moisturizer lagau.", "threading"],
+    ["hostel-routine", "What is a simple hostel skincare routine?", "Cleanser, moisturizer, SPF, and night makeup/SPF removal are enough. Keep pillowcase and towel separate when possible.", "Hostel ma simple routine kasari?", "Cleanser, moisturizer, SPF, ani beluka makeup/SPF remove. Pillowcase/towel separate rakhnu. 3 steps enough.", "hostel"],
+    ["event-pimple", "What if I get a pimple before an event?", "Do not try a new strong active. Use ice briefly, spot care or a pimple patch, gentle makeup, and do not squeeze it.", "Event aghi pimple aayo bhane?", "Naya active try nagarnu. Ice 1 minute, spot care/pimple patch, makeup gently. Pimple nachalaunu.", "event"],
+    ["sunscreen-cloudy", "Do I need sunscreen on cloudy days?", "Yes. UVA can pass through clouds and worsen dark marks or melasma. Use sunscreen even when the sun is not sharp.", "Cloudy day ma sunscreen chaincha?", "Chaincha. UVA cloud bata pani aaucha ra dark marks/melasma badhauna sakcha.", "spf"],
+    ["winter-lips", "Why do lips get dark or dry in winter?", "Cold wind, lip licking, dehydration, smoking, and sun exposure can all trigger it. Lip balm and SPF help.", "Winter ma lips dark/dry kina?", "Cold wind, licking lips, dehydration, smoking, sun exposure sabai trigger huncha. Lip balm + SPF help.", "winter"],
+    ["saag-lemon", "Why add lemon to saag?", "Vitamin C from lemon helps your body absorb iron from saag. It is a small habit that supports energy and glow.", "Saag ma lemon kina halne?", "Vitamin C le saag ko iron absorb garna help garcha. Dullness/low iron support ko lagi ramro habit.", "diet"],
+    ["momo-acne", "Can momo or chowmein worsen acne?", "Not for everyone, but frequent maida, oil, sauce, and sweet drinks can worsen oiliness or acne for some people.", "Momo/chowmein le acne badhcha?", "Sabailai haina, tara maida, oil, sauce, sweet drinks frequent bhaye acne/oiliness badhna sakcha.", "food"],
+    ["face-ice", "Is daily face icing okay?", "Do not use ice directly for long. Wrap it in cloth for 30-60 seconds max. Stop if burning or redness happens.", "Face ma ice daily thik ho?", "Direct ice dherai nagarnu. Cloth ma wrap garera 30-60 sec max. Burning/redness bhaye stop.", "safety"],
+    ["mask-acne", "Why do I get pimples after wearing a mask?", "Heat, sweat, friction, and trapped oil can trigger bumps. Use a clean mask, light moisturizer, and gentle cleansing.", "Mask lagauda pimple kina?", "Heat, sweat, friction, and trapped oil. Clean mask, light moisturizer, gentle cleanse help.", "mask"]
   ];
   const generated: LearnQA[] = [];
   let round = 1;
   while (items.length + generated.length < 50) {
-    for (const [id, q, a, tag] of topics) {
+    for (const [id, qEn, aEn, qNe, aNe, tag] of topics) {
       if (items.length + generated.length >= 50) break;
       generated.push({
         id: `${id}-${round}`,
-        question_en: q,
-        question_ne: q,
-        answer_en: a,
-        answer_ne: a,
+        question_en: qEn,
+        question_ne: qNe,
+        answer_en: aEn,
+        answer_ne: aNe,
         tags: [tag]
       });
     }

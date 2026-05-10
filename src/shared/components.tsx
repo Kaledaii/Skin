@@ -9,9 +9,41 @@ const nativeDriver = Platform.OS !== "web";
 const brandIcon = require("../../assets/brand/prabha-icon-1024.png");
 const brandLogo = require("../../assets/brand/prabha-logo-cream@small.png");
 
-export function Screen({ children }: PropsWithChildren) {
+export function Screen({ children, showQuickActions = true }: PropsWithChildren<{ showQuickActions?: boolean }>) {
   const { themeMode } = useApp();
-  return <View style={[styles.screen, { backgroundColor: palettes[themeMode].bg }]}>{children}</View>;
+  return (
+    <View style={[styles.screen, { backgroundColor: palettes[themeMode].bg }]}>
+      {showQuickActions ? <GlobalQuickActions /> : null}
+      {children}
+    </View>
+  );
+}
+
+function GlobalQuickActions() {
+  const { language, setLanguage, themeMode, setThemeMode } = useApp();
+  const c = palettes[themeMode];
+  return (
+    <View style={styles.globalQuickActions} pointerEvents="box-none">
+      <Pressable
+        onPress={() => setThemeMode(themeMode === "dark" ? "light" : "dark")}
+        style={({ pressed }) => [
+          styles.globalQuickButton,
+          { backgroundColor: c.surface, borderColor: c.borderStrong, transform: [{ scale: pressed ? 0.94 : 1 }] }
+        ]}
+      >
+        <Feather name={themeMode === "dark" ? "sun" : "moon"} color={c.primary} size={16} />
+      </Pressable>
+      <Pressable
+        onPress={() => setLanguage(language === "en" ? "ne" : "en")}
+        style={({ pressed }) => [
+          styles.globalQuickTextButton,
+          { backgroundColor: c.surface, borderColor: c.borderStrong, transform: [{ scale: pressed ? 0.94 : 1 }] }
+        ]}
+      >
+        <Text style={[styles.globalQuickText, { color: c.text }]}>{language === "en" ? "EN" : "NE"}</Text>
+      </Pressable>
+    </View>
+  );
 }
 
 export function AppAtmosphere({ children }: PropsWithChildren) {
@@ -391,6 +423,43 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: spacing.md,
     gap: spacing.md
+  },
+  globalQuickActions: {
+    position: "absolute",
+    top: spacing.md,
+    right: spacing.md,
+    zIndex: 30,
+    flexDirection: "row",
+    gap: spacing.xs
+  },
+  globalQuickButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4
+  },
+  globalQuickTextButton: {
+    minWidth: 44,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.sm,
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4
+  },
+  globalQuickText: {
+    fontSize: 13,
+    fontWeight: "900"
   },
   lightWash: {
     position: "absolute",

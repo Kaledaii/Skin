@@ -36,9 +36,14 @@ export default function Settings() {
         <Card>
           <H2>{language === "en" ? "Firebase status" : "Firebase status"}</H2>
           <Pill tone={firebaseReady ? "secondary" : "accent"}>{firebaseReady ? "Configured" : "Local demo mode"}</Pill>
+          <Body muted>
+            {firebaseReady
+              ? "Developer check: confirms profile, premium status, and daily logs can be sent to Firebase."
+              : "Developer check only. Local demo mode means your data is saved on this device, not uploaded online yet."}
+          </Body>
           {syncStatus ? <Body muted>{syncStatus}</Body> : null}
           <Button
-            label="Test sync snapshot"
+            label="Developer sync test"
             onPress={async () => {
               const result = await syncUserSnapshot({ profile, subscription, dailyCheckIns });
               setSyncStatus(result.ok ? `Ready: ${result.mode}` : `Not connected yet: ${result.mode}`);

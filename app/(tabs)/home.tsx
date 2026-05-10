@@ -55,7 +55,7 @@ export default function Home() {
   }, [topMatch, tier]);
 
   return (
-    <Screen>
+    <Screen showQuickActions={false}>
       <View style={styles.quickActions}>
         <View style={styles.quickButtonRow}>
           <QuickIconButton
