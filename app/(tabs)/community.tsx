@@ -1,16 +1,26 @@
-import { ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { router } from "expo-router";
+import { useMemo, useState } from "react";
 import { useApp } from "@/shared/AppContext";
 import { Body, BrandMark, Button, Card, H1, H2, Pill, Screen, SectionLabel } from "@/shared/components";
 import { questions } from "@/shared/data";
 import { t } from "@/shared/i18n";
 import { learnQAs } from "@/shared/knowledge/education";
+import { submitExpertQuestion } from "@/shared/services/firebaseSync";
 import { palettes, spacing } from "@/shared/theme";
 
 export default function Community() {
-  const { language, themeMode, tier, setTier } = useApp();
+  const { language, themeMode, tier, profile } = useApp();
   const c = palettes[themeMode];
   const locked = tier !== "premium";
+  const [query, setQuery] = useState("");
+  const [expertQuestion, setExpertQuestion] = useState("");
+  const [expertStatus, setExpertStatus] = useState<string | null>(null);
+  const filteredQAs = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return learnQAs;
+    return learnQAs.filter((qa) => `${qa.question_en} ${qa.question_ne} ${qa.answer_en} ${qa.answer_ne} ${qa.tags.join(" ")}`.toLowerCase().includes(needle));
+  }, [query]);
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content}>
@@ -31,7 +41,14 @@ export default function Community() {
             <Pill tone="secondary">{language === "en" ? "Simple English" : "Spoken Nepali"}</Pill>
           </View>
           <Body muted>{language === "en" ? "Clear answers without heavy medical words. Switch to NE for spoken Nepali style." : "Common skincare doubt ko free simple answers. EN ma simple English version cha."}</Body>
-          {learnQAs.map((qa, index) => {
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search acne, sunscreen, hostel, makeup..."
+            placeholderTextColor={c.muted}
+            style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]}
+          />
+          {filteredQAs.map((qa, index) => {
             const gated = locked && index >= 12;
             return (
             <View key={qa.id} style={[styles.qaBlock, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
@@ -51,20 +68,43 @@ export default function Community() {
           <Card>
             <Pill>{t(language, "premium")}</Pill>
             <H2>{language === "en" ? "Ask-an-expert is premium" : "Ask-an-expert premium ho"}</H2>
-            <Body muted>{language === "en" ? "Premium can later include anonymous questions, expert validation badges, and clinic referral entry points." : "Premium ma anonymous questions, expert badges ra clinic referral entry points aauna sakcha."}</Body>
-            <Button label={t(language, "upgrade")} onPress={() => setTier("premium")} />
+            <Body muted>{language === "en" ? "Premium users can send a private question for admin/expert review." : "Premium users le private question review ko lagi pathauna sakchhan."}</Body>
+            <Button label={t(language, "upgrade")} onPress={() => router.push("/paywall" as never)} />
           </Card>
-        ) : questions.map((question) => (
-          <Card key={question.id}>
-            {question.verified ? <Pill tone="secondary">{t(language, "verified")}</Pill> : null}
-            <H2>{question.title[language]}</H2>
-            <Body>{question.answer[language]}</Body>
-            <View style={styles.voteRow}>
-              <Pill tone="primary">Helpful 24</Pill>
-              <Pill tone="accent">Clinic-safe</Pill>
-            </View>
-          </Card>
-        ))}
+        ) : (
+          <>
+            <Card>
+              <Pill tone="secondary">Premium</Pill>
+              <H2>Ask a private question</H2>
+              <Body muted>Write one clear skincare question. This creates a review request, not instant diagnosis.</Body>
+              <TextInput
+                value={expertQuestion}
+                onChangeText={setExpertQuestion}
+                placeholder="Example: Can I use salicylic acid with my current acne routine?"
+                placeholderTextColor={c.muted}
+                multiline
+                style={[styles.input, styles.textArea, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]}
+              />
+              {expertStatus ? <Body muted>{expertStatus}</Body> : null}
+              <Button label="Submit question" onPress={async () => {
+                const result = await submitExpertQuestion(expertQuestion, profile.name);
+                setExpertStatus(result.message);
+                if (result.ok) setExpertQuestion("");
+              }} />
+            </Card>
+            {questions.map((question) => (
+              <Card key={question.id}>
+                {question.verified ? <Pill tone="secondary">{t(language, "verified")}</Pill> : null}
+                <H2>{question.title[language]}</H2>
+                <Body>{question.answer[language]}</Body>
+                <View style={styles.voteRow}>
+                  <Pill tone="primary">Helpful 24</Pill>
+                  <Pill tone="accent">Clinic-safe</Pill>
+                </View>
+              </Card>
+            ))}
+          </>
+        )}
 
         <Card>
           <H2>{language === "en" ? "Clinic escalation" : "Clinic escalation"}</H2>
@@ -81,5 +121,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1, gap: spacing.xs },
   titleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
   voteRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
+  input: { borderWidth: 1, borderRadius: 8, minHeight: 46, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, fontSize: 15 },
+  textArea: { minHeight: 110, textAlignVertical: "top" },
   qaBlock: { gap: spacing.xs, padding: spacing.md, borderWidth: 1, borderRadius: 8, marginTop: spacing.sm }
 });

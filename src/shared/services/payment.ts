@@ -1,90 +1,73 @@
 import { premiumPlans } from "../monetization";
-import { PaymentProvider, PaymentState, SubscriptionInfo, SubscriptionPlanId } from "../types";
+import { PaymentProvider, PaymentRequest, SubscriptionInfo, SubscriptionPlanId } from "../types";
 
-export type CheckoutRequest = {
-  plan: SubscriptionPlanId;
+export type ManualPaymentInput = {
+  userId: string;
   provider: PaymentProvider;
-  userId?: string;
+  plan: Exclude<SubscriptionPlanId, "beta">;
+  transactionId: string;
+  payerName: string;
+  payerPhone: string;
+  screenshotUri: string;
+  screenshotDownloadUrl?: string;
 };
 
-export type CheckoutSession = {
-  id: string;
-  plan: SubscriptionPlanId;
-  provider: PaymentProvider;
-  amount: number;
-  currency: "NPR";
-  state: PaymentState;
-  redirectUrl: string;
-  sandbox: boolean;
-};
-
-export type PaymentVerification = {
+export type PaymentSubmissionResult = {
   ok: boolean;
-  state: PaymentState;
-  subscription?: SubscriptionInfo;
+  request?: PaymentRequest;
   message: string;
 };
 
-const sandboxMode = process.env.EXPO_PUBLIC_PAYMENT_MODE !== "production";
+export function createManualPaymentRequest(input: ManualPaymentInput): PaymentSubmissionResult {
+  const cleanTransaction = input.transactionId.trim();
+  const cleanName = input.payerName.trim();
+  const cleanPhone = input.payerPhone.trim();
+  if (!cleanTransaction) return { ok: false, message: "Transaction ID is required." };
+  if (!cleanName) return { ok: false, message: "Payer name is required." };
+  if (!cleanPhone) return { ok: false, message: "Payer phone is required." };
+  if (!input.screenshotUri) return { ok: false, message: "Payment screenshot is required." };
 
-export async function createCheckout({ plan, provider, userId = "local-demo-user" }: CheckoutRequest): Promise<CheckoutSession> {
-  const planInfo = premiumPlans[plan];
-  const sessionId = `prabha_${provider}_${plan}_${Date.now()}`;
-  const encoded = encodeURIComponent(JSON.stringify({ sessionId, plan, provider, userId, amount: planInfo.amount }));
+  const planInfo = premiumPlans[input.plan];
+  const now = new Date().toISOString();
   return {
-    id: sessionId,
-    plan,
-    provider,
-    amount: planInfo.amount,
-    currency: "NPR",
-    state: "pending",
-    redirectUrl: sandboxMode ? `prabha://payment/sandbox?payload=${encoded}` : productionPaymentUrl(provider, encoded),
-    sandbox: sandboxMode
-  };
-}
-
-export async function verifyPayment(transactionId: string, provider: PaymentProvider, plan: SubscriptionPlanId): Promise<PaymentVerification> {
-  const cleanId = transactionId.trim();
-  if (!cleanId) {
-    return { ok: false, state: "failed", message: "Transaction ID is required for verification." };
-  }
-
-  if (sandboxMode) {
-    if (!cleanId.toUpperCase().startsWith("SANDBOX")) {
-      return { ok: false, state: "failed", message: "Sandbox mode only accepts transaction IDs starting with SANDBOX." };
+    ok: true,
+    message: "Payment submitted for review. Premium unlocks after confirmation.",
+    request: {
+      id: `pay_${input.provider}_${Date.now()}`,
+      userId: input.userId,
+      provider: input.provider,
+      plan: input.plan,
+      amount: planInfo.amount,
+      transactionId: cleanTransaction,
+      payerName: cleanName,
+      payerPhone: cleanPhone,
+      screenshotUri: input.screenshotUri,
+      screenshotDownloadUrl: input.screenshotDownloadUrl,
+      status: "pending_review",
+      createdAt: now
     }
-    return {
-      ok: true,
-      state: "active",
-      subscription: activateSubscription("local-demo-user", plan, provider, cleanId),
-      message: `${provider} sandbox verification accepted. Replace with server verification before launch.`
-    };
-  }
-
-  return {
-    ok: false,
-    state: "failed",
-    message: "Production verification must happen on a secure backend with Khalti/eSewa merchant credentials."
   };
 }
 
-export function activateSubscription(userId: string, plan: SubscriptionPlanId, source: PaymentProvider | "beta", transactionId?: string): SubscriptionInfo {
+export function activateSubscriptionFromRequest(request: PaymentRequest): SubscriptionInfo {
   const now = new Date();
   const expires = new Date(now);
-  expires.setMonth(expires.getMonth() + (plan === "yearly" ? 12 : 1));
+  expires.setMonth(expires.getMonth() + (request.plan === "yearly" ? 12 : 1));
   return {
-    status: plan === "beta" ? "trial" : "premium",
+    status: "premium",
     tier: "premium",
-    source,
-    plan,
+    source: request.provider === "esewa" ? "manual_esewa" : "manual_khalti",
+    plan: request.plan,
     startedAt: now.toISOString(),
     expiresAt: expires.toISOString(),
-    providerTransactionId: transactionId ?? `${source}-${userId}-${now.getTime()}`,
-    paymentState: "active"
+    providerTransactionId: request.transactionId,
+    paymentState: "active",
+    paymentRequestId: request.id
   };
 }
 
-function productionPaymentUrl(provider: PaymentProvider, payload: string) {
-  if (provider === "khalti") return `https://pay.khalti.com/?prabha_payload=${payload}`;
-  return `https://esewa.com.np/?prabha_payload=${payload}`;
+export function isSubscriptionActive(subscription: SubscriptionInfo) {
+  if (subscription.tier !== "premium") return false;
+  if (!subscription.expiresAt) return subscription.status === "premium" || subscription.status === "trial";
+  return new Date(subscription.expiresAt).getTime() > Date.now();
 }

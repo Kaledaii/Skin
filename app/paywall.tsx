@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect } from "react";
-import { Linking, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { Image, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { useState } from "react";
 import { useApp } from "@/shared/AppContext";
 import { Body, BrandMark, Button, Card, H1, H2, Pill, Screen, SectionLabel, Segment } from "@/shared/components";
@@ -12,12 +12,18 @@ import { spacing } from "@/shared/theme";
 import { PaymentProvider, SubscriptionPlanId } from "@/shared/types";
 
 export default function Paywall() {
-  const { language, themeMode, paymentState, lastCheckout, startCheckout, confirmPayment, activatePremium } = useApp();
+  const { language, themeMode, paymentState, paymentRequests, submitManualPayment, pickPaymentScreenshot, activatePremium } = useApp();
   const c = palettes[themeMode];
-  const [plan, setPlan] = useState<SubscriptionPlanId>("beta");
+  const [plan, setPlan] = useState<Exclude<SubscriptionPlanId, "beta">>("monthly");
   const [provider, setProvider] = useState<PaymentProvider>("khalti");
   const [transactionId, setTransactionId] = useState("");
+  const [payerName, setPayerName] = useState("");
+  const [payerPhone, setPayerPhone] = useState("");
+  const [screenshotUri, setScreenshotUri] = useState<string | undefined>();
   const [message, setMessage] = useState<string | null>(null);
+  const adminMode = process.env.EXPO_PUBLIC_ADMIN_MODE === "true";
+  const qrUri = provider === "esewa" ? process.env.EXPO_PUBLIC_ESEWA_QR_URL : process.env.EXPO_PUBLIC_KHALTI_QR_URL;
+  const pending = paymentRequests.find((item) => item.status === "pending_review");
   useEffect(() => {
     trackEvent("paywall_viewed", { screen: "paywall" });
   }, []);
@@ -50,48 +56,66 @@ export default function Paywall() {
           <Pill tone="accent">Web/PWA paid beta</Pill>
           <H2>{premiumPlans[plan].price} - {premiumPlans[plan].label}</H2>
           <Body muted>{premiumPlans[plan].note}</Body>
-          <Segment value={plan} options={["beta", "monthly", "yearly"] as SubscriptionPlanId[]} onChange={setPlan} />
+          <Segment value={plan} options={["monthly", "yearly"] as Array<Exclude<SubscriptionPlanId, "beta">>} onChange={setPlan} />
           <Segment value={provider} options={["khalti", "esewa"] as PaymentProvider[]} onChange={setProvider} />
-          <Button
-            label={`Start ${provider} checkout`}
-            onPress={async () => {
-              trackEvent("payment_started", { plan, provider });
-              const session = await startCheckout(plan, provider);
-              setMessage(session.sandbox ? "Sandbox checkout created. Use transaction ID SANDBOX-123 to test premium unlock." : "Production checkout created. Complete payment in provider flow.");
-              if (!session.sandbox) Linking.openURL(session.redirectUrl);
-            }}
+          <View style={[styles.qrBox, { borderColor: c.border, backgroundColor: c.surfaceAlt }]}>
+            {qrUri ? <Image source={{ uri: qrUri }} style={styles.qrImage} resizeMode="contain" /> : <BrandMark />}
+            <Body muted>{qrUri ? `Scan ${provider} QR and pay ${premiumPlans[plan].price}.` : `Add ${provider} QR URL in env to show real QR here. Until then, send users your official QR manually.`}</Body>
+          </View>
+          <TextInput
+            value={payerName}
+            onChangeText={setPayerName}
+            placeholder="Payer name"
+            placeholderTextColor={c.muted}
+            style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]}
+          />
+          <TextInput
+            value={payerPhone}
+            onChangeText={setPayerPhone}
+            placeholder="Payer phone"
+            keyboardType="phone-pad"
+            placeholderTextColor={c.muted}
+            style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]}
           />
           <TextInput
             value={transactionId}
             onChangeText={setTransactionId}
-            placeholder="Sandbox transaction ID: SANDBOX-123"
+            placeholder="eSewa/Khalti transaction ID"
             placeholderTextColor={c.muted}
             style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]}
           />
+          {screenshotUri ? <Image source={{ uri: screenshotUri }} style={styles.screenshot} resizeMode="cover" /> : null}
           <Button
-            label={paymentState === "verifying" ? "Verifying..." : "Verify payment"}
+            label={screenshotUri ? "Payment screenshot selected" : "Upload payment screenshot"}
             onPress={async () => {
-              const result = await confirmPayment(transactionId);
-              setMessage(result.message);
-              trackEvent(result.ok ? "payment_succeeded" : "payment_failed", { plan, provider, state: result.state });
-              if (result.ok) router.replace("/(tabs)/home" as never);
+              const uri = await pickPaymentScreenshot();
+              if (uri) setScreenshotUri(uri);
             }}
             secondary
           />
-          <Body muted>Status: {paymentState}. {lastCheckout ? `Checkout ${lastCheckout.id}` : "No checkout yet."}</Body>
+          <Button
+            label={paymentState === "pending" ? "Submitting..." : "Submit for review"}
+            onPress={async () => {
+              trackEvent("payment_started", { plan, provider });
+              const result = await submitManualPayment({ provider, plan, transactionId, payerName, payerPhone, screenshotUri: screenshotUri ?? "" });
+              setMessage(result.message);
+              trackEvent(result.ok ? "payment_succeeded" : "payment_failed", { plan, provider, state: result.request?.status ?? "failed" });
+            }}
+          />
+          <Body muted>Status: {pending ? "pending review" : paymentState}. {pending ? `Request ${pending.id}` : "No pending request yet."}</Body>
           {message ? <Body>{message}</Body> : null}
         </Card>
 
-        <Card>
+        {adminMode ? <Card>
           <H2>Developer beta access</H2>
-          <Body>Use only for testing locked premium screens without payment. Production must use Khalti/eSewa verification.</Body>
+          <Body>Use only for testing locked premium screens without payment. Real users should submit QR payment for review.</Body>
           <View style={styles.planRow}>
-            <Pill tone="primary">Sandbox IDs start with SANDBOX</Pill>
+            <Pill tone="primary">Admin mode enabled</Pill>
             <Pill tone="secondary">Khalti + eSewa first</Pill>
-            <Pill tone="accent">Stripe later</Pill>
+            <Pill tone="accent">Manual review beta</Pill>
           </View>
           <Button label="Developer unlock beta premium" onPress={() => activatePremium("beta", "beta")} secondary />
-        </Card>
+        </Card> : null}
       </ScrollView>
     </Screen>
   );
@@ -103,5 +127,8 @@ const styles = StyleSheet.create({
   flex: { flex: 1, gap: spacing.xs },
   featureRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   planRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
+  qrBox: { borderWidth: 1, borderRadius: 12, padding: spacing.md, gap: spacing.sm, alignItems: "center" },
+  qrImage: { width: 190, height: 190, borderRadius: 8 },
+  screenshot: { width: "100%", height: 180, borderRadius: 8 },
   input: { borderWidth: 1, borderRadius: 8, minHeight: 46, paddingHorizontal: spacing.md, fontSize: 15 }
 });

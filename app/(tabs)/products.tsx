@@ -13,7 +13,7 @@ import { trackEvent } from "@/shared/services/analytics";
 type ProductSort = "recommended" | "priceLow" | "priceHigh" | "trustHigh" | "sponsoredLast";
 
 export default function Products() {
-  const { language, themeMode, profile, updateProfile, tier } = useApp();
+  const { language, themeMode, profile, updateProfile, tier, savedProductIds, toggleSavedProduct } = useApp();
   const c = palettes[themeMode];
   const [sortBy, setSortBy] = useState<ProductSort>("recommended");
   const filtered = launchProducts.filter((item) => item.fit.includes(profile.skinType) && (tier === "premium" || item.budgetTier === profile.budgetTier));
@@ -103,7 +103,8 @@ export default function Products() {
         </Card>
 
         {visibleProducts.map((item, index) => {
-          const locked = tier !== "premium" && index >= 6;
+          const locked = tier !== "premium" && index >= 10;
+          const saved = savedProductIds.includes(item.id);
           return (
           <Card key={item.id}>
             <View style={[styles.productAccent, { backgroundColor: c.primary }]} />
@@ -125,6 +126,7 @@ export default function Products() {
               <Pill tone="primary">{item.category}</Pill>
               <Pill tone="secondary">Trust {item.trustScore}%</Pill>
               <Pill tone={item.fakeRisk === "high" ? "danger" : item.fakeRisk === "low" ? "secondary" : "accent"}>Fake risk {item.fakeRisk ?? "medium"}</Pill>
+              <Button label={saved ? "Saved" : "Save"} onPress={() => toggleSavedProduct(item.id)} secondary />
               <Button
                 label={locked ? "Unlock smart match" : "Daraz / Pharmacy"}
                 onPress={() => {

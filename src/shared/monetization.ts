@@ -1,9 +1,9 @@
 import { SubscriptionTier } from "./types";
 
 export const premiumPlans = {
-  monthly: { id: "monthly", label: "Monthly", price: "Rs. 199", amount: 199, note: "Best for trying the full skin companion." },
-  yearly: { id: "yearly", label: "Yearly", price: "Rs. 1999", amount: 1999, note: "2 months free for serious progress tracking." },
-  beta: { id: "beta", label: "Beta launch", price: "Rs. 99", amount: 99, note: "First month launch offer for early users." }
+  monthly: { id: "monthly", label: "Monthly", price: "Rs. 100", amount: 100, note: "Full Prabha premium for one month." },
+  yearly: { id: "yearly", label: "Yearly", price: "Rs. 1000", amount: 1000, note: "Best value for year-round skin tracking." },
+  beta: { id: "beta", label: "Admin beta", price: "Manual", amount: 0, note: "Developer/admin test unlock only." }
 } as const;
 
 export const premiumFeatures = [

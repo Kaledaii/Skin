@@ -2,10 +2,11 @@ export type Language = "en" | "ne";
 export type ThemeMode = "light" | "dark";
 export type SubscriptionTier = "free" | "premium";
 export type SubscriptionStatus = "free" | "trial" | "premium" | "expired";
-export type SubscriptionSource = "manual" | "beta" | "esewa" | "khalti" | "stripe" | "demo";
+export type SubscriptionSource = "manual" | "manual_esewa" | "manual_khalti" | "admin_beta" | "beta" | "esewa" | "khalti" | "stripe" | "demo";
 export type PaymentProvider = "khalti" | "esewa";
 export type SubscriptionPlanId = "monthly" | "yearly" | "beta";
-export type PaymentState = "idle" | "pending" | "verifying" | "active" | "failed" | "expired";
+export type PaymentState = "idle" | "pending" | "pending_review" | "verifying" | "active" | "failed" | "rejected" | "expired";
+export type PaymentRequestStatus = "pending_review" | "approved" | "rejected";
 export type SkinType = "oily" | "dry" | "combination" | "sensitive";
 export type Gender = "female" | "male" | "nonbinary" | "preferNot";
 export type BudgetTier = "under200" | "200to500" | "500plus";
@@ -39,6 +40,24 @@ export type SubscriptionInfo = {
   providerTransactionId?: string;
   paymentState?: PaymentState;
   lastPaymentError?: string;
+  paymentRequestId?: string;
+};
+
+export type PaymentRequest = {
+  id: string;
+  userId: string;
+  provider: PaymentProvider;
+  plan: Exclude<SubscriptionPlanId, "beta">;
+  amount: number;
+  transactionId: string;
+  payerName: string;
+  payerPhone: string;
+  screenshotUri: string;
+  screenshotDownloadUrl?: string;
+  status: PaymentRequestStatus;
+  createdAt: string;
+  reviewedAt?: string;
+  reviewNote?: string;
 };
 
 export type RoutineStep = {

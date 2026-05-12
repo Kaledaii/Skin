@@ -2,9 +2,21 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from "react";
 import { getDefaultQuizProfile } from "./knowledge/engine";
-import { activateSubscription as buildSubscription, CheckoutSession, createCheckout, PaymentVerification, verifyPayment } from "./services/payment";
-import { syncUserSnapshot, deleteCloudSnapshot } from "./services/firebaseSync";
-import { BudgetTier, DailyCheckIn, Language, PaymentProvider, PaymentState, SkinType, SubscriptionInfo, SubscriptionPlanId, SubscriptionTier, ThemeMode, UserProfile } from "./types";
+import { activateSubscriptionFromRequest, createManualPaymentRequest, isSubscriptionActive, PaymentSubmissionResult } from "./services/payment";
+import {
+  AuthResult,
+  deleteCloudSnapshot,
+  ensureAnonymousUser,
+  listPaymentRequests,
+  loadRemoteSubscription,
+  savePaymentRequest,
+  signInWithEmail,
+  signUpWithEmail,
+  syncUserSnapshot,
+  updatePaymentRequest,
+  uploadPaymentScreenshot
+} from "./services/firebaseSync";
+import { BudgetTier, DailyCheckIn, Language, PaymentProvider, PaymentRequest, PaymentState, SkinType, SubscriptionInfo, SubscriptionPlanId, SubscriptionTier, ThemeMode, UserProfile } from "./types";
 
 type AppState = {
   language: Language;
@@ -15,10 +27,17 @@ type AppState = {
   setTier: (value: SubscriptionTier) => void;
   subscription: SubscriptionInfo;
   paymentState: PaymentState;
-  lastCheckout?: CheckoutSession;
   activatePremium: (source?: SubscriptionInfo["source"], plan?: SubscriptionInfo["plan"]) => void;
-  startCheckout: (plan: SubscriptionPlanId, provider: PaymentProvider) => Promise<CheckoutSession>;
-  confirmPayment: (transactionId: string) => Promise<PaymentVerification>;
+  submitManualPayment: (input: { provider: PaymentProvider; plan: Exclude<SubscriptionPlanId, "beta">; transactionId: string; payerName: string; payerPhone: string; screenshotUri: string }) => Promise<PaymentSubmissionResult>;
+  approvePaymentRequest: (id: string, note?: string) => Promise<string>;
+  rejectPaymentRequest: (id: string, note: string) => Promise<string>;
+  refreshPaymentRequests: () => Promise<void>;
+  paymentRequests: PaymentRequest[];
+  pickPaymentScreenshot: () => Promise<string | undefined>;
+  loadSubscription: () => Promise<void>;
+  signInAnonymously: () => Promise<AuthResult>;
+  signUpWithEmail: (email: string, password: string) => Promise<AuthResult>;
+  signInWithEmail: (email: string, password: string) => Promise<AuthResult>;
   profile: UserProfile;
   updateProfile: (patch: Partial<UserProfile>) => void;
   updateQuiz: (section: "lifestyle" | "environment" | "currentRoutine", key: string, value: string) => void;
@@ -27,11 +46,13 @@ type AppState = {
   toggleCompletion: (id: string) => void;
   likedTipIds: string[];
   savedTipIds: string[];
+  savedProductIds: string[];
   dailyCheckIns: Record<string, DailyCheckIn>;
   todayCheckIn: DailyCheckIn;
   updateTodayCheckIn: (patch: Partial<DailyCheckIn>) => void;
   toggleLikedTip: (id: string) => void;
   toggleSavedTip: (id: string) => void;
+  toggleSavedProduct: (id: string) => void;
   pickSelfie: () => Promise<void>;
   exportData: () => string;
   deleteCloudData: () => Promise<string>;
@@ -61,11 +82,12 @@ export function AppProvider({ children }: PropsWithChildren) {
   const [tier, setTierState] = useState<SubscriptionTier>("free");
   const [subscription, setSubscription] = useState<SubscriptionInfo>({ status: "free", tier: "free", source: "demo" });
   const [paymentState, setPaymentState] = useState<PaymentState>("idle");
-  const [lastCheckout, setLastCheckout] = useState<CheckoutSession | undefined>();
+  const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
   const [profile, setProfile] = useState<UserProfile>(defaultProfile);
   const [completion, setCompletion] = useState<Record<string, boolean>>({});
   const [likedTipIds, setLikedTipIds] = useState<string[]>([]);
   const [savedTipIds, setSavedTipIds] = useState<string[]>([]);
+  const [savedProductIds, setSavedProductIds] = useState<string[]>([]);
   const [dailyCheckIns, setDailyCheckIns] = useState<Record<string, DailyCheckIn>>({});
   const today = getTodayKey();
   const todayCheckIn = dailyCheckIns[today] ?? createDefaultCheckIn(today, profile);
@@ -89,17 +111,31 @@ export function AppProvider({ children }: PropsWithChildren) {
         setProfile(legacySeed ? { ...defaultProfile, ...parsed.profile, symptoms: [], quiz: getDefaultQuizProfile() } : nextProfile);
       }
       if (parsed.completion) setCompletion(parsed.completion);
-      const parsedState = JSON.parse(raw) as { likedTipIds?: string[]; savedTipIds?: string[] };
+      const parsedState = JSON.parse(raw) as { likedTipIds?: string[]; savedTipIds?: string[]; savedProductIds?: string[] };
       if (parsedState.likedTipIds) setLikedTipIds(parsedState.likedTipIds);
       if (parsedState.savedTipIds) setSavedTipIds(parsedState.savedTipIds);
+      if (parsedState.savedProductIds) setSavedProductIds(parsedState.savedProductIds);
       const checkInState = JSON.parse(raw) as { dailyCheckIns?: Record<string, DailyCheckIn> };
       if (checkInState.dailyCheckIns) setDailyCheckIns(checkInState.dailyCheckIns);
+      const paymentState = JSON.parse(raw) as { paymentState?: PaymentState; paymentRequests?: PaymentRequest[] };
+      if (paymentState.paymentState) setPaymentState(paymentState.paymentState);
+      if (paymentState.paymentRequests) setPaymentRequests(paymentState.paymentRequests);
     });
   }, []);
 
   useEffect(() => {
-    AsyncStorage.setItem("skin-nepal-state", JSON.stringify({ language, themeMode, tier, subscription, paymentState, profile, completion, likedTipIds, savedTipIds, dailyCheckIns }));
-  }, [language, themeMode, tier, subscription, paymentState, profile, completion, likedTipIds, savedTipIds, dailyCheckIns]);
+    AsyncStorage.setItem("skin-nepal-state", JSON.stringify({ language, themeMode, tier, subscription, paymentState, paymentRequests, profile, completion, likedTipIds, savedTipIds, savedProductIds, dailyCheckIns }));
+  }, [language, themeMode, tier, subscription, paymentState, paymentRequests, profile, completion, likedTipIds, savedTipIds, savedProductIds, dailyCheckIns]);
+
+  useEffect(() => {
+    ensureAnonymousUser().then(() => loadRemoteSubscription().then((remote) => {
+      if (remote && isSubscriptionActive(remote)) {
+        setSubscription(remote);
+        setTierState("premium");
+        setPaymentState(remote.paymentState ?? "active");
+      }
+    })).catch(() => undefined);
+  }, []);
 
   const value = useMemo<AppState>(() => ({
     language,
@@ -118,33 +154,91 @@ export function AppProvider({ children }: PropsWithChildren) {
     },
     subscription,
     paymentState,
-    lastCheckout,
     activatePremium: (source = "beta", plan = "beta") => {
-      const nextSubscription = buildSubscription("local-dev", plan ?? "beta", source === "khalti" || source === "esewa" ? source : "beta");
+      const now = new Date();
+      const expires = new Date(now);
+      expires.setMonth(expires.getMonth() + 1);
+      const nextSubscription: SubscriptionInfo = {
+        status: "trial",
+        tier: "premium",
+        source: source === "beta" ? "admin_beta" : source,
+        plan: plan ?? "beta",
+        startedAt: now.toISOString(),
+        expiresAt: expires.toISOString(),
+        providerTransactionId: `admin-${now.getTime()}`,
+        paymentState: "active"
+      };
       setTierState("premium");
       setPaymentState("active");
-      setSubscription({ ...nextSubscription, source });
+      setSubscription(nextSubscription);
     },
-    startCheckout: async (plan, provider) => {
+    submitManualPayment: async (input) => {
       setPaymentState("pending");
-      const session = await createCheckout({ plan, provider, userId: profile.name || "local-demo-user" });
-      setLastCheckout(session);
-      return session;
-    },
-    confirmPayment: async (transactionId) => {
-      if (!lastCheckout) return { ok: false, state: "failed", message: "Start a Khalti/eSewa checkout before verifying." };
-      setPaymentState("verifying");
-      const result = await verifyPayment(transactionId, lastCheckout.provider, lastCheckout.plan);
-      setPaymentState(result.state);
-      if (result.subscription) {
-        setTierState("premium");
-        setSubscription(result.subscription);
-        await syncUserSnapshot({ profile, subscription: result.subscription, dailyCheckIns });
-      } else {
-        setSubscription((current) => ({ ...current, paymentState: result.state, lastPaymentError: result.message }));
+      const draftId = `pay_${input.provider}_${Date.now()}`;
+      let screenshotDownloadUrl: string | undefined;
+      try {
+        screenshotDownloadUrl = await uploadPaymentScreenshot(input.screenshotUri, draftId);
+      } catch {
+        screenshotDownloadUrl = undefined;
       }
-      return result;
+      const result = createManualPaymentRequest({ ...input, userId: profile.name || "local-demo-user", screenshotDownloadUrl });
+      if (!result.ok || !result.request) {
+        setPaymentState("failed");
+        return result;
+      }
+      const request = { ...result.request, id: draftId };
+      await savePaymentRequest(request);
+      setPaymentRequests((current) => [request, ...current.filter((item) => item.id !== request.id)]);
+      setPaymentState("pending_review");
+      await syncUserSnapshot({ profile, subscription: { ...subscription, paymentState: "pending_review" }, dailyCheckIns, paymentRequests: [request, ...paymentRequests] });
+      return { ...result, request };
     },
+    approvePaymentRequest: async (id, note = "Approved") => {
+      const request = paymentRequests.find((item) => item.id === id);
+      if (!request) return "Payment request not found.";
+      const reviewed: PaymentRequest = { ...request, status: "approved", reviewedAt: new Date().toISOString(), reviewNote: note };
+      const nextSubscription = activateSubscriptionFromRequest(reviewed);
+      await updatePaymentRequest(reviewed);
+      await syncUserSnapshot({ profile, subscription: nextSubscription, dailyCheckIns, paymentRequests: paymentRequests.map((item) => item.id === id ? reviewed : item) });
+      setPaymentRequests((current) => current.map((item) => item.id === id ? reviewed : item));
+      setSubscription(nextSubscription);
+      setTierState("premium");
+      setPaymentState("active");
+      return "Payment approved and premium activated.";
+    },
+    rejectPaymentRequest: async (id, note) => {
+      const request = paymentRequests.find((item) => item.id === id);
+      if (!request) return "Payment request not found.";
+      const reviewed: PaymentRequest = { ...request, status: "rejected", reviewedAt: new Date().toISOString(), reviewNote: note || "Rejected" };
+      await updatePaymentRequest(reviewed);
+      setPaymentRequests((current) => current.map((item) => item.id === id ? reviewed : item));
+      setPaymentState("rejected");
+      return "Payment request rejected.";
+    },
+    refreshPaymentRequests: async () => {
+      const result = await listPaymentRequests();
+      if (result.ok) setPaymentRequests(result.requests);
+    },
+    paymentRequests,
+    pickPaymentScreenshot: async () => {
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
+      return result.canceled ? undefined : result.assets[0]?.uri;
+    },
+    loadSubscription: async () => {
+      const remote = await loadRemoteSubscription();
+      if (remote && isSubscriptionActive(remote)) {
+        setSubscription(remote);
+        setTierState("premium");
+        setPaymentState(remote.paymentState ?? "active");
+      } else if (subscription.expiresAt && new Date(subscription.expiresAt).getTime() <= Date.now()) {
+        setSubscription((current) => ({ ...current, status: "expired", tier: "free", paymentState: "expired" }));
+        setTierState("free");
+        setPaymentState("expired");
+      }
+    },
+    signInAnonymously: ensureAnonymousUser,
+    signUpWithEmail,
+    signInWithEmail,
     profile,
     updateProfile: (patch) => setProfile((current) => ({ ...current, ...patch })),
     updateQuiz: (section, key, optionValue) => setProfile((current) => ({
@@ -173,6 +267,7 @@ export function AppProvider({ children }: PropsWithChildren) {
     toggleCompletion: (id) => setCompletion((current) => ({ ...current, [id]: !current[id] })),
     likedTipIds,
     savedTipIds,
+    savedProductIds,
     dailyCheckIns,
     todayCheckIn,
     updateTodayCheckIn: (patch) => setDailyCheckIns((current) => ({
@@ -181,11 +276,12 @@ export function AppProvider({ children }: PropsWithChildren) {
     })),
     toggleLikedTip: (id) => setLikedTipIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id])),
     toggleSavedTip: (id) => setSavedTipIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id])),
+    toggleSavedProduct: (id) => setSavedProductIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id])),
     pickSelfie: async () => {
       const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.75 });
       if (!result.canceled) setProfile((current) => ({ ...current, selfieUri: result.assets[0]?.uri }));
     },
-    exportData: () => JSON.stringify({ language, themeMode, tier, subscription, profile, completion, likedTipIds, savedTipIds, dailyCheckIns }, null, 2),
+    exportData: () => JSON.stringify({ language, themeMode, tier, subscription, paymentState, paymentRequests, profile, completion, likedTipIds, savedTipIds, savedProductIds, dailyCheckIns }, null, 2),
     deleteCloudData: async () => {
       const result = await deleteCloudSnapshot();
       return result.ok ? "Cloud data delete request completed." : "Cloud delete is unavailable in local demo mode.";
@@ -197,14 +293,15 @@ export function AppProvider({ children }: PropsWithChildren) {
       setTierState("free");
       setSubscription({ status: "free", tier: "free", source: "demo" });
       setPaymentState("idle");
-      setLastCheckout(undefined);
+      setPaymentRequests([]);
       setProfile(defaultProfile);
       setCompletion({});
       setLikedTipIds([]);
       setSavedTipIds([]);
+      setSavedProductIds([]);
       setDailyCheckIns({});
     }
-  }), [completion, language, profile, themeMode, tier, subscription, paymentState, lastCheckout, likedTipIds, savedTipIds, dailyCheckIns, today, todayCheckIn]);
+  }), [completion, language, profile, themeMode, tier, subscription, paymentState, paymentRequests, likedTipIds, savedTipIds, savedProductIds, dailyCheckIns, today, todayCheckIn]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

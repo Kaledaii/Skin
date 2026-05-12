@@ -51,7 +51,9 @@ export function calculateSkinHabitScore({ completion, routineSteps, profile, che
   const lifestyleReward =
     (movementToday === "regular" ? 2 : 0) +
     (profile.quiz.lifestyle.diet === "home_cooked" || profile.quiz.lifestyle.diet === "mostly_dal_bhat" ? 2 : 0);
-  const lifestyle = Math.max(0, Math.min(20, lifestyleBase - lifestylePenalty + lifestyleReward));
+  // Normalize penalty to max 15 so even with multiple issues, user still gets 5 baseline points
+  const normalizedPenalty = Math.min(15, lifestylePenalty);
+  const lifestyle = Math.max(0, Math.min(20, lifestyleBase - normalizedPenalty + lifestyleReward));
   const weatherReadiness = calculateWeatherReadiness(weatherActions, checkIn, profile);
   const logs = Math.min(5, (profile.selfieUri || checkIn.selfieUri ? 2 : 0) + (checkIn.skinNote ? 2 : 0) + (checkIn.moodNote ? 1 : 0));
 

@@ -41,6 +41,7 @@ const symptomsToShow = [
 export default function Onboarding() {
   const { language, setLanguage, themeMode, profile, updateProfile, updateQuiz, toggleQuizArray, pickSelfie } = useApp();
   const c = palettes[themeMode];
+  const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const symptoms = knowledgeBase.quiz_fields.symptoms.filter((symptom) => symptomsToShow.includes(symptom));
   const answeredCount =
     Number(Boolean(profile.name)) +
@@ -69,6 +70,11 @@ export default function Onboarding() {
           <View style={styles.progressHeader}>
             <Pill tone="secondary">{language === "en" ? "Quiz progress" : "Quiz progress"}</Pill>
             <Text style={[styles.percent, { color: c.primary }]}>{quizPercent}%</Text>
+          </View>
+          <View style={styles.wrap}>
+            <Pill tone="primary">8 sections</Pill>
+            <Pill tone={profile.quiz.primaryConcerns.length || profile.quiz.symptoms.length ? "secondary" : "accent"}>Concern required</Pill>
+            <Pill tone={profile.consentAccepted ? "secondary" : "accent"}>Consent required</Pill>
           </View>
           <ProgressBar value={quizPercent} color={c.primary} />
         </Card>
@@ -200,8 +206,24 @@ export default function Onboarding() {
           </Pressable>
         </Card>
 
+        {validationMessage ? (
+          <Card variant="accent">
+            <H2>Almost there</H2>
+            <Body>{validationMessage}</Body>
+          </Card>
+        ) : null}
+
         <Button label={profile.consentAccepted ? t(language, "start") : "Accept consent to continue"} onPress={() => {
-          if (profile.consentAccepted) router.replace("/(tabs)/home");
+          if (!profile.consentAccepted) {
+            setValidationMessage(language === "en" ? "Please accept privacy consent to continue." : "Privacy consent accept garnu hos.");
+            return;
+          }
+          if (!profile.quiz.primaryConcerns.length && !profile.quiz.symptoms.length) {
+            setValidationMessage(language === "en" ? "Please select at least one symptom or primary concern so Prabha can personalize your plan." : "Personalized plan ko lagi at least one symptom wa primary concern channuhos.");
+            return;
+          }
+          setValidationMessage(null);
+          router.replace("/(tabs)/home");
         }} />
       </ScrollView>
     </Screen>

@@ -59,7 +59,7 @@ export function AppAtmosphere({ children }: PropsWithChildren) {
         duration: 18000 + index * 1150,
         delay: index * 520,
         tint: index % 4 === 0 ? c.primary : index % 4 === 1 ? c.blush : index % 4 === 2 ? c.secondary : c.accent,
-        opacity: themeMode === "dark" ? 0.12 : 0.08,
+        opacity: themeMode === "dark" ? 0.22 : 0.18,
         value: new Animated.Value(0)
       })),
     [c.accent, c.blush, c.primary, c.secondary, themeMode]

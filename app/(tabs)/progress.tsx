@@ -1,8 +1,9 @@
 import { Feather } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { ComponentProps } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { AccessibilityInfo, Animated, Image, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
 import { LineChart } from "react-native-chart-kit";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { router } from "expo-router";
 import { useApp } from "@/shared/AppContext";
 import { Body, BrandMark, Button, Card, H1, H2, Pill, ProgressBar, Screen, SectionLabel, SignalCard, ToggleGroup } from "@/shared/components";
@@ -32,14 +33,32 @@ export default function Progress() {
   const premiumLocked = tier !== "premium";
   const environment = useEnvironmentalData();
   const [activeScoreInfo, setActiveScoreInfo] = useState<string | null>(null);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
   const routine = useMemo(() => generateRoutine(profile.quiz), [profile.quiz]);
   const weatherActions = useMemo(() => (environment.data ? buildWeatherActions(environment.data) : []), [environment.data]);
   const habitScore = calculateSkinHabitScore({ completion, routineSteps: [...routine.morning, ...routine.evening], profile, checkIn: todayCheckIn, weatherActions });
   const lifestyleSignals = useMemo(() => buildLifestyleSignals(profile, todayCheckIn), [profile, todayCheckIn]);
   const weeklyReport = useMemo(() => buildWeeklySkinReport(profile, todayCheckIn, habitScore), [profile, todayCheckIn, habitScore]);
 
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReducedMotion).catch(() => setReducedMotion(false));
+  }, []);
+
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    if (habitScore.score < 100) return;
+    AsyncStorage.getItem(`prabha-celebrated-${today}`).then((value) => {
+      if (value) return;
+      setShowCelebration(true);
+      AsyncStorage.setItem(`prabha-celebrated-${today}`, "yes");
+      setTimeout(() => setShowCelebration(false), reducedMotion ? 4200 : 3600);
+    });
+  }, [habitScore.score, reducedMotion]);
+
   return (
     <Screen>
+      {showCelebration ? <Celebration reducedMotion={reducedMotion} colors={c} /> : null}
       <ScrollView contentContainerStyle={styles.content}>
         <H1>{t(language, "progress")}</H1>
         <Card variant="hero">
@@ -95,6 +114,7 @@ export default function Progress() {
             </View>
           ) : null}
           {premiumLocked ? <Button label="Unlock weekly report" onPress={() => router.push("/paywall" as never)} /> : null}
+          {!premiumLocked ? <Button label="Share progress report" onPress={() => shareReport(weeklyReport.summary, habitScore.score)} secondary /> : null}
         </Card>
 
         <Card>
@@ -216,6 +236,19 @@ export default function Progress() {
         </Card>
 
         <Card>
+          <H2>Photo timeline preview</H2>
+          <Body muted>Weekly photos stay private and help you compare lighting, marks, dryness, and glow over time.</Body>
+          <View style={styles.timelineRow}>
+            {[0, 1, 2].map((index) => (
+              <View key={index} style={[styles.timelineSlot, { borderColor: c.border, backgroundColor: c.surfaceAlt }]}>
+                {index === 0 && profile.selfieUri ? <Image source={{ uri: profile.selfieUri }} style={styles.timelineImage} /> : <Feather name="camera" color={c.muted} size={20} />}
+                <Text style={[styles.scoreLabel, { color: c.muted }]}>Week {index + 1}</Text>
+              </View>
+            ))}
+          </View>
+        </Card>
+
+        <Card>
           <H2>{language === "en" ? "Consistency" : "Consistency"}</H2>
           <Body>{`You completed ${habitScore.parts.routine}/30 routine points today. Keep it kind and consistent.`}</Body>
           {premiumLocked ? (
@@ -310,6 +343,44 @@ export default function Progress() {
   }
 }
 
+function Celebration({ reducedMotion, colors }: { reducedMotion: boolean; colors: (typeof palettes)["light"] }) {
+  const values = useRef(Array.from({ length: 18 }, () => new Animated.Value(0))).current;
+
+  useEffect(() => {
+    if (reducedMotion) return;
+    Animated.stagger(
+      26,
+      values.map((value) =>
+        Animated.sequence([
+          Animated.timing(value, { toValue: 1, duration: 900, useNativeDriver: true }),
+          Animated.timing(value, { toValue: 0, duration: 900, useNativeDriver: true })
+        ])
+      )
+    ).start();
+  }, [reducedMotion, values]);
+
+  return (
+    <View style={styles.celebrationOverlay} pointerEvents="none">
+      <View style={[styles.celebrationCard, { backgroundColor: colors.surface, borderColor: colors.borderStrong }]}>
+        <Text style={[styles.celebrationTitle, { color: colors.text }]}>100/100 today</Text>
+        <Text style={[styles.celebrationText, { color: colors.muted }]}>Perfect habit score. Keep it gentle, not obsessive.</Text>
+      </View>
+      {!reducedMotion
+        ? values.map((value, index) => {
+            const translateY = value.interpolate({ inputRange: [0, 1], outputRange: [0, -190 - (index % 5) * 18] });
+            const translateX = value.interpolate({ inputRange: [0, 1], outputRange: [0, (index % 2 === 0 ? 1 : -1) * (34 + index * 6)] });
+            const opacity = value.interpolate({ inputRange: [0, 0.25, 1], outputRange: [0, 1, 0] });
+            return <Animated.View key={index} style={[styles.confettiPiece, { backgroundColor: index % 3 === 0 ? colors.primary : index % 3 === 1 ? colors.secondary : colors.accent, opacity, transform: [{ translateX }, { translateY }, { rotate: `${index * 21}deg` }] }]} />;
+          })
+        : null}
+    </View>
+  );
+}
+
+async function shareReport(summary: string, score: number) {
+  await Share.share({ message: `Prabha weekly skin report\nScore: ${score}/100\n${summary}\nGuidance only, not diagnosis.` });
+}
+
 const styles = StyleSheet.create({
   content: { gap: spacing.md, paddingBottom: spacing.xl },
   heroRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
@@ -339,5 +410,13 @@ const styles = StyleSheet.create({
   weatherAction: { gap: spacing.xs },
   input: { borderWidth: 1, borderRadius: 12, minHeight: 46, paddingHorizontal: spacing.md, fontSize: 15 },
   selfie: { width: "100%", height: 240, borderRadius: 8 },
-  chart: { borderRadius: 8, alignSelf: "center" }
+  timelineRow: { flexDirection: "row", gap: spacing.xs },
+  timelineSlot: { flex: 1, minHeight: 92, borderWidth: 1, borderRadius: 8, alignItems: "center", justifyContent: "center", gap: spacing.xs, overflow: "hidden" },
+  timelineImage: { width: "100%", height: 66 },
+  chart: { borderRadius: 8, alignSelf: "center" },
+  celebrationOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 60, alignItems: "center", justifyContent: "center" },
+  celebrationCard: { borderWidth: 1, borderRadius: 16, padding: spacing.lg, alignItems: "center", gap: spacing.xs, shadowOpacity: 0.25, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
+  celebrationTitle: { fontSize: 26, fontWeight: "900" },
+  celebrationText: { fontSize: 14, fontWeight: "700" },
+  confettiPiece: { position: "absolute", width: 12, height: 18, borderRadius: 3 }
 });

@@ -7,16 +7,41 @@ import { t } from "@/shared/i18n";
 import { knowledgeBase } from "@/shared/knowledge/engine";
 import { premiumPlans } from "@/shared/monetization";
 import { palettes, spacing } from "@/shared/theme";
-import { Language, SubscriptionTier, ThemeMode } from "@/shared/types";
+import { Language, ThemeMode } from "@/shared/types";
 import { firebaseReady } from "@/shared/services/firebase";
 import { syncUserSnapshot } from "@/shared/services/firebaseSync";
 
 export default function Settings() {
-  const { language, setLanguage, themeMode, setThemeMode, tier, setTier, subscription, profile, dailyCheckIns, exportData, deleteCloudData, resetData } = useApp();
+  const {
+    language,
+    setLanguage,
+    themeMode,
+    setThemeMode,
+    tier,
+    setTier,
+    subscription,
+    profile,
+    dailyCheckIns,
+    paymentRequests,
+    refreshPaymentRequests,
+    approvePaymentRequest,
+    rejectPaymentRequest,
+    signUpWithEmail,
+    signInWithEmail,
+    loadSubscription,
+    exportData,
+    deleteCloudData,
+    resetData
+  } = useApp();
   const c = palettes[themeMode];
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [privacyStatus, setPrivacyStatus] = useState<string | null>(null);
   const [exportPreview, setExportPreview] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authStatus, setAuthStatus] = useState<string | null>(null);
+  const [adminStatus, setAdminStatus] = useState<string | null>(null);
+  const adminMode = process.env.EXPO_PUBLIC_ADMIN_MODE === "true";
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content}>
@@ -31,11 +56,57 @@ export default function Settings() {
         </Card>
         <Card>
           <H2>{language === "en" ? "Subscription" : "Subscription"}</H2>
-          <Segment value={tier} options={["free", "premium"] as SubscriptionTier[]} onChange={setTier} />
+          {adminMode ? <Segment value={tier} options={["free", "premium"]} onChange={setTier} /> : null}
           <Pill tone={tier === "premium" ? "secondary" : "accent"}>{subscription.status} via {subscription.source}</Pill>
-          <Body muted>{language === "en" ? `${premiumPlans.monthly.price}/month or ${premiumPlans.yearly.price}/year target. Khalti/eSewa confirmation will write paid status before production unlock.` : "Khalti/eSewa confirm bhayepachi premium unlock huncha."}</Body>
+          <Body muted>{language === "en" ? `${premiumPlans.monthly.price}/month or ${premiumPlans.yearly.price}/year. QR payment goes to pending review first; premium unlocks after admin confirmation.` : "QR payment pending review ma jancha; admin confirm bhayepachi premium unlock huncha."}</Body>
           <Button label="View premium plans" onPress={() => router.push("/paywall" as never)} secondary />
+          <Button label="Refresh subscription" onPress={loadSubscription} secondary />
         </Card>
+        <Card>
+          <H2>Account recovery</H2>
+          <Body muted>Email/password lets paid users recover subscription after refresh, reinstall, or another device.</Body>
+          {authStatus ? <Body muted>{authStatus}</Body> : null}
+          <TextInput value={email} onChangeText={setEmail} placeholder="Email" placeholderTextColor={c.muted} style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]} />
+          <TextInput value={password} onChangeText={setPassword} placeholder="Password" secureTextEntry placeholderTextColor={c.muted} style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]} />
+          <Button label="Create email account" onPress={async () => {
+            try {
+              const result = await signUpWithEmail(email, password);
+              setAuthStatus(result.message);
+            } catch (error) {
+              setAuthStatus(error instanceof Error ? error.message : "Could not create account.");
+            }
+          }} secondary />
+          <Button label="Sign in" onPress={async () => {
+            try {
+              const result = await signInWithEmail(email, password);
+              await loadSubscription();
+              setAuthStatus(result.message);
+            } catch (error) {
+              setAuthStatus(error instanceof Error ? error.message : "Could not sign in.");
+            }
+          }} secondary />
+        </Card>
+        {adminMode ? (
+          <Card>
+            <H2>Admin payment review</H2>
+            <Body muted>Visible only when EXPO_PUBLIC_ADMIN_MODE=true. Approving a request activates premium with expiry.</Body>
+            {adminStatus ? <Body muted>{adminStatus}</Body> : null}
+            <Button label="Refresh pending payments" onPress={async () => {
+              await refreshPaymentRequests();
+              setAdminStatus("Pending payment list refreshed.");
+            }} secondary />
+            {paymentRequests.filter((request) => request.status === "pending_review").map((request) => (
+              <Card key={request.id}>
+                <Pill tone="accent">{request.provider} - {request.plan} - Rs. {request.amount}</Pill>
+                <Body>{request.payerName} / {request.payerPhone}</Body>
+                <Body muted>Txn: {request.transactionId}</Body>
+                <Body muted>Screenshot: {request.screenshotDownloadUrl ?? request.screenshotUri}</Body>
+                <Button label="Approve premium" onPress={async () => setAdminStatus(await approvePaymentRequest(request.id, "Manual QR payment confirmed"))} />
+                <Button label="Reject" onPress={async () => setAdminStatus(await rejectPaymentRequest(request.id, "Could not verify payment screenshot/transaction"))} secondary />
+              </Card>
+            ))}
+          </Card>
+        ) : null}
         <Card>
           <H2>{language === "en" ? "Firebase status" : "Firebase status"}</H2>
           <Pill tone={firebaseReady ? "secondary" : "accent"}>{firebaseReady ? "Configured" : "Local demo mode"}</Pill>
@@ -92,5 +163,6 @@ export default function Settings() {
 
 const styles = StyleSheet.create({
   content: { gap: spacing.md, paddingBottom: spacing.xl },
+  input: { borderWidth: 1, borderRadius: 8, minHeight: 46, paddingHorizontal: spacing.md, fontSize: 15 },
   exportBox: { minHeight: 120, borderWidth: 1, borderRadius: 8, padding: spacing.sm, fontSize: 12 }
 });
