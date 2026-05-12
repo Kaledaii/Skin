@@ -2,7 +2,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from "react";
 import { getDefaultQuizProfile } from "./knowledge/engine";
-import { BudgetTier, DailyCheckIn, Language, SkinType, SubscriptionInfo, SubscriptionTier, ThemeMode, UserProfile } from "./types";
+import { activateSubscription as buildSubscription, CheckoutSession, createCheckout, PaymentVerification, verifyPayment } from "./services/payment";
+import { syncUserSnapshot, deleteCloudSnapshot } from "./services/firebaseSync";
+import { BudgetTier, DailyCheckIn, Language, PaymentProvider, PaymentState, SkinType, SubscriptionInfo, SubscriptionPlanId, SubscriptionTier, ThemeMode, UserProfile } from "./types";
 
 type AppState = {
   language: Language;
@@ -12,7 +14,11 @@ type AppState = {
   tier: SubscriptionTier;
   setTier: (value: SubscriptionTier) => void;
   subscription: SubscriptionInfo;
+  paymentState: PaymentState;
+  lastCheckout?: CheckoutSession;
   activatePremium: (source?: SubscriptionInfo["source"], plan?: SubscriptionInfo["plan"]) => void;
+  startCheckout: (plan: SubscriptionPlanId, provider: PaymentProvider) => Promise<CheckoutSession>;
+  confirmPayment: (transactionId: string) => Promise<PaymentVerification>;
   profile: UserProfile;
   updateProfile: (patch: Partial<UserProfile>) => void;
   updateQuiz: (section: "lifestyle" | "environment" | "currentRoutine", key: string, value: string) => void;
@@ -27,6 +33,8 @@ type AppState = {
   toggleLikedTip: (id: string) => void;
   toggleSavedTip: (id: string) => void;
   pickSelfie: () => Promise<void>;
+  exportData: () => string;
+  deleteCloudData: () => Promise<string>;
   resetData: () => Promise<void>;
 };
 
@@ -42,7 +50,7 @@ const defaultProfile: UserProfile = {
   budgetTier: "200to500",
   symptoms: [],
   quiz: getDefaultQuizProfile(),
-  consentAccepted: true
+  consentAccepted: false
 };
 
 const Context = createContext<AppState | null>(null);
@@ -52,6 +60,8 @@ export function AppProvider({ children }: PropsWithChildren) {
   const [themeMode, setThemeModeState] = useState<ThemeMode>("light");
   const [tier, setTierState] = useState<SubscriptionTier>("free");
   const [subscription, setSubscription] = useState<SubscriptionInfo>({ status: "free", tier: "free", source: "demo" });
+  const [paymentState, setPaymentState] = useState<PaymentState>("idle");
+  const [lastCheckout, setLastCheckout] = useState<CheckoutSession | undefined>();
   const [profile, setProfile] = useState<UserProfile>(defaultProfile);
   const [completion, setCompletion] = useState<Record<string, boolean>>({});
   const [likedTipIds, setLikedTipIds] = useState<string[]>([]);
@@ -88,8 +98,8 @@ export function AppProvider({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
-    AsyncStorage.setItem("skin-nepal-state", JSON.stringify({ language, themeMode, tier, subscription, profile, completion, likedTipIds, savedTipIds, dailyCheckIns }));
-  }, [language, themeMode, tier, subscription, profile, completion, likedTipIds, savedTipIds, dailyCheckIns]);
+    AsyncStorage.setItem("skin-nepal-state", JSON.stringify({ language, themeMode, tier, subscription, paymentState, profile, completion, likedTipIds, savedTipIds, dailyCheckIns }));
+  }, [language, themeMode, tier, subscription, paymentState, profile, completion, likedTipIds, savedTipIds, dailyCheckIns]);
 
   const value = useMemo<AppState>(() => ({
     language,
@@ -107,19 +117,33 @@ export function AppProvider({ children }: PropsWithChildren) {
       }));
     },
     subscription,
+    paymentState,
+    lastCheckout,
     activatePremium: (source = "beta", plan = "beta") => {
-      const now = new Date();
-      const expires = new Date(now);
-      expires.setMonth(expires.getMonth() + (plan === "yearly" ? 12 : plan === "monthly" ? 1 : 3));
+      const nextSubscription = buildSubscription("local-dev", plan ?? "beta", source === "khalti" || source === "esewa" ? source : "beta");
       setTierState("premium");
-      setSubscription({
-        status: plan === "beta" ? "trial" : "premium",
-        tier: "premium",
-        source,
-        plan,
-        startedAt: now.toISOString(),
-        expiresAt: expires.toISOString()
-      });
+      setPaymentState("active");
+      setSubscription({ ...nextSubscription, source });
+    },
+    startCheckout: async (plan, provider) => {
+      setPaymentState("pending");
+      const session = await createCheckout({ plan, provider, userId: profile.name || "local-demo-user" });
+      setLastCheckout(session);
+      return session;
+    },
+    confirmPayment: async (transactionId) => {
+      if (!lastCheckout) return { ok: false, state: "failed", message: "Start a Khalti/eSewa checkout before verifying." };
+      setPaymentState("verifying");
+      const result = await verifyPayment(transactionId, lastCheckout.provider, lastCheckout.plan);
+      setPaymentState(result.state);
+      if (result.subscription) {
+        setTierState("premium");
+        setSubscription(result.subscription);
+        await syncUserSnapshot({ profile, subscription: result.subscription, dailyCheckIns });
+      } else {
+        setSubscription((current) => ({ ...current, paymentState: result.state, lastPaymentError: result.message }));
+      }
+      return result;
     },
     profile,
     updateProfile: (patch) => setProfile((current) => ({ ...current, ...patch })),
@@ -161,19 +185,26 @@ export function AppProvider({ children }: PropsWithChildren) {
       const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.75 });
       if (!result.canceled) setProfile((current) => ({ ...current, selfieUri: result.assets[0]?.uri }));
     },
+    exportData: () => JSON.stringify({ language, themeMode, tier, subscription, profile, completion, likedTipIds, savedTipIds, dailyCheckIns }, null, 2),
+    deleteCloudData: async () => {
+      const result = await deleteCloudSnapshot();
+      return result.ok ? "Cloud data delete request completed." : "Cloud delete is unavailable in local demo mode.";
+    },
     resetData: async () => {
       await AsyncStorage.removeItem("skin-nepal-state");
       setLanguageState("en");
       setThemeModeState("light");
       setTierState("free");
       setSubscription({ status: "free", tier: "free", source: "demo" });
+      setPaymentState("idle");
+      setLastCheckout(undefined);
       setProfile(defaultProfile);
       setCompletion({});
       setLikedTipIds([]);
       setSavedTipIds([]);
       setDailyCheckIns({});
     }
-  }), [completion, language, profile, themeMode, tier, subscription, likedTipIds, savedTipIds, dailyCheckIns, today, todayCheckIn]);
+  }), [completion, language, profile, themeMode, tier, subscription, paymentState, lastCheckout, likedTipIds, savedTipIds, dailyCheckIns, today, todayCheckIn]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

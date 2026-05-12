@@ -2,6 +2,8 @@
   "expo": {
     "name": "Prabha Skincare",
     "slug": "prabha-skincare",
+    "description": "Prabha is a personalized skincare companion designed for Nepal's weather, water, food, budget, festivals, makeup habits, and local products.",
+    "keywords": ["skincare", "beauty", "nepal", "routine", "skin", "glow", "prabha"],
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "prabha",
@@ -14,9 +16,19 @@
       "backgroundColor": "#FDF8F5"
     },
     "ios": {
-      "icon": "./assets/brand/prabha-icon-1024.png"
+      "icon": "./assets/brand/prabha-icon-1024.png",
+      "bundleIdentifier": "com.prabha.skincare",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Prabha uses camera access only when you choose to add progress photos.",
+        "NSPhotoLibraryUsageDescription": "Prabha uses photo access only when you choose to upload progress photos.",
+        "NSLocationWhenInUseUsageDescription": "Prabha uses your location to show local weather and air quality skincare guidance."
+      }
     },
     "android": {
+      "package": "com.prabha.skincare",
+      "versionCode": 1,
+      "permissions": ["CAMERA", "READ_MEDIA_IMAGES", "ACCESS_FINE_LOCATION"],
       "adaptiveIcon": {
         "foregroundImage": "./assets/brand/prabha-adaptive-icon.png",
         "backgroundColor": "#F98B9E"
@@ -34,10 +46,14 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Skin Nepal uses your location to show local weather and air quality skincare guidance."
+          "locationWhenInUsePermission": "Prabha uses your location to show local weather and air quality skincare guidance."
         }
       ]
     ],
+    "extra": {
+      "privacyPolicyUrl": "https://prabhaskincare.com/privacy",
+      "termsOfServiceUrl": "https://prabhaskincare.com/terms"
+    },
     "experiments": {
       "typedRoutes": true
     }

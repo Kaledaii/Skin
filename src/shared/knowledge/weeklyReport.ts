@@ -7,8 +7,11 @@ export type WeeklySkinReport = {
   bestHabit: string;
   weakestHabit: string;
   likelyTrigger: string;
+  whyChanged: string;
   nextWeekFocus: string;
+  productAdjustment: string;
   modeSuggestion: string;
+  sevenDayPlan: string[];
 };
 
 export function buildWeeklySkinReport(profile: UserProfile, checkIn: DailyCheckIn, score: HabitScore): WeeklySkinReport {
@@ -51,6 +54,28 @@ export function buildWeeklySkinReport(profile: UserProfile, checkIn: DailyCheckI
       : foodRisk
         ? "Reduce cold drinks or maida first; do not try to fix every food at once."
         : "Complete the first 3 routine steps daily before adding anything new.";
+  const whyChanged = score.parts.lifestyle < 12
+    ? "Lifestyle points pulled the score down most: sleep, stress, movement, smoke/alcohol, screen time, or food signals need attention."
+    : score.parts.weather < 6
+      ? "Weather readiness was low, so UV/AQI/rain/humidity actions should be prepared earlier in the day."
+      : score.parts.routine < 20
+        ? "Routine completion changed the score most. The app rewards boring consistency because skin repairs slowly."
+        : "Your core habits were stable; keep tracking so the next pattern is easier to spot.";
+  const productAdjustment = makeupRisk
+    ? "Add micellar water or oil cleanser before face wash; skip heavy foundation for 2-3 days if bumps are new."
+    : lowSleep || stress
+      ? "Do not add strong actives this week. Keep cleanser, moisturizer, SPF, and one spot treatment only."
+      : profile.quiz.environment.location_type === "terai"
+        ? "Use lighter moisturizer and non-comedogenic sunscreen; avoid heavy oils during sweaty days."
+        : profile.quiz.environment.location_type === "mountain"
+          ? "Use richer moisturizer on damp skin and lip balm with SPF."
+          : "Keep one reliable sunscreen and one gentle cleanser before buying extra serums.";
+  const sevenDayPlan = [
+    "Days 1-2: keep routine simple and log sleep, water, SPF, and makeup removal.",
+    "Days 3-4: fix the weakest trigger only; do not change every habit together.",
+    "Day 5: check whether new bumps, dryness, or marks are improving or worsening.",
+    "Days 6-7: repeat the working steps and prepare next week's weather/product adjustment."
+  ];
 
   return {
     title: score.score >= 75 ? "Good progress week" : score.score >= 50 ? "Steady reset week" : "Repair-first week",
@@ -58,8 +83,11 @@ export function buildWeeklySkinReport(profile: UserProfile, checkIn: DailyCheckI
     bestHabit,
     weakestHabit,
     likelyTrigger,
+    whyChanged,
     nextWeekFocus,
-    modeSuggestion: suggestMode(profile)
+    productAdjustment,
+    modeSuggestion: suggestMode(profile),
+    sevenDayPlan
   };
 }
 

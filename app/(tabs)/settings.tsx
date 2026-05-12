@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet } from "react-native";
+import { ScrollView, StyleSheet, TextInput } from "react-native";
 import { router } from "expo-router";
 import { useState } from "react";
 import { useApp } from "@/shared/AppContext";
@@ -6,14 +6,17 @@ import { Body, Button, Card, H1, H2, Pill, Screen, Segment } from "@/shared/comp
 import { t } from "@/shared/i18n";
 import { knowledgeBase } from "@/shared/knowledge/engine";
 import { premiumPlans } from "@/shared/monetization";
-import { spacing } from "@/shared/theme";
+import { palettes, spacing } from "@/shared/theme";
 import { Language, SubscriptionTier, ThemeMode } from "@/shared/types";
 import { firebaseReady } from "@/shared/services/firebase";
 import { syncUserSnapshot } from "@/shared/services/firebaseSync";
 
 export default function Settings() {
-  const { language, setLanguage, themeMode, setThemeMode, tier, setTier, subscription, profile, dailyCheckIns, resetData } = useApp();
+  const { language, setLanguage, themeMode, setThemeMode, tier, setTier, subscription, profile, dailyCheckIns, exportData, deleteCloudData, resetData } = useApp();
+  const c = palettes[themeMode];
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
+  const [privacyStatus, setPrivacyStatus] = useState<string | null>(null);
+  const [exportPreview, setExportPreview] = useState<string | null>(null);
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content}>
@@ -62,7 +65,25 @@ export default function Settings() {
           <H2>{language === "en" ? "Privacy" : "Privacy"}</H2>
           <Body>{t(language, "disclaimer")}</Body>
           <Button label="Privacy + launch safety" onPress={() => router.push("/legal" as never)} secondary />
+          {privacyStatus ? <Body muted>{privacyStatus}</Body> : null}
+          <Button
+            label="Export my app data"
+            onPress={() => {
+              const data = exportData();
+              setExportPreview(data.slice(0, 1800));
+              setPrivacyStatus("Data export generated below. Full export is available inside app state for backend download wiring.");
+            }}
+            secondary
+          />
+          <Button
+            label="Delete cloud data"
+            onPress={async () => setPrivacyStatus(await deleteCloudData())}
+            secondary
+          />
           <Button label={t(language, "deleteData")} onPress={resetData} secondary />
+          {exportPreview ? (
+            <TextInput value={exportPreview} editable={false} multiline style={[styles.exportBox, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]} />
+          ) : null}
         </Card>
       </ScrollView>
     </Screen>
@@ -70,5 +91,6 @@ export default function Settings() {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: spacing.md, paddingBottom: spacing.xl }
+  content: { gap: spacing.md, paddingBottom: spacing.xl },
+  exportBox: { minHeight: 120, borderWidth: 1, borderRadius: 8, padding: spacing.sm, fontSize: 12 }
 });

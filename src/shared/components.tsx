@@ -52,7 +52,7 @@ export function AppAtmosphere({ children }: PropsWithChildren) {
   const cursor = useRef(new Animated.ValueXY({ x: -200, y: -200 })).current;
   const petals = useMemo(
     () =>
-      Array.from({ length: 14 }, (_, index) => ({
+      Array.from({ length: Platform.OS === "web" ? 14 : 7 }, (_, index) => ({
         id: index,
         left: `${(index * 19 + 5) % 96}%`,
         size: 38 + (index % 5) * 17,

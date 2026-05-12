@@ -174,7 +174,35 @@ export default function Onboarding() {
           </View>
         </Card>
 
-        <Button label={t(language, "start")} onPress={() => router.replace("/(tabs)/home")} />
+        <Card>
+          <View style={styles.iconRow}>
+            <Feather name="lock" color={c.primary} size={22} />
+            <H2>{language === "en" ? "Privacy consent" : "Privacy consent"}</H2>
+          </View>
+          <Body muted>
+            {language === "en"
+              ? "I agree that Prabha can save my quiz answers, routine logs, and optional photo reference for personalized guidance. I understand this is not medical diagnosis."
+              : "Prabha le quiz answers, routine logs, ra optional photo reference guidance ko lagi save garna sakcha. Yo medical diagnosis hoina."}
+          </Body>
+          <Pressable
+            onPress={() => updateProfile({ consentAccepted: !profile.consentAccepted })}
+            style={({ pressed }) => [
+              styles.consentRow,
+              {
+                borderColor: profile.consentAccepted ? c.borderStrong : c.border,
+                backgroundColor: profile.consentAccepted ? c.secondarySoft : c.surfaceAlt,
+                transform: [{ scale: pressed ? 0.99 : 1 }]
+              }
+            ]}
+          >
+            <Feather name={profile.consentAccepted ? "check-circle" : "circle"} color={profile.consentAccepted ? c.secondary : c.muted} size={20} />
+            <Body>{profile.consentAccepted ? "Consent accepted" : "Tap to accept privacy consent"}</Body>
+          </Pressable>
+        </Card>
+
+        <Button label={profile.consentAccepted ? t(language, "start") : "Accept consent to continue"} onPress={() => {
+          if (profile.consentAccepted) router.replace("/(tabs)/home");
+        }} />
       </ScrollView>
     </Screen>
   );
@@ -293,6 +321,7 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: 8, minHeight: 46, paddingHorizontal: spacing.md, fontSize: 15 },
   iconRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   wrap: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
+  consentRow: { borderWidth: 1, borderRadius: 12, padding: spacing.md, flexDirection: "row", alignItems: "center", gap: spacing.sm },
   fieldCard: { borderWidth: 1, borderRadius: 10, padding: spacing.sm, gap: spacing.sm, overflow: "hidden" },
   fieldTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
   fieldValue: { fontSize: 15, fontWeight: "800", textTransform: "capitalize" },

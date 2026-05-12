@@ -81,9 +81,19 @@ export default function Progress() {
             <ReportTile label="Best habit" value={weeklyReport.bestHabit} locked={false} />
             <ReportTile label="Weakest habit" value={weeklyReport.weakestHabit} locked={premiumLocked} />
             <ReportTile label="Likely trigger" value={weeklyReport.likelyTrigger} locked={premiumLocked} />
+            <ReportTile label="Why it changed" value={weeklyReport.whyChanged} locked={premiumLocked} />
             <ReportTile label="Next week focus" value={weeklyReport.nextWeekFocus} locked={premiumLocked} />
+            <ReportTile label="Routine/product adjustment" value={weeklyReport.productAdjustment} locked={premiumLocked} />
             <ReportTile label="Suggested mode" value={weeklyReport.modeSuggestion} locked={premiumLocked} />
           </View>
+          {!premiumLocked ? (
+            <View style={styles.reportTile}>
+              <Pill tone="secondary">7-day focus</Pill>
+              {weeklyReport.sevenDayPlan.map((item) => (
+                <Body key={item} muted>- {item}</Body>
+              ))}
+            </View>
+          ) : null}
           {premiumLocked ? <Button label="Unlock weekly report" onPress={() => router.push("/paywall" as never)} /> : null}
         </Card>
 
