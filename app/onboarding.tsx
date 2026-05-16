@@ -233,12 +233,37 @@ export default function Onboarding() {
         ) : null}
 
         <Button label={profile.consentAccepted ? t(language, "start") : "Accept consent to continue"} onPress={() => {
-          if (!profile.consentAccepted) {
-            setValidationMessage(language === "en" ? "Please accept privacy consent to continue." : "Privacy consent accept garnu hos.");
+          // Comprehensive validation before allowing app entry
+          if (!profile.name || !profile.name.trim()) {
+            setValidationMessage(language === "en" ? "Please enter your name." : "Aafno naam enter garnu hos.");
+            return;
+          }
+          if (!profile.age || !profile.age.trim()) {
+            setValidationMessage(language === "en" ? "Please enter your age." : "Aafno umar enter garnu hos.");
+            return;
+          }
+          if (!profile.quiz.ageGroup) {
+            setValidationMessage(language === "en" ? "Please select your age group." : "Age group select garnu hos.");
             return;
           }
           if (!profile.quiz.primaryConcerns.length && !profile.quiz.symptoms.length) {
             setValidationMessage(language === "en" ? "Please select at least one symptom or primary concern so Prabha can personalize your plan." : "Personalized plan ko lagi at least one symptom wa primary concern channuhos.");
+            return;
+          }
+          if (!profile.quiz.lifestyle.diet) {
+            setValidationMessage(language === "en" ? "Please select your diet pattern." : "Diet pattern select garnu hos.");
+            return;
+          }
+          if (!profile.quiz.environment.water_source) {
+            setValidationMessage(language === "en" ? "Please select your water source." : "Water source select garnu hos.");
+            return;
+          }
+          if (!profile.quiz.currentRoutine.uses_sunscreen) {
+            setValidationMessage(language === "en" ? "Please answer the sunscreen question to continue." : "Sunscreen question answer garnu hos.");
+            return;
+          }
+          if (!profile.consentAccepted) {
+            setValidationMessage(language === "en" ? "Please accept privacy consent to continue." : "Privacy consent accept garnu hos.");
             return;
           }
           setValidationMessage(null);

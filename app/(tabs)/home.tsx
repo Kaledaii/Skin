@@ -7,6 +7,7 @@ import { AccessibilityInfo, ActivityIndicator, Pressable, ScrollView, StyleSheet
 import { useApp } from "@/shared/AppContext";
 import { Celebration } from "@/shared/Celebration";
 import { Body, BrandMark, Button, Card, FloatingBadge, H1, H2, Pill, ProgressBar, Screen, SectionLabel, SignalCard, ToggleGroup } from "@/shared/components";
+import { ErrorBoundary } from "@/shared/ErrorBoundary";
 import { t } from "@/shared/i18n";
 import { contextualConditionDescription, generateRoutine, localized } from "@/shared/knowledge/engine";
 import { dailyHabitTips } from "@/shared/knowledge/education";

@@ -72,6 +72,9 @@ export function calculateSkinHabitScore({ completion, routineSteps, profile, che
   reasons.push(...weatherReadiness.reasons.slice(0, 2));
   if (!profile.selfieUri && !checkIn.selfieUri) reasons.push("Add a weekly selfie for better progress tracking.");
 
-  const score = Math.min(100, routine + care + wellness + lifestyle + weatherReadiness.score + logs);
+  let score = Math.min(100, routine + care + wellness + lifestyle + weatherReadiness.score + logs);
+  // Ensure minimum 10 points if user attempted anything (prevents frustration of zero score)
+  const userAttemptedSomething = routine > 0 || care > 0 || wellness > 0 || logs > 0;
+  score = userAttemptedSomething ? Math.max(10, score) : 0;
   return { score, parts: { routine, care, wellness, lifestyle, weather: weatherReadiness.score, logs }, reasons };
 }

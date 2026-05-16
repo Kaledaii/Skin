@@ -149,9 +149,40 @@ export async function submitExpertQuestion(question: string, profileName: string
 export async function loadRemoteSubscription() {
   const firebase = getFirebase();
   if (!firebase) return undefined;
-  const user = firebase.auth.currentUser ?? (await firebaseSignInAnonymously(firebase.auth)).user;
-  const snapshot = await getDoc(doc(firebase.db, "users", user.uid));
-  return snapshot.exists() ? (snapshot.data().subscription as SubscriptionInfo | undefined) : undefined;
+  try {
+    const user = firebase.auth.currentUser ?? (await firebaseSignInAnonymously(firebase.auth)).user;
+    const snapshot = await getDoc(doc(firebase.db, "users", user.uid));
+    return snapshot.exists() ? (snapshot.data().subscription as SubscriptionInfo | undefined) : undefined;
+  } catch (error) {
+    console.error("Failed to load remote subscription:", error);
+    return undefined;
+  }
+}
+
+export async function loadRemoteProfile() {
+  const firebase = getFirebase();
+  if (!firebase) return undefined;
+  try {
+    const user = firebase.auth.currentUser ?? (await firebaseSignInAnonymously(firebase.auth)).user;
+    const snapshot = await getDoc(doc(firebase.db, "users", user.uid));
+    return snapshot.exists() ? (snapshot.data().profile as UserProfile | undefined) : undefined;
+  } catch (error) {
+    console.error("Failed to load remote profile:", error);
+    return undefined;
+  }
+}
+
+export async function loadRemoteCheckIns() {
+  const firebase = getFirebase();
+  if (!firebase) return undefined;
+  try {
+    const user = firebase.auth.currentUser ?? (await firebaseSignInAnonymously(firebase.auth)).user;
+    const snapshot = await getDoc(doc(firebase.db, "users", user.uid));
+    return snapshot.exists() ? (snapshot.data().dailyCheckIns as Record<string, DailyCheckIn> | undefined) : undefined;
+  } catch (error) {
+    console.error("Failed to load remote check-ins:", error);
+    return undefined;
+  }
 }
 
 export async function deleteCloudSnapshot() {

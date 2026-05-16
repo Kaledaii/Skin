@@ -94,19 +94,27 @@ export default function Progress() {
           <View style={styles.heroRow}>
             <Feather name="file-text" color={c.primary} size={22} />
             <View style={styles.flex}>
-              <H2>Weekly Skin Report</H2>
-              <Body muted>{premiumLocked ? "Premium preview: unlock the full weekly insight and next-week focus." : weeklyReport.summary}</Body>
+              <H2>{premiumLocked ? "📊 Weekly Insights (Premium)" : "📊 Your Weekly Skin Report"}</H2>
+              <Body muted>{premiumLocked ? "Unlock premium to see your best habits, weak spots, likely triggers, and personalized next-week focus." : weeklyReport.summary}</Body>
             </View>
           </View>
-          <View style={styles.reportGrid}>
-            <ReportTile label="Best habit" value={weeklyReport.bestHabit} locked={false} />
-            <ReportTile label="Weakest habit" value={weeklyReport.weakestHabit} locked={premiumLocked} />
-            <ReportTile label="Likely trigger" value={weeklyReport.likelyTrigger} locked={premiumLocked} />
-            <ReportTile label="Why it changed" value={weeklyReport.whyChanged} locked={premiumLocked} />
-            <ReportTile label="Next week focus" value={weeklyReport.nextWeekFocus} locked={premiumLocked} />
-            <ReportTile label="Routine/product adjustment" value={weeklyReport.productAdjustment} locked={premiumLocked} />
-            <ReportTile label="Suggested mode" value={weeklyReport.modeSuggestion} locked={premiumLocked} />
-          </View>
+          {premiumLocked ? (
+            <View style={styles.previewGrid}>
+              <Pill tone="primary">Best habit</Pill>
+              <Body>{weeklyReport.bestHabit}</Body>
+              <Pill tone="accent">Unlock premium for 6 more insights →</Pill>
+            </View>
+          ) : (
+            <View style={styles.reportGrid}>
+              <ReportTile label="Best habit" value={weeklyReport.bestHabit} locked={false} />
+              <ReportTile label="Weakest habit" value={weeklyReport.weakestHabit} locked={false} />
+              <ReportTile label="Likely trigger" value={weeklyReport.likelyTrigger} locked={false} />
+              <ReportTile label="Why it changed" value={weeklyReport.whyChanged} locked={false} />
+              <ReportTile label="Next week focus" value={weeklyReport.nextWeekFocus} locked={false} />
+              <ReportTile label="Routine/product adjustment" value={weeklyReport.productAdjustment} locked={false} />
+              <ReportTile label="Suggested mode" value={weeklyReport.modeSuggestion} locked={false} />
+            </View>
+          )}
           {!premiumLocked ? (
             <View style={styles.reportTile}>
               <Pill tone="secondary">7-day focus</Pill>

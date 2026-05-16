@@ -8,6 +8,8 @@ import {
   deleteCloudSnapshot,
   ensureAnonymousUser,
   listPaymentRequests,
+  loadRemoteCheckIns,
+  loadRemoteProfile,
   loadRemoteSubscription,
   savePaymentRequest,
   signInWithGoogle,
@@ -63,13 +65,13 @@ type AppState = {
 };
 
 const defaultProfile: UserProfile = {
-  name: "Asha",
-  age: "24",
+  name: "",  // Will be set by user in onboarding
+  age: "",
   gender: "female",
   skinType: "combination",
-  location: "Kathmandu",
+  location: "",
   sleepHours: "6",
-  dietHabit: "dal-bhat, curd, seasonal fruits",
+  dietHabit: "",
   stressLevel: "medium",
   budgetTier: "200to500",
   symptoms: [],
@@ -96,6 +98,7 @@ export function AppProvider({ children }: PropsWithChildren) {
   const todayCheckIn = dailyCheckIns[today] ?? createDefaultCheckIn(today, profile);
 
   useEffect(() => {
+    // Load from local storage first (cached data)
     AsyncStorage.getItem("skin-nepal-state").then((raw) => {
       if (!raw) return;
       const parsed = JSON.parse(raw) as Partial<Pick<AppState, "language" | "themeMode" | "tier" | "profile" | "completion" | "subscription">>;
@@ -105,13 +108,8 @@ export function AppProvider({ children }: PropsWithChildren) {
       if (parsed.subscription) setSubscription(parsed.subscription);
       if (parsed.profile) {
         const nextProfile = { ...defaultProfile, ...parsed.profile };
-        const legacySeed =
-          nextProfile.name === "Asha" &&
-          nextProfile.quiz?.symptoms?.includes("pimples_jawline") &&
-          nextProfile.quiz?.symptoms?.includes("cysts_painful") &&
-          nextProfile.quiz?.symptoms?.includes("shiny_tzone") &&
-          (nextProfile.quiz?.primaryConcerns?.length ?? 0) === 0;
-        setProfile(legacySeed ? { ...defaultProfile, ...parsed.profile, symptoms: [], quiz: getDefaultQuizProfile() } : nextProfile);
+        // Skip legacy seed logic since defaultProfile no longer has "Asha"
+        setProfile(nextProfile);
       }
       if (parsed.completion) setCompletion(parsed.completion);
       const parsedState = JSON.parse(raw) as { likedTipIds?: string[]; savedTipIds?: string[]; savedProductIds?: string[] };
@@ -123,22 +121,56 @@ export function AppProvider({ children }: PropsWithChildren) {
       const paymentState = JSON.parse(raw) as { paymentState?: PaymentState; paymentRequests?: PaymentRequest[] };
       if (paymentState.paymentState) setPaymentState(paymentState.paymentState);
       if (paymentState.paymentRequests) setPaymentRequests(paymentState.paymentRequests);
-    });
+    }).catch(() => undefined);
   }, []);
 
   useEffect(() => {
-    AsyncStorage.setItem("skin-nepal-state", JSON.stringify({ language, themeMode, tier, subscription, paymentState, paymentRequests, profile, completion, likedTipIds, savedTipIds, savedProductIds, dailyCheckIns }));
+    // Save state to local storage (cache backup)
+    AsyncStorage.setItem("skin-nepal-state", JSON.stringify({ language, themeMode, tier, subscription, paymentState, paymentRequests, profile, completion, likedTipIds, savedTipIds, savedProductIds, dailyCheckIns })).catch(() => undefined);
   }, [language, themeMode, tier, subscription, paymentState, paymentRequests, profile, completion, likedTipIds, savedTipIds, savedProductIds, dailyCheckIns]);
 
   useEffect(() => {
-    ensureAnonymousUser().then(() => loadRemoteSubscription().then((remote) => {
-      if (remote && isSubscriptionActive(remote)) {
-        setSubscription(remote);
-        setTierState("premium");
-        setPaymentState(remote.paymentState ?? "active");
-      }
-    })).catch(() => undefined);
+    // Initialize Firebase authentication and load remote data
+    ensureAnonymousUser()
+      .then(() => Promise.all([
+        loadRemoteSubscription(),
+        loadRemoteProfile(),
+        loadRemoteCheckIns()
+      ]))
+      .then(([remoteSubscription, remoteProfile, remoteCheckIns]) => {
+        // Load subscription if valid
+        if (remoteSubscription && isSubscriptionActive(remoteSubscription)) {
+          setSubscription(remoteSubscription);
+          setTierState("premium");
+          setPaymentState(remoteSubscription.paymentState ?? "active");
+        }
+        // Load profile if exists
+        if (remoteProfile && remoteProfile.name) {
+          setProfile(remoteProfile);
+        }
+        // Load check-ins if exist
+        if (remoteCheckIns && Object.keys(remoteCheckIns).length > 0) {
+          setDailyCheckIns(remoteCheckIns);
+        }
+      })
+      .catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    // Auto-sync profile changes to Firebase (5 second debounce to avoid too frequent saves)
+    const timeout = setTimeout(() => {
+      if (profile.name) {  // Only sync if profile has been filled
+        syncUserSnapshot({
+          profile,
+          subscription,
+          dailyCheckIns,
+          paymentRequests
+        }).catch(() => undefined);
+      }
+    }, 5000);
+
+    return () => clearTimeout(timeout);
+  }, [profile, subscription, dailyCheckIns, paymentRequests]);
 
   const value = useMemo<AppState>(() => ({
     language,
