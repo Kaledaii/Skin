@@ -9,6 +9,7 @@ import { palettes, spacing } from "@/shared/theme";
 import { BudgetTier, SkinType } from "@/shared/types";
 import { budgetTiers, skinTypes } from "@/shared/AppContext";
 import { trackEvent } from "@/shared/services/analytics";
+import { ImagePromoCard, marketingImages } from "@/shared/marketingVisuals";
 
 type ProductSort = "recommended" | "priceLow" | "priceHigh" | "trustHigh" | "sponsoredLast";
 
@@ -24,6 +25,7 @@ export default function Products() {
     () => sortProducts(filtered.filter((item) => item.category === activeCategory), sortBy),
     [activeCategory, filtered, sortBy]
   );
+  const cartProducts = launchProducts.filter((item) => savedProductIds.includes(item.id));
 
   return (
     <Screen>
@@ -38,12 +40,51 @@ export default function Products() {
             </View>
           </View>
         </Card>
+
+        <ImagePromoCard
+          item={{
+            id: "product-flatlay",
+            image: marketingImages.productFlatlay,
+            eyebrow: "🧴 Prabha product picks",
+            title: "Beauty-store browsing, smarter",
+            body: "Compare budget, trust, fake-product risk, and your added-to-cart shortlist before buying.",
+            cta: "Build cart 🛒",
+            icon: "shopping-bag",
+            emoji: "✨"
+          }}
+        />
         <Card>
           <H2>{language === "en" ? "Filters" : "Filter"}</H2>
           <Body muted>{language === "en" ? "Skin type" : "skin type"}</Body>
           <Segment value={profile.skinType} options={skinTypes} onChange={(skinType: SkinType) => updateProfile({ skinType })} />
           <Body muted>{language === "en" ? "Budget" : "Budget"}</Body>
           <Segment value={profile.budgetTier} options={budgetTiers} onChange={(budgetTier: BudgetTier) => updateProfile({ budgetTier })} />
+        </Card>
+
+        <Card variant="seasonal">
+          <View style={styles.sectionHeader}>
+            <View style={styles.flex}>
+              <SectionLabel tone="accent">Added to cart</SectionLabel>
+              <H2>{cartProducts.length ? `${cartProducts.length} product${cartProducts.length === 1 ? "" : "s"} saved` : "No products added yet"}</H2>
+              <Body muted>{cartProducts.length ? "Use this as a shopping shortlist. Buy only after checking seller, expiry, seal, and patch test." : "Tap the cart button on products you want to compare before buying."}</Body>
+            </View>
+            <Pill tone={cartProducts.length ? "secondary" : "primary"}>🛒 cart</Pill>
+          </View>
+          {cartProducts.slice(0, 4).map((item) => (
+            <View key={item.id} style={[styles.cartRow, { borderColor: c.border }]}>
+              <View style={styles.flex}>
+                <Body>{item.name}</Body>
+                <Body muted>{item.category} - {item.price}</Body>
+              </View>
+              <Button label="Remove" onPress={() => toggleSavedProduct(item.id)} secondary />
+            </View>
+          ))}
+          {cartProducts.length > 4 ? <Body muted>+{cartProducts.length - 4} more in cart.</Body> : null}
+        </Card>
+
+        <Card>
+          <Pill tone="primary">Shopping trust</Pill>
+          <Body muted>Store links can be affiliate links later, and sponsored picks are labeled as Ad. Always check seller rating, spelling, batch, seal, expiry, and stop if a product burns.</Body>
         </Card>
 
         <Card>
@@ -126,7 +167,7 @@ export default function Products() {
               <Pill tone="primary">{item.category}</Pill>
               <Pill tone="secondary">Trust {item.trustScore}%</Pill>
               <Pill tone={item.fakeRisk === "high" ? "danger" : item.fakeRisk === "low" ? "secondary" : "accent"}>Fake risk {item.fakeRisk ?? "medium"}</Pill>
-              <Button label={saved ? "Saved" : "Save"} onPress={() => toggleSavedProduct(item.id)} secondary />
+              <Button label={saved ? "🛒 Added" : "🛒 Add to cart"} onPress={() => toggleSavedProduct(item.id)} secondary />
               <Button
                 label={locked ? "Unlock smart match" : "Daraz / Pharmacy"}
                 onPress={() => {
@@ -171,5 +212,6 @@ const styles = StyleSheet.create({
   categoryText: { fontSize: 13, fontWeight: "800" },
   filterBlock: { gap: spacing.xs },
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
+  cartRow: { borderTopWidth: 1, paddingTop: spacing.sm, gap: spacing.sm, flexDirection: "row", alignItems: "center" },
   productAccent: { width: 46, height: 3, borderRadius: 99 }
 });

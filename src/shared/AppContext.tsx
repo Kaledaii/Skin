@@ -10,10 +10,12 @@ import {
   listPaymentRequests,
   loadRemoteSubscription,
   savePaymentRequest,
+  signInWithGoogle,
   signInWithEmail,
   signUpWithEmail,
   syncUserSnapshot,
   updatePaymentRequest,
+  updateUserSubscriptionForPayment,
   uploadPaymentScreenshot
 } from "./services/firebaseSync";
 import { BudgetTier, DailyCheckIn, Language, PaymentProvider, PaymentRequest, PaymentState, SkinType, SubscriptionInfo, SubscriptionPlanId, SubscriptionTier, ThemeMode, UserProfile } from "./types";
@@ -31,13 +33,14 @@ type AppState = {
   submitManualPayment: (input: { provider: PaymentProvider; plan: Exclude<SubscriptionPlanId, "beta">; transactionId: string; payerName: string; payerPhone: string; screenshotUri: string }) => Promise<PaymentSubmissionResult>;
   approvePaymentRequest: (id: string, note?: string) => Promise<string>;
   rejectPaymentRequest: (id: string, note: string) => Promise<string>;
-  refreshPaymentRequests: () => Promise<void>;
+  refreshPaymentRequests: (status?: PaymentRequest["status"] | "all") => Promise<void>;
   paymentRequests: PaymentRequest[];
   pickPaymentScreenshot: () => Promise<string | undefined>;
   loadSubscription: () => Promise<void>;
   signInAnonymously: () => Promise<AuthResult>;
   signUpWithEmail: (email: string, password: string) => Promise<AuthResult>;
   signInWithEmail: (email: string, password: string) => Promise<AuthResult>;
+  signInWithGoogle: () => Promise<AuthResult>;
   profile: UserProfile;
   updateProfile: (patch: Partial<UserProfile>) => void;
   updateQuiz: (section: "lifestyle" | "environment" | "currentRoutine", key: string, value: string) => void;
@@ -181,17 +184,26 @@ export function AppProvider({ children }: PropsWithChildren) {
       } catch {
         screenshotDownloadUrl = undefined;
       }
-      const result = createManualPaymentRequest({ ...input, userId: profile.name || "local-demo-user", screenshotDownloadUrl });
+      const result = createManualPaymentRequest({
+        ...input,
+        userId: "local-demo-user",
+        userEmail: null,
+        profileName: profile.name,
+        profileLocation: profile.location,
+        profileSkinType: profile.skinType,
+        screenshotDownloadUrl
+      });
       if (!result.ok || !result.request) {
         setPaymentState("failed");
         return result;
       }
       const request = { ...result.request, id: draftId };
-      await savePaymentRequest(request);
-      setPaymentRequests((current) => [request, ...current.filter((item) => item.id !== request.id)]);
+      const saved = await savePaymentRequest(request);
+      const savedRequest = saved.ok && saved.request ? saved.request : request;
+      setPaymentRequests((current) => [savedRequest, ...current.filter((item) => item.id !== savedRequest.id)]);
       setPaymentState("pending_review");
-      await syncUserSnapshot({ profile, subscription: { ...subscription, paymentState: "pending_review" }, dailyCheckIns, paymentRequests: [request, ...paymentRequests] });
-      return { ...result, request };
+      await syncUserSnapshot({ profile, subscription: { ...subscription, paymentState: "pending_review" }, dailyCheckIns, paymentRequests: [savedRequest, ...paymentRequests] });
+      return { ...result, request: savedRequest };
     },
     approvePaymentRequest: async (id, note = "Approved") => {
       const request = paymentRequests.find((item) => item.id === id);
@@ -199,11 +211,13 @@ export function AppProvider({ children }: PropsWithChildren) {
       const reviewed: PaymentRequest = { ...request, status: "approved", reviewedAt: new Date().toISOString(), reviewNote: note };
       const nextSubscription = activateSubscriptionFromRequest(reviewed);
       await updatePaymentRequest(reviewed);
-      await syncUserSnapshot({ profile, subscription: nextSubscription, dailyCheckIns, paymentRequests: paymentRequests.map((item) => item.id === id ? reviewed : item) });
+      await updateUserSubscriptionForPayment(reviewed, nextSubscription);
       setPaymentRequests((current) => current.map((item) => item.id === id ? reviewed : item));
-      setSubscription(nextSubscription);
-      setTierState("premium");
-      setPaymentState("active");
+      if (reviewed.userId === "local-demo-user") {
+        setSubscription(nextSubscription);
+        setTierState("premium");
+        setPaymentState("active");
+      }
       return "Payment approved and premium activated.";
     },
     rejectPaymentRequest: async (id, note) => {
@@ -212,11 +226,11 @@ export function AppProvider({ children }: PropsWithChildren) {
       const reviewed: PaymentRequest = { ...request, status: "rejected", reviewedAt: new Date().toISOString(), reviewNote: note || "Rejected" };
       await updatePaymentRequest(reviewed);
       setPaymentRequests((current) => current.map((item) => item.id === id ? reviewed : item));
-      setPaymentState("rejected");
+      if (reviewed.userId === "local-demo-user") setPaymentState("rejected");
       return "Payment request rejected.";
     },
-    refreshPaymentRequests: async () => {
-      const result = await listPaymentRequests();
+    refreshPaymentRequests: async (status = "pending_review") => {
+      const result = await listPaymentRequests(status === "all" ? undefined : status);
       if (result.ok) setPaymentRequests(result.requests);
     },
     paymentRequests,
@@ -239,6 +253,7 @@ export function AppProvider({ children }: PropsWithChildren) {
     signInAnonymously: ensureAnonymousUser,
     signUpWithEmail,
     signInWithEmail,
+    signInWithGoogle,
     profile,
     updateProfile: (patch) => setProfile((current) => ({ ...current, ...patch })),
     updateQuiz: (section, key, optionValue) => setProfile((current) => ({

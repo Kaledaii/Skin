@@ -4,9 +4,10 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { budgetTiers, skinTypes, useApp } from "@/shared/AppContext";
-import { Body, BrandLogo, BrandMark, Button, Card, H1, H2, Pill, ProgressBar, Screen, SectionLabel } from "@/shared/components";
+import { Body, Button, Card, H2, Pill, ProgressBar, Screen } from "@/shared/components";
 import { t } from "@/shared/i18n";
 import { humanize, knowledgeBase } from "@/shared/knowledge/engine";
+import { MarketingHero, marketingImages, PortraitGlowStrip } from "@/shared/marketingVisuals";
 import { palettes, spacing } from "@/shared/theme";
 import { BudgetTier, Language, SkinType } from "@/shared/types";
 
@@ -57,13 +58,28 @@ export default function Onboarding() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content}>
+        <MarketingHero
+          image={marketingImages.glowJourney}
+          eyebrow={t(language, "appName")}
+          title="Your Glow, Your Journey"
+          body="Personalized care for every Nepali skin tone."
+          cta="Start Your Quiz ✨"
+          tall
+        />
+        <PortraitGlowStrip
+          title="Confidence in Every Shade"
+          subtitle="Bright, festive, calm, outdoorsy, minimal - Prabha adapts to the girl using it."
+          images={[
+            marketingImages.portraitSoftSmile,
+            marketingImages.portraitRedSareeClose,
+            marketingImages.portraitYellowOutdoor,
+            marketingImages.portraitWhiteBangs,
+            marketingImages.portraitFestiveBraid
+          ]}
+        />
         <Card variant="hero" style={styles.heroCard}>
-          <BrandLogo />
           <View style={styles.heroTop}>
-            <BrandMark />
             <View style={styles.flex}>
-          <SectionLabel tone="accent">{t(language, "appName")}</SectionLabel>
-          <H1>{t(language, "tagline")}</H1>
           <Body muted>{language === "en" ? "A calmer, box-based quiz for Nepal skin concerns, with dropdowns instead of a wall of text." : "नेपालको लागि box-based quiz, dropdowns र कम text भएको flow।"}</Body>
             </View>
           </View>
@@ -73,6 +89,9 @@ export default function Onboarding() {
           </View>
           <View style={styles.wrap}>
             <Pill tone="primary">8 sections</Pill>
+            <Pill tone="accent">Confidence in Every Shade</Pill>
+            <Pill tone="secondary">Science Meets Tradition</Pill>
+            <Pill tone="primary">Made for Nepal weather</Pill>
             <Pill tone={profile.quiz.primaryConcerns.length || profile.quiz.symptoms.length ? "secondary" : "accent"}>Concern required</Pill>
             <Pill tone={profile.consentAccepted ? "secondary" : "accent"}>Consent required</Pill>
           </View>

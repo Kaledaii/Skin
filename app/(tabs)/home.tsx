@@ -1,9 +1,11 @@
 import { Feather } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import type { ComponentProps, ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { AccessibilityInfo, ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useApp } from "@/shared/AppContext";
+import { Celebration } from "@/shared/Celebration";
 import { Body, BrandMark, Button, Card, FloatingBadge, H1, H2, Pill, ProgressBar, Screen, SectionLabel, SignalCard, ToggleGroup } from "@/shared/components";
 import { t } from "@/shared/i18n";
 import { contextualConditionDescription, generateRoutine, localized } from "@/shared/knowledge/engine";
@@ -13,6 +15,7 @@ import { buildPlanSections, buildTrustReasons, doctorWarning, getMatchConfidence
 import { calculateSkinHabitScore } from "@/shared/knowledge/tracking";
 import { GeneratedStep, HomeRemedy } from "@/shared/knowledge/types";
 import { buildWeatherActions, WeatherAction } from "@/shared/knowledge/weatherGuidance";
+import { GlowCarousel, ImagePromoCard, marketingImages, PortraitGlowStrip } from "@/shared/marketingVisuals";
 import { premiumPreviewLabel } from "@/shared/monetization";
 import { launchProducts } from "@/shared/productCatalog";
 import { getAqiGuidance, useEnvironmentalData } from "@/shared/services/environment";
@@ -24,6 +27,8 @@ export default function Home() {
   const c = palettes[themeMode];
   const scrollRef = useRef<ScrollView>(null);
   const [showTopButton, setShowTopButton] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
   const [routinePeriod, setRoutinePeriod] = useState<"morning" | "evening">("morning");
   const [expandedConcernId, setExpandedConcernId] = useState<string | null>(null);
   const environment = useEnvironmentalData();
@@ -47,6 +52,14 @@ export default function Home() {
     .slice(0, 3);
   const trustReasons = topMatch ? buildTrustReasons(topMatch, profile.quiz) : [];
   const planSections = useMemo(() => buildPlanSections(result, productMatches), [result, productMatches]);
+  const glowPromos = useMemo(
+    () => [
+      { id: "glow-prabha", image: marketingImages.glowPrabha, eyebrow: "Glow with Prabha", title: "Simple routines for radiant skin ✨", body: "Your routine adapts to skin type, budget, water, makeup, and Nepal weather.", cta: "Explore Now", icon: "star" as const, emoji: "🌸" },
+      { id: "bright-protected", image: marketingImages.brightProtected, eyebrow: "Stay Bright & Protected", title: "SPF + weather care ☀️", body: "Daily UV, AQI, rain, sweat, and water tips without scary jargon.", cta: "Get Daily Tips", icon: "sun" as const, emoji: "🧴" },
+      { id: "festive-ready", image: marketingImages.festiveReady, eyebrow: "Festive Ready Skin", title: "Dashain & Tihar glow prep 🪔", body: "A gentle plan for makeup, late nights, sweets, travel dust, and glow goals.", cta: "Get Glow Tips", icon: "zap" as const, emoji: "✨" }
+    ],
+    []
+  );
 
   useEffect(() => {
     if (topMatch) {
@@ -54,8 +67,24 @@ export default function Home() {
     }
   }, [topMatch, tier]);
 
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReducedMotion).catch(() => setReducedMotion(false));
+  }, []);
+
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    if (habitScore.score < 100) return;
+    AsyncStorage.getItem(`prabha-celebrated-v2-${today}`).then((value) => {
+      if (value) return;
+      setShowCelebration(true);
+      AsyncStorage.setItem(`prabha-celebrated-v2-${today}`, "yes");
+      setTimeout(() => setShowCelebration(false), reducedMotion ? 4200 : 3600);
+    });
+  }, [habitScore.score, reducedMotion]);
+
   return (
     <Screen showQuickActions={false}>
+      {showCelebration ? <Celebration reducedMotion={reducedMotion} colors={c} /> : null}
       <View style={styles.quickActions}>
         <View style={styles.quickButtonRow}>
           <QuickIconButton
@@ -94,6 +123,26 @@ export default function Home() {
           </View>
         </View>
 
+        <GlowCarousel
+          items={glowPromos}
+          onItemPress={(item) => {
+            if (item.id === "bright-protected") router.push("/(tabs)/tips" as never);
+            else if (item.id === "festive-ready") router.push("/(tabs)/tips" as never);
+          }}
+        />
+
+        <PortraitGlowStrip
+          title="Your glow, your mood"
+          subtitle="From college days to festivals, the plan should feel personal, pretty, and practical."
+          images={[
+            marketingImages.portraitCreamSmile,
+            marketingImages.portraitBlueBangs,
+            marketingImages.portraitGreenBindi,
+            marketingImages.portraitGlowClose,
+            marketingImages.portraitRedBokeh
+          ]}
+        />
+
         <Card variant="hero">
           <View style={styles.heroRow}>
             <BrandMark />
@@ -105,6 +154,20 @@ export default function Home() {
           </View>
           <ProgressBar value={Math.min((topMatch?.score ?? 0) * 10, 100)} color={c.primary} />
         </Card>
+
+        <ImagePromoCard
+          compact
+          item={{
+            id: "result-glow",
+            image: marketingImages.cleanBeauty,
+            eyebrow: "✨ Today's skin read",
+            title: topMatch ? localized(language, topMatch.condition.name_en, topMatch.condition.name_ne) : "Your skin guidance is ready",
+            body: `Top action: ${topAction}. Guidance only, not diagnosis.`,
+            cta: "See plan",
+            icon: "arrow-down",
+            emoji: "🌸"
+          }}
+        />
 
         <EnvironmentalCard environment={environment} colors={c} />
 

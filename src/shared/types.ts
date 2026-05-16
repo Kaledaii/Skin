@@ -46,6 +46,10 @@ export type SubscriptionInfo = {
 export type PaymentRequest = {
   id: string;
   userId: string;
+  userEmail?: string | null;
+  profileName?: string;
+  profileLocation?: string;
+  profileSkinType?: SkinType;
   provider: PaymentProvider;
   plan: Exclude<SubscriptionPlanId, "beta">;
   amount: number;

@@ -1,7 +1,7 @@
 import { DailyCheckIn, PaymentRequest, SubscriptionInfo, UserProfile } from "../types";
 import { getFirebase } from "./firebase";
 import { collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
-import { createUserWithEmailAndPassword, signInAnonymously as firebaseSignInAnonymously, signInWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInAnonymously as firebaseSignInAnonymously, signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
 export type SyncPayload = {
@@ -32,6 +32,14 @@ export async function signInWithEmail(email: string, password: string): Promise<
   if (!firebase) return { ok: false, mode: "local-demo", message: "Firebase is not configured." };
   const credential = await signInWithEmailAndPassword(firebase.auth, email.trim(), password);
   return { ok: true, uid: credential.user.uid, email: credential.user.email, mode: "email", message: "Signed in." };
+}
+
+export async function signInWithGoogle(): Promise<AuthResult> {
+  const firebase = getFirebase();
+  if (!firebase) return { ok: false, mode: "local-demo", message: "Firebase is not configured." };
+  const provider = new GoogleAuthProvider();
+  const credential = await signInWithPopup(firebase.auth, provider);
+  return { ok: true, uid: credential.user.uid, email: credential.user.email, mode: "email", message: "Signed in with Google." };
 }
 
 export async function syncUserSnapshot(payload: SyncPayload) {
@@ -77,15 +85,18 @@ export async function savePaymentRequest(request: PaymentRequest) {
   const firebase = getFirebase();
   if (!firebase) return { ok: false, mode: "local-demo" as const };
   const user = firebase.auth.currentUser ?? (await firebaseSignInAnonymously(firebase.auth)).user;
-  const next = { ...request, userId: user.uid };
+  const next = { ...request, userId: user.uid, userEmail: user.email ?? request.userEmail ?? null };
   await setDoc(doc(firebase.db, "paymentRequests", request.id), { ...next, updatedAt: serverTimestamp() }, { merge: true });
   return { ok: true, mode: "firebase-synced" as const, request: next };
 }
 
-export async function listPaymentRequests(status: PaymentRequest["status"] = "pending_review") {
+export async function listPaymentRequests(status?: PaymentRequest["status"]) {
   const firebase = getFirebase();
   if (!firebase) return { ok: false, mode: "local-demo" as const, requests: [] as PaymentRequest[] };
-  const snapshot = await getDocs(query(collection(firebase.db, "paymentRequests"), where("status", "==", status), orderBy("createdAt", "desc")));
+  const requestQuery = status
+    ? query(collection(firebase.db, "paymentRequests"), where("status", "==", status), orderBy("createdAt", "desc"))
+    : query(collection(firebase.db, "paymentRequests"), orderBy("createdAt", "desc"));
+  const snapshot = await getDocs(requestQuery);
   return { ok: true, mode: "firebase-synced" as const, requests: snapshot.docs.map((item) => item.data() as PaymentRequest) };
 }
 
@@ -94,6 +105,27 @@ export async function updatePaymentRequest(request: PaymentRequest) {
   if (!firebase) return { ok: false, mode: "local-demo" as const };
   await updateDoc(doc(firebase.db, "paymentRequests", request.id), { ...request, updatedAt: serverTimestamp() });
   return { ok: true, mode: "firebase-synced" as const };
+}
+
+export async function updateUserSubscriptionForPayment(request: PaymentRequest, subscription: SubscriptionInfo) {
+  const firebase = getFirebase();
+  if (!firebase || !request.userId || request.userId === "local-demo-user") return { ok: false, mode: "local-demo" as const };
+  await setDoc(
+    doc(firebase.db, "users", request.userId),
+    {
+      subscription,
+      paymentState: subscription.paymentState ?? "active",
+      lastPaymentRequestId: request.id,
+      updatedAt: serverTimestamp()
+    },
+    { merge: true }
+  );
+  return { ok: true, mode: "firebase-synced" as const };
+}
+
+export function getCurrentAuthEmail() {
+  const firebase = getFirebase();
+  return firebase?.auth.currentUser?.email ?? null;
 }
 
 export async function submitExpertQuestion(question: string, profileName: string) {

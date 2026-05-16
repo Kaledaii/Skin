@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import type { ComponentProps, PropsWithChildren } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Easing, Image, Platform, Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
+import { AccessibilityInfo, Animated, Easing, Image, Platform, Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
 import { palettes, spacing } from "./theme";
 import { useApp } from "./AppContext";
 
@@ -25,6 +25,8 @@ function GlobalQuickActions() {
   return (
     <View style={styles.globalQuickActions} pointerEvents="box-none">
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={themeMode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
         onPress={() => setThemeMode(themeMode === "dark" ? "light" : "dark")}
         style={({ pressed }) => [
           styles.globalQuickButton,
@@ -34,6 +36,8 @@ function GlobalQuickActions() {
         <Feather name={themeMode === "dark" ? "sun" : "moon"} color={c.primary} size={16} />
       </Pressable>
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={language === "en" ? "Switch to Nepali" : "Switch to English"}
         onPress={() => setLanguage(language === "en" ? "ne" : "en")}
         style={({ pressed }) => [
           styles.globalQuickTextButton,
@@ -50,6 +54,7 @@ export function AppAtmosphere({ children }: PropsWithChildren) {
   const { themeMode } = useApp();
   const c = palettes[themeMode];
   const cursor = useRef(new Animated.ValueXY({ x: -200, y: -200 })).current;
+  const [reducedMotion, setReducedMotion] = useState(false);
   const petals = useMemo(
     () =>
       Array.from({ length: Platform.OS === "web" ? 14 : 7 }, (_, index) => ({
@@ -66,6 +71,11 @@ export function AppAtmosphere({ children }: PropsWithChildren) {
   );
 
   useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReducedMotion).catch(() => setReducedMotion(false));
+  }, []);
+
+  useEffect(() => {
+    if (reducedMotion) return;
     petals.forEach((petal) => {
       Animated.loop(
         Animated.sequence([
@@ -85,7 +95,7 @@ export function AppAtmosphere({ children }: PropsWithChildren) {
         ])
       ).start();
     });
-  }, [petals]);
+  }, [petals, reducedMotion]);
 
   useEffect(() => {
     if (Platform.OS !== "web" || typeof window === "undefined") return;
@@ -124,7 +134,7 @@ export function AppAtmosphere({ children }: PropsWithChildren) {
             />
           );
         })}
-        {Platform.OS === "web" ? (
+        {Platform.OS === "web" && !reducedMotion ? (
           <Animated.View
             style={[
               styles.cursorGlow,

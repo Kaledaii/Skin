@@ -1,8 +1,12 @@
 import { premiumPlans } from "../monetization";
-import { PaymentProvider, PaymentRequest, SubscriptionInfo, SubscriptionPlanId } from "../types";
+import { PaymentProvider, PaymentRequest, SkinType, SubscriptionInfo, SubscriptionPlanId } from "../types";
 
 export type ManualPaymentInput = {
   userId: string;
+  userEmail?: string | null;
+  profileName?: string;
+  profileLocation?: string;
+  profileSkinType?: SkinType;
   provider: PaymentProvider;
   plan: Exclude<SubscriptionPlanId, "beta">;
   transactionId: string;
@@ -35,6 +39,10 @@ export function createManualPaymentRequest(input: ManualPaymentInput): PaymentSu
     request: {
       id: `pay_${input.provider}_${Date.now()}`,
       userId: input.userId,
+      userEmail: input.userEmail,
+      profileName: input.profileName,
+      profileLocation: input.profileLocation,
+      profileSkinType: input.profileSkinType,
       provider: input.provider,
       plan: input.plan,
       amount: planInfo.amount,

@@ -9,6 +9,7 @@ import { ContentArticle } from "@/shared/knowledge/contentTypes";
 import { dailyHabitTips, glossaryTerms, nutrientGuides } from "@/shared/knowledge/education";
 import { generateRoutine } from "@/shared/knowledge/engine";
 import { calculateSkinHabitScore } from "@/shared/knowledge/tracking";
+import { ImagePromoCard, marketingImages } from "@/shared/marketingVisuals";
 import { palettes, spacing } from "@/shared/theme";
 
 const categories = ["recommended", "all", "education", "seasonal", "diet", "glow_up", "product_review", "motivation"];
@@ -51,6 +52,19 @@ export default function Learn() {
             </View>
           </View>
         </Card>
+
+        <ImagePromoCard
+          item={{
+            id: "skin-progress-education",
+            image: marketingImages.skinProgress,
+            eyebrow: "📈 Learn gently",
+            title: "Skin changes slowly. Track gently.",
+            body: "Use articles to understand acne, marks, SPF, food, water, and products without fear-based advice.",
+            cta: "Read guides",
+            icon: "book-open",
+            emoji: "🌸"
+          }}
+        />
 
         <Card variant="seasonal" style={{ backgroundColor: c.surfaceGlow }}>
           <View style={styles.row}>

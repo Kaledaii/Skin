@@ -1,11 +1,12 @@
 import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { ComponentProps } from "react";
-import { AccessibilityInfo, Animated, Image, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
+import { AccessibilityInfo, Image, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
 import { LineChart } from "react-native-chart-kit";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { router } from "expo-router";
 import { useApp } from "@/shared/AppContext";
+import { Celebration } from "@/shared/Celebration";
 import { Body, BrandMark, Button, Card, H1, H2, Pill, ProgressBar, Screen, SectionLabel, SignalCard, ToggleGroup } from "@/shared/components";
 import { routineLogs } from "@/shared/data";
 import { t } from "@/shared/i18n";
@@ -14,6 +15,7 @@ import { buildLifestyleSignals } from "@/shared/knowledge/lifestyleSignals";
 import { calculateSkinHabitScore } from "@/shared/knowledge/tracking";
 import { buildWeeklySkinReport } from "@/shared/knowledge/weeklyReport";
 import { buildWeatherActions } from "@/shared/knowledge/weatherGuidance";
+import { ImagePromoCard, marketingImages } from "@/shared/marketingVisuals";
 import { useEnvironmentalData } from "@/shared/services/environment";
 import { palettes, spacing } from "@/shared/theme";
 import { DailyCheckIn } from "@/shared/types";
@@ -48,10 +50,10 @@ export default function Progress() {
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
     if (habitScore.score < 100) return;
-    AsyncStorage.getItem(`prabha-celebrated-${today}`).then((value) => {
+    AsyncStorage.getItem(`prabha-celebrated-v2-${today}`).then((value) => {
       if (value) return;
       setShowCelebration(true);
-      AsyncStorage.setItem(`prabha-celebrated-${today}`, "yes");
+      AsyncStorage.setItem(`prabha-celebrated-v2-${today}`, "yes");
       setTimeout(() => setShowCelebration(false), reducedMotion ? 4200 : 3600);
     });
   }, [habitScore.score, reducedMotion]);
@@ -116,6 +118,19 @@ export default function Progress() {
           {premiumLocked ? <Button label="Unlock weekly report" onPress={() => router.push("/paywall" as never)} /> : null}
           {!premiumLocked ? <Button label="Share progress report" onPress={() => shareReport(weeklyReport.summary, habitScore.score)} secondary /> : null}
         </Card>
+
+        <ImagePromoCard
+          item={{
+            id: "track-your-glow",
+            image: marketingImages.trackGlow,
+            eyebrow: "Track Your Glow 📈",
+            title: "Monitor your skin's progress",
+            body: "Small daily habits become visible over weeks. Compare kindly, not obsessively.",
+            cta: "Log Your Progress",
+            icon: "activity",
+            emoji: "✨"
+          }}
+        />
 
         <Card>
           <H2>Today's check-in</H2>
@@ -343,40 +358,6 @@ export default function Progress() {
   }
 }
 
-function Celebration({ reducedMotion, colors }: { reducedMotion: boolean; colors: (typeof palettes)["light"] }) {
-  const values = useRef(Array.from({ length: 18 }, () => new Animated.Value(0))).current;
-
-  useEffect(() => {
-    if (reducedMotion) return;
-    Animated.stagger(
-      26,
-      values.map((value) =>
-        Animated.sequence([
-          Animated.timing(value, { toValue: 1, duration: 900, useNativeDriver: true }),
-          Animated.timing(value, { toValue: 0, duration: 900, useNativeDriver: true })
-        ])
-      )
-    ).start();
-  }, [reducedMotion, values]);
-
-  return (
-    <View style={styles.celebrationOverlay} pointerEvents="none">
-      <View style={[styles.celebrationCard, { backgroundColor: colors.surface, borderColor: colors.borderStrong }]}>
-        <Text style={[styles.celebrationTitle, { color: colors.text }]}>100/100 today</Text>
-        <Text style={[styles.celebrationText, { color: colors.muted }]}>Perfect habit score. Keep it gentle, not obsessive.</Text>
-      </View>
-      {!reducedMotion
-        ? values.map((value, index) => {
-            const translateY = value.interpolate({ inputRange: [0, 1], outputRange: [0, -190 - (index % 5) * 18] });
-            const translateX = value.interpolate({ inputRange: [0, 1], outputRange: [0, (index % 2 === 0 ? 1 : -1) * (34 + index * 6)] });
-            const opacity = value.interpolate({ inputRange: [0, 0.25, 1], outputRange: [0, 1, 0] });
-            return <Animated.View key={index} style={[styles.confettiPiece, { backgroundColor: index % 3 === 0 ? colors.primary : index % 3 === 1 ? colors.secondary : colors.accent, opacity, transform: [{ translateX }, { translateY }, { rotate: `${index * 21}deg` }] }]} />;
-          })
-        : null}
-    </View>
-  );
-}
-
 async function shareReport(summary: string, score: number) {
   await Share.share({ message: `Prabha weekly skin report\nScore: ${score}/100\n${summary}\nGuidance only, not diagnosis.` });
 }
@@ -413,10 +394,5 @@ const styles = StyleSheet.create({
   timelineRow: { flexDirection: "row", gap: spacing.xs },
   timelineSlot: { flex: 1, minHeight: 92, borderWidth: 1, borderRadius: 8, alignItems: "center", justifyContent: "center", gap: spacing.xs, overflow: "hidden" },
   timelineImage: { width: "100%", height: 66 },
-  chart: { borderRadius: 8, alignSelf: "center" },
-  celebrationOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 60, alignItems: "center", justifyContent: "center" },
-  celebrationCard: { borderWidth: 1, borderRadius: 16, padding: spacing.lg, alignItems: "center", gap: spacing.xs, shadowOpacity: 0.25, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
-  celebrationTitle: { fontSize: 26, fontWeight: "900" },
-  celebrationText: { fontSize: 14, fontWeight: "700" },
-  confettiPiece: { position: "absolute", width: 12, height: 18, borderRadius: 3 }
+  chart: { borderRadius: 8, alignSelf: "center" }
 });

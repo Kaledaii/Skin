@@ -1,4 +1,5 @@
-import { ScrollView, StyleSheet, TextInput } from "react-native";
+import { Feather } from "@expo/vector-icons";
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { useState } from "react";
 import { useApp } from "@/shared/AppContext";
@@ -28,6 +29,7 @@ export default function Settings() {
     rejectPaymentRequest,
     signUpWithEmail,
     signInWithEmail,
+    signInWithGoogle,
     loadSubscription,
     exportData,
     deleteCloudData,
@@ -39,6 +41,7 @@ export default function Settings() {
   const [exportPreview, setExportPreview] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [authStatus, setAuthStatus] = useState<string | null>(null);
   const [adminStatus, setAdminStatus] = useState<string | null>(null);
   const adminMode = process.env.EXPO_PUBLIC_ADMIN_MODE === "true";
@@ -64,13 +67,35 @@ export default function Settings() {
         </Card>
         <Card>
           <H2>Account recovery</H2>
-          <Body muted>Email/password lets paid users recover subscription after refresh, reinstall, or another device.</Body>
+          <Body muted>Email/password lets paid users recover subscription after refresh, reinstall, or another device. Google sign-in works on web after Firebase is configured.</Body>
           {authStatus ? <Body muted>{authStatus}</Body> : null}
           <TextInput value={email} onChangeText={setEmail} placeholder="Email" placeholderTextColor={c.muted} style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]} />
-          <TextInput value={password} onChangeText={setPassword} placeholder="Password" secureTextEntry placeholderTextColor={c.muted} style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]} />
+          <View style={[styles.passwordWrap, { borderColor: c.border, backgroundColor: c.surfaceAlt }]}>
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Password"
+              secureTextEntry={!showPassword}
+              placeholderTextColor={c.muted}
+              style={[styles.passwordInput, { color: c.text }]}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+              onPress={() => setShowPassword((value) => !value)}
+              style={styles.eyeButton}
+            >
+              <Feather name={showPassword ? "eye-off" : "eye"} color={c.muted} size={20} />
+            </Pressable>
+          </View>
           <Button label="Create email account" onPress={async () => {
             try {
+              if (!email.trim() || password.length < 6) {
+                setAuthStatus("Enter a valid email and at least 6 characters password.");
+                return;
+              }
               const result = await signUpWithEmail(email, password);
+              if (result.ok) await syncUserSnapshot({ profile, subscription, dailyCheckIns, paymentRequests });
               setAuthStatus(result.message);
             } catch (error) {
               setAuthStatus(error instanceof Error ? error.message : "Could not create account.");
@@ -78,6 +103,10 @@ export default function Settings() {
           }} secondary />
           <Button label="Sign in" onPress={async () => {
             try {
+              if (!email.trim() || !password) {
+                setAuthStatus("Enter email and password first.");
+                return;
+              }
               const result = await signInWithEmail(email, password);
               await loadSubscription();
               setAuthStatus(result.message);
@@ -85,25 +114,38 @@ export default function Settings() {
               setAuthStatus(error instanceof Error ? error.message : "Could not sign in.");
             }
           }} secondary />
+          <Button label="Sign in with Google" onPress={async () => {
+            try {
+              const result = await signInWithGoogle();
+              if (result.ok) {
+                await syncUserSnapshot({ profile, subscription, dailyCheckIns, paymentRequests });
+                await loadSubscription();
+              }
+              setAuthStatus(result.message);
+            } catch (error) {
+              setAuthStatus(error instanceof Error ? error.message : "Google sign-in could not open. Check Firebase web config and authorized domain.");
+            }
+          }} secondary />
         </Card>
         {adminMode ? (
           <Card>
             <H2>Admin payment review</H2>
-            <Body muted>Visible only when EXPO_PUBLIC_ADMIN_MODE=true. Approving a request activates premium with expiry.</Body>
+            <Body muted>Visible only when EXPO_PUBLIC_ADMIN_MODE=true. Use the full hidden admin panel for real review.</Body>
             {adminStatus ? <Body muted>{adminStatus}</Body> : null}
+            <Button label="Open compact admin panel" onPress={() => router.push("/admin" as never)} />
             <Button label="Refresh pending payments" onPress={async () => {
               await refreshPaymentRequests();
               setAdminStatus("Pending payment list refreshed.");
             }} secondary />
             {paymentRequests.filter((request) => request.status === "pending_review").map((request) => (
-              <Card key={request.id}>
+              <View key={request.id} style={[styles.adminRequest, { borderColor: c.border, backgroundColor: c.surfaceAlt }]}>
                 <Pill tone="accent">{request.provider} - {request.plan} - Rs. {request.amount}</Pill>
                 <Body>{request.payerName} / {request.payerPhone}</Body>
                 <Body muted>Txn: {request.transactionId}</Body>
                 <Body muted>Screenshot: {request.screenshotDownloadUrl ?? request.screenshotUri}</Body>
                 <Button label="Approve premium" onPress={async () => setAdminStatus(await approvePaymentRequest(request.id, "Manual QR payment confirmed"))} />
                 <Button label="Reject" onPress={async () => setAdminStatus(await rejectPaymentRequest(request.id, "Could not verify payment screenshot/transaction"))} secondary />
-              </Card>
+              </View>
             ))}
           </Card>
         ) : null}
@@ -113,7 +155,7 @@ export default function Settings() {
           <Body muted>
             {firebaseReady
               ? "Developer check: confirms profile, premium status, and daily logs can be sent to Firebase."
-              : "Developer check only. Local demo mode means your data is saved on this device, not uploaded online yet."}
+              : "Firebase not configured means EXPO_PUBLIC_FIREBASE_* keys are missing, so sign-in, cloud sync, payment screenshot upload, admin review, and Google login cannot work yet. The app still saves locally on this device for testing."}
           </Body>
           {syncStatus ? <Body muted>{syncStatus}</Body> : null}
           <Button
@@ -164,5 +206,9 @@ export default function Settings() {
 const styles = StyleSheet.create({
   content: { gap: spacing.md, paddingBottom: spacing.xl },
   input: { borderWidth: 1, borderRadius: 8, minHeight: 46, paddingHorizontal: spacing.md, fontSize: 15 },
+  passwordWrap: { borderWidth: 1, borderRadius: 8, minHeight: 46, paddingLeft: spacing.md, paddingRight: spacing.xs, flexDirection: "row", alignItems: "center" },
+  passwordInput: { flex: 1, minHeight: 44, fontSize: 15 },
+  eyeButton: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
+  adminRequest: { borderWidth: 1, borderRadius: 8, padding: spacing.sm, gap: spacing.xs },
   exportBox: { minHeight: 120, borderWidth: 1, borderRadius: 8, padding: spacing.sm, fontSize: 12 }
 });

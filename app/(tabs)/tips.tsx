@@ -8,6 +8,7 @@ import { tips } from "@/shared/data";
 import { t } from "@/shared/i18n";
 import { generateRoutine, localized } from "@/shared/knowledge/engine";
 import { buildBudgetRoutine, buildSkinTwin, checkIngredient, premiumModes } from "@/shared/knowledge/sellingFeatures";
+import { ImagePromoCard, marketingImages } from "@/shared/marketingVisuals";
 import { launchProducts } from "@/shared/productCatalog";
 import { palettes, spacing } from "@/shared/theme";
 
@@ -66,6 +67,19 @@ export default function Tips() {
             </View>
           </View>
         </Card>
+
+        <ImagePromoCard
+          item={{
+            id: "spf-weather",
+            image: marketingImages.sunscreenApplication,
+            eyebrow: "☀️ UV  🌧️ Rain  🌫️ AQI",
+            title: "Stay Bright & Protected",
+            body: "SPF, sweat rinse, umbrella, mask, hydration, and night cleanse tips for Nepal days.",
+            cta: "Get Daily Tips",
+            icon: "sun",
+            emoji: "🧴"
+          }}
+        />
 
         <Card variant="seasonal">
           <H2>Skin Twin</H2>
