@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useApp } from "@/shared/AppContext";
 import { Body, BrandMark, Button, Card, FloatingBadge, H1, H2, Pill, ProgressBar, Screen, SectionLabel } from "@/shared/components";
+import { ErrorBoundary } from "@/shared/ErrorBoundary";
 import { getAllArticles, getRecommendedArticles, getSeasonalCalendar } from "@/shared/knowledge/content";
 import { ContentArticle } from "@/shared/knowledge/contentTypes";
 import { dailyHabitTips, glossaryTerms, nutrientGuides } from "@/shared/knowledge/education";
@@ -35,8 +36,9 @@ export default function Learn() {
   const habitScore = calculateSkinHabitScore({ completion, routineSteps: [...routine.morning, ...routine.evening], profile, checkIn: todayCheckIn });
 
   return (
-    <Screen>
-      <ScrollView contentContainerStyle={styles.content}>
+    <ErrorBoundary screenName="Learn">
+      <Screen>
+        <ScrollView contentContainerStyle={styles.content}>
         <Card variant="hero">
           <View style={styles.heroRow}>
             <BrandMark compact />
@@ -161,6 +163,7 @@ export default function Learn() {
         </Card>
       </ScrollView>
     </Screen>
+    </ErrorBoundary>
   );
 
   function ArticleCard({ article, locked }: { article: ContentArticle; locked: boolean }) {

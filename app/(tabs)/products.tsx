@@ -3,6 +3,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-na
 import { router } from "expo-router";
 import { useApp } from "@/shared/AppContext";
 import { Body, BrandMark, Button, Card, H1, H2, Pill, Screen, SectionLabel, Segment } from "@/shared/components";
+import { ErrorBoundary } from "@/shared/ErrorBoundary";
 import { launchProducts } from "@/shared/productCatalog";
 import { t } from "@/shared/i18n";
 import { palettes, spacing } from "@/shared/theme";
@@ -28,8 +29,9 @@ export default function Products() {
   const cartProducts = launchProducts.filter((item) => savedProductIds.includes(item.id));
 
   return (
-    <Screen>
-      <ScrollView contentContainerStyle={styles.content}>
+    <ErrorBoundary screenName="Products">
+      <Screen>
+        <ScrollView contentContainerStyle={styles.content}>
         <Card variant="hero">
           <View style={styles.heroRow}>
             <BrandMark compact />
@@ -181,6 +183,7 @@ export default function Products() {
         );})}
       </ScrollView>
     </Screen>
+    </ErrorBoundary>
   );
 }
 

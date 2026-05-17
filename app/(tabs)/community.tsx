@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { useApp } from "@/shared/AppContext";
 import { Body, BrandMark, Button, Card, H1, H2, Pill, Screen, SectionLabel } from "@/shared/components";
+import { ErrorBoundary } from "@/shared/ErrorBoundary";
 import { questions } from "@/shared/data";
 import { t } from "@/shared/i18n";
 import { learnQAs } from "@/shared/knowledge/education";
@@ -22,8 +23,9 @@ export default function Community() {
     return learnQAs.filter((qa) => `${qa.question_en} ${qa.question_ne} ${qa.answer_en} ${qa.answer_ne} ${qa.tags.join(" ")}`.toLowerCase().includes(needle));
   }, [query]);
   return (
-    <Screen>
-      <ScrollView contentContainerStyle={styles.content}>
+    <ErrorBoundary screenName="Community">
+      <Screen>
+        <ScrollView contentContainerStyle={styles.content}>
         <Card variant="hero">
           <View style={styles.heroRow}>
             <BrandMark compact />
@@ -112,6 +114,7 @@ export default function Community() {
         </Card>
       </ScrollView>
     </Screen>
+    </ErrorBoundary>
   );
 }
 

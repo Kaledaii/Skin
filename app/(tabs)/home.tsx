@@ -84,9 +84,10 @@ export default function Home() {
   }, [habitScore.score, reducedMotion]);
 
   return (
-    <Screen showQuickActions={false}>
-      {showCelebration ? <Celebration reducedMotion={reducedMotion} colors={c} /> : null}
-      <View style={styles.quickActions}>
+    <ErrorBoundary screenName="Home">
+      <Screen showQuickActions={false}>
+        {showCelebration ? <Celebration reducedMotion={reducedMotion} colors={c} /> : null}
+        <View style={styles.quickActions}>
         <View style={styles.quickButtonRow}>
           <QuickIconButton
             icon={themeMode === "dark" ? "sun" : "moon"}
@@ -478,6 +479,7 @@ export default function Home() {
         </Pressable>
       ) : null}
     </Screen>
+    </ErrorBoundary>
   );
 
   function RoutineSection({ title, icon, steps }: { title: string; icon: ReactNode | null; steps: GeneratedStep[] }) {

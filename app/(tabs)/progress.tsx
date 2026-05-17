@@ -8,6 +8,7 @@ import { router } from "expo-router";
 import { useApp } from "@/shared/AppContext";
 import { Celebration } from "@/shared/Celebration";
 import { Body, BrandMark, Button, Card, H1, H2, Pill, ProgressBar, Screen, SectionLabel, SignalCard, ToggleGroup } from "@/shared/components";
+import { ErrorBoundary } from "@/shared/ErrorBoundary";
 import { routineLogs } from "@/shared/data";
 import { t } from "@/shared/i18n";
 import { generateRoutine } from "@/shared/knowledge/engine";
@@ -59,9 +60,10 @@ export default function Progress() {
   }, [habitScore.score, reducedMotion]);
 
   return (
-    <Screen>
-      {showCelebration ? <Celebration reducedMotion={reducedMotion} colors={c} /> : null}
-      <ScrollView contentContainerStyle={styles.content}>
+    <ErrorBoundary screenName="Progress">
+      <Screen>
+        {showCelebration ? <Celebration reducedMotion={reducedMotion} colors={c} /> : null}
+        <ScrollView contentContainerStyle={styles.content}>
         <H1>{t(language, "progress")}</H1>
         <Card variant="hero">
           <View style={styles.heroRow}>
@@ -308,6 +310,7 @@ export default function Progress() {
         </Card>
       </ScrollView>
     </Screen>
+    </ErrorBoundary>
   );
 
   function ScoreTile({ label, value, total }: { label: keyof typeof scoreExplanations; value: number; total: number }) {

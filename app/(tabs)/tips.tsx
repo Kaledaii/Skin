@@ -4,6 +4,7 @@ import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 
 import { router } from "expo-router";
 import { useApp } from "@/shared/AppContext";
 import { Body, BrandMark, Card, H1, H2, Pill, Screen, SectionLabel } from "@/shared/components";
+import { ErrorBoundary } from "@/shared/ErrorBoundary";
 import { tips } from "@/shared/data";
 import { t } from "@/shared/i18n";
 import { generateRoutine, localized } from "@/shared/knowledge/engine";
@@ -55,8 +56,9 @@ export default function Tips() {
   const remainingItems = feedItems.filter((item) => !favoriteIds.includes(item.id));
 
   return (
-    <Screen>
-      <ScrollView contentContainerStyle={styles.content}>
+    <ErrorBoundary screenName="Tips">
+      <Screen>
+        <ScrollView contentContainerStyle={styles.content}>
         <Card variant="hero">
           <View style={styles.heroRow}>
             <BrandMark compact />
@@ -205,6 +207,7 @@ export default function Tips() {
         </Card>
       </ScrollView>
     </Screen>
+    </ErrorBoundary>
   );
 }
 
