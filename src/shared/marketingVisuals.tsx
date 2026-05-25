@@ -30,6 +30,19 @@ export const marketingImages = {
   portraitRedBokeh: require("../../assets/marketing/portrait-red-bokeh.png")
 } satisfies Record<string, ImageSourcePropType>;
 
+export const productVisualImages = {
+  cleanser: marketingImages.cleanBeauty,
+  moisturizer: marketingImages.glassSkin,
+  sunscreen: marketingImages.sunscreenApplication,
+  acne: marketingImages.brightProtected,
+  pigmentation: marketingImages.glowJourney,
+  barrier: marketingImages.warmGlow,
+  micellar: marketingImages.productFlatlay,
+  lip: marketingImages.portraitSoftSmile,
+  heat: marketingImages.portraitYellowOutdoor,
+  default: marketingImages.productFlatlay
+} satisfies Record<string, ImageSourcePropType>;
+
 type PromoItem = {
   id: string;
   image: ImageSourcePropType;
@@ -66,7 +79,7 @@ export function MarketingHero({
   return (
     <Animated.View style={[{ opacity }, style]}>
       <Pressable onPress={onPress} disabled={!onPress} style={({ pressed }) => [{ transform: [{ scale: pressed ? 0.99 : 1 }] }]}>
-        <ImageBackground source={image} resizeMode="cover" imageStyle={styles.heroImage} style={[styles.hero, tall && styles.heroTall]}>
+        <ImageBackground source={image} resizeMode="contain" imageStyle={styles.heroImage} style={[styles.hero, tall && styles.heroTall, { backgroundColor: c.surfaceGlow }]}>
           <View style={[styles.heroShade, { backgroundColor: themeMode === "dark" ? "rgba(20, 10, 14, 0.58)" : "rgba(255, 244, 239, 0.42)" }]} />
           <View style={styles.sparkleOne} />
           <View style={styles.sparkleTwo} />
@@ -93,9 +106,11 @@ export function ImagePromoCard({ item, onPress, compact = false, style }: { item
   return (
     <Animated.View style={[styles.promoWrap, compact && styles.promoCompact, { opacity }, style]}>
       <Pressable onPress={onPress} disabled={!onPress} style={({ pressed }) => [styles.promoPressable, { transform: [{ scale: pressed ? 0.975 : 1 }] }]}>
-        <ImageBackground source={item.image} resizeMode="cover" imageStyle={styles.promoImage} style={styles.promoImageBox}>
-          <View style={[styles.promoShade, { backgroundColor: themeMode === "dark" ? "rgba(23, 10, 14, 0.42)" : "rgba(255, 255, 255, 0.18)" }]} />
-          <View style={styles.promoCopy}>
+        <View style={[styles.promoShell, { backgroundColor: c.surfaceGlow, borderColor: c.border }]}>
+          <ImageBackground source={item.image} resizeMode="contain" imageStyle={styles.promoImage} style={styles.promoImageBox}>
+            <View style={[styles.promoShade, { backgroundColor: themeMode === "dark" ? "rgba(23, 10, 14, 0.10)" : "rgba(255, 255, 255, 0.04)" }]} />
+          </ImageBackground>
+          <View style={[styles.promoCopy, { backgroundColor: themeMode === "dark" ? "rgba(30, 21, 23, 0.94)" : "rgba(255, 255, 255, 0.92)" }]}>
             <View style={styles.promoLabelRow}>
               <Text style={[styles.promoEmoji, { color: c.primary }]}>{item.emoji ?? "✨"}</Text>
               <Text style={[styles.promoEyebrow, { color: c.accent }]}>{item.eyebrow}</Text>
@@ -109,10 +124,24 @@ export function ImagePromoCard({ item, onPress, compact = false, style }: { item
               </View>
             ) : null}
           </View>
-        </ImageBackground>
+        </View>
       </Pressable>
     </Animated.View>
   );
+}
+
+export function productVisualForCategory(category: string) {
+  const value = category.toLowerCase();
+  if (value.includes("cleanser") && !value.includes("micellar")) return productVisualImages.cleanser;
+  if (value.includes("moisturizer")) return productVisualImages.moisturizer;
+  if (value.includes("sunscreen")) return productVisualImages.sunscreen;
+  if (value.includes("acne")) return productVisualImages.acne;
+  if (value.includes("pigmentation")) return productVisualImages.pigmentation;
+  if (value.includes("barrier")) return productVisualImages.barrier;
+  if (value.includes("micellar") || value.includes("oil cleanser")) return productVisualImages.micellar;
+  if (value.includes("lip")) return productVisualImages.lip;
+  if (value.includes("heat")) return productVisualImages.heat;
+  return productVisualImages.default;
 }
 
 export function GlowCarousel({ items, onItemPress }: { items: PromoItem[]; onItemPress?: (item: PromoItem) => void }) {
@@ -200,10 +229,11 @@ const styles = StyleSheet.create({
   ctaText: { color: "#FFFFFF", fontSize: 15, fontWeight: "900" },
   sparkleOne: { position: "absolute", top: 22, right: 38, width: 72, height: 72, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.34)" },
   sparkleTwo: { position: "absolute", bottom: 36, left: 34, width: 34, height: 34, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.42)" },
-  promoWrap: { minHeight: 212, borderRadius: 14, overflow: "hidden" },
-  promoCompact: { minHeight: 170 },
+  promoWrap: { minHeight: 292, borderRadius: 14, overflow: "hidden" },
+  promoCompact: { minHeight: 246 },
   promoPressable: { flex: 1 },
-  promoImageBox: { minHeight: 212, justifyContent: "flex-end" },
+  promoShell: { flex: 1, borderWidth: 1, borderRadius: 14, overflow: "hidden" },
+  promoImageBox: { minHeight: 168, justifyContent: "flex-end" },
   promoImage: { borderRadius: 14 },
   promoShade: { ...StyleSheet.absoluteFillObject },
   promoCopy: { padding: spacing.md, gap: 4 },

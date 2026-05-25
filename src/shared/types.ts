@@ -94,6 +94,9 @@ export type Product = {
   trustScore: number;
   sponsored: boolean;
   affiliateUrl: string;
+  imageUrl?: string;
+  imageSourceKey?: string;
+  visualCategory?: string;
 };
 
 export type Tip = {
@@ -128,6 +131,23 @@ export type DailyCheckIn = {
   moodNote?: string;
   skinNote?: string;
   selfieUri?: string;
+};
+
+export type NotificationPreferences = {
+  routineReminders: boolean;
+  weatherAlerts: boolean;
+  completionPraise: boolean;
+  quietHoursEnabled: boolean;
+  quietHoursStart: string;
+  quietHoursEnd: string;
+};
+
+export type ScheduledNotificationRecord = {
+  id: string;
+  date: string;
+  kind: "routine_morning" | "routine_evening" | "incomplete_steps" | "completion_praise" | "weather_alert";
+  notificationId: string;
+  createdAt: string;
 };
 
 export type CommunityQuestion = {

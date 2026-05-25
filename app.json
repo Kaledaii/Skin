@@ -28,7 +28,7 @@
     "android": {
       "package": "com.prabha.skincare",
       "versionCode": 1,
-      "permissions": ["CAMERA", "READ_MEDIA_IMAGES", "ACCESS_FINE_LOCATION"],
+      "permissions": ["CAMERA", "READ_MEDIA_IMAGES", "ACCESS_FINE_LOCATION", "POST_NOTIFICATIONS"],
       "adaptiveIcon": {
         "foregroundImage": "./assets/brand/prabha-adaptive-icon.png",
         "backgroundColor": "#F98B9E"

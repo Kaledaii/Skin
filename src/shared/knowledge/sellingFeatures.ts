@@ -19,6 +19,12 @@ export const premiumModes = [
     ["Bump watch", "Tiny same-size itchy bumps can be sweat/yeast-triggered; avoid heavy oils."],
     ["Budget pick", "Prioritize gentle cleanser + light gel moisturizer before serums."]
   ]),
+  mode("summer_heat", "Summer / Extreme Heat Mode", "Terai heat, sweat rash, sunscreen reapply, hydration, and light layers.", "Light gel moisturizer, SPF reapply, sweat rinse, cotton clothes, and extra water before heat peaks.", "Use on very hot days, Terai summers, long commutes, sports days, or rooms without ventilation.", "Your premium plan watches feels-like temperature, UV, humidity, and heat-rash signals to adjust SPF, sweat rinse, moisturizer weight, and hydration reminders.", [
+    ["Heat plan", "Cleanse gently, use light moisturizer, SPF 50, and reapply after sweating or long outdoor time."],
+    ["Sweat reset", "Rinse sweat with cool water, pat dry, change damp clothes, and keep skin folds dry."],
+    ["Hydration", "Carry water and choose dahi/mohi, fruits, or dal-bhat over very spicy/fried snacks during peak heat."],
+    ["Warning signs", "Fever, pus, spreading warmth, dizziness, or painful rash needs medical care, not home experiments."]
+  ]),
   mode("winter", "Winter Barrier Mode", "Cold wind, dry cheeks, lip balm, lukewarm water, richer moisturizer.", "Gentle cleanse, damp-skin moisturizer, lip balm, and wind barrier care.", "Unlock premium to shift richer creams by hills, mountain, or Kathmandu winter.", "Your premium plan shifts moisturizer weight, lip care, and wind-barrier steps based on hills, mountain dryness, or Kathmandu winter dust.", [
     ["Morning plan", "Lukewarm rinse, moisturizer on damp skin, SPF, lip balm."],
     ["Night repair", "Gentle cleanse, richer moisturizer on cheeks, lip balm before sleep."],

@@ -11,6 +11,7 @@ import { palettes, spacing } from "@/shared/theme";
 import { Language, ThemeMode } from "@/shared/types";
 import { firebaseReady } from "@/shared/services/firebase";
 import { syncUserSnapshot } from "@/shared/services/firebaseSync";
+import { registerExpoPushToken, requestNotificationAccess } from "@/shared/services/notifications";
 
 export default function Settings() {
   const {
@@ -33,7 +34,9 @@ export default function Settings() {
     loadSubscription,
     exportData,
     deleteCloudData,
-    resetData
+    resetData,
+    notificationPreferences,
+    updateNotificationPreferences
   } = useApp();
   const c = palettes[themeMode];
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
@@ -44,6 +47,7 @@ export default function Settings() {
   const [showPassword, setShowPassword] = useState(false);
   const [authStatus, setAuthStatus] = useState<string | null>(null);
   const [adminStatus, setAdminStatus] = useState<string | null>(null);
+  const [notificationStatus, setNotificationStatus] = useState<string | null>(null);
   const adminMode = process.env.EXPO_PUBLIC_ADMIN_MODE === "true";
   return (
     <Screen>
@@ -56,6 +60,41 @@ export default function Settings() {
         <Card>
           <H2>{t(language, "theme")}</H2>
           <Segment value={themeMode} options={["light", "dark"] as ThemeMode[]} onChange={setThemeMode} />
+        </Card>
+        <Card>
+          <H2>Smart notifications</H2>
+          <Body muted>Routine nudges, weather skin alerts, and completion praise for phone users. Web skips local phone notifications.</Body>
+          {notificationStatus ? <Body muted>{notificationStatus}</Body> : null}
+          <View style={styles.notificationGrid}>
+            <Button
+              label={`Routine reminders: ${notificationPreferences.routineReminders ? "On" : "Off"}`}
+              onPress={() => updateNotificationPreferences({ routineReminders: !notificationPreferences.routineReminders })}
+              secondary
+            />
+            <Button
+              label={`Weather alerts: ${notificationPreferences.weatherAlerts ? "On" : "Off"}`}
+              onPress={() => updateNotificationPreferences({ weatherAlerts: !notificationPreferences.weatherAlerts })}
+              secondary
+            />
+            <Button
+              label={`Completion praise: ${notificationPreferences.completionPraise ? "On" : "Off"}`}
+              onPress={() => updateNotificationPreferences({ completionPraise: !notificationPreferences.completionPraise })}
+              secondary
+            />
+            <Button
+              label={`Quiet hours: ${notificationPreferences.quietHoursEnabled ? "On" : "Off"}`}
+              onPress={() => updateNotificationPreferences({ quietHoursEnabled: !notificationPreferences.quietHoursEnabled })}
+              secondary
+            />
+          </View>
+          <Button
+            label="Enable phone notifications"
+            onPress={async () => {
+              const access = await requestNotificationAccess();
+              const token = await registerExpoPushToken();
+              setNotificationStatus(access.granted ? `Enabled. Push token: ${token.ok ? token.mode : "not synced yet"}.` : `Not enabled: ${access.reason}.`);
+            }}
+          />
         </Card>
         <Card>
           <H2>{language === "en" ? "Subscription" : "Subscription"}</H2>
@@ -209,6 +248,7 @@ const styles = StyleSheet.create({
   passwordWrap: { borderWidth: 1, borderRadius: 8, minHeight: 46, paddingLeft: spacing.md, paddingRight: spacing.xs, flexDirection: "row", alignItems: "center" },
   passwordInput: { flex: 1, minHeight: 44, fontSize: 15 },
   eyeButton: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
+  notificationGrid: { gap: spacing.xs },
   adminRequest: { borderWidth: 1, borderRadius: 8, padding: spacing.sm, gap: spacing.xs },
   exportBox: { minHeight: 120, borderWidth: 1, borderRadius: 8, padding: spacing.sm, fontSize: 12 }
 });

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { useApp } from "@/shared/AppContext";
 import { Body, BrandMark, Button, Card, H1, H2, Pill, Screen, SectionLabel, Segment } from "@/shared/components";
@@ -10,7 +10,7 @@ import { palettes, spacing } from "@/shared/theme";
 import { BudgetTier, SkinType } from "@/shared/types";
 import { budgetTiers, skinTypes } from "@/shared/AppContext";
 import { trackEvent } from "@/shared/services/analytics";
-import { ImagePromoCard, marketingImages } from "@/shared/marketingVisuals";
+import { ImagePromoCard, marketingImages, productVisualForCategory } from "@/shared/marketingVisuals";
 
 type ProductSort = "recommended" | "priceLow" | "priceHigh" | "trustHigh" | "sponsoredLast";
 
@@ -148,9 +148,17 @@ export default function Products() {
         {visibleProducts.map((item, index) => {
           const locked = tier !== "premium" && index >= 10;
           const saved = savedProductIds.includes(item.id);
+          const productImage = item.imageUrl ? { uri: item.imageUrl } : productVisualForCategory(item.visualCategory ?? item.category);
           return (
           <Card key={item.id}>
             <View style={[styles.productAccent, { backgroundColor: c.primary }]} />
+            <View style={[styles.productImagePanel, { backgroundColor: c.surfaceGlow, borderColor: c.border }]}>
+              <Image source={productImage} style={styles.productImage} resizeMode="contain" />
+              <View style={styles.productImageBadges}>
+                <Pill tone="secondary">Trust {item.trustScore}%</Pill>
+                <Pill tone={item.fakeRisk === "high" ? "danger" : item.fakeRisk === "low" ? "secondary" : "accent"}>Fake risk {item.fakeRisk ?? "medium"}</Pill>
+              </View>
+            </View>
             <View style={styles.row}>
               <H2>{item.name}</H2>
               {item.sponsored ? <Pill tone="accent">Ad</Pill> : null}
@@ -216,5 +224,8 @@ const styles = StyleSheet.create({
   filterBlock: { gap: spacing.xs },
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
   cartRow: { borderTopWidth: 1, paddingTop: spacing.sm, gap: spacing.sm, flexDirection: "row", alignItems: "center" },
-  productAccent: { width: 46, height: 3, borderRadius: 99 }
+  productAccent: { width: 46, height: 3, borderRadius: 99 },
+  productImagePanel: { minHeight: 190, borderWidth: 1, borderRadius: 14, overflow: "hidden", alignItems: "center", justifyContent: "center", padding: spacing.sm },
+  productImage: { width: "100%", height: 150 },
+  productImageBadges: { position: "absolute", left: spacing.sm, right: spacing.sm, bottom: spacing.sm, flexDirection: "row", flexWrap: "wrap", gap: spacing.xs }
 });

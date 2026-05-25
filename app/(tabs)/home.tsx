@@ -20,11 +20,13 @@ import { GlowCarousel, ImagePromoCard, marketingImages, PortraitGlowStrip } from
 import { premiumPreviewLabel } from "@/shared/monetization";
 import { launchProducts } from "@/shared/productCatalog";
 import { getAqiGuidance, useEnvironmentalData } from "@/shared/services/environment";
+import { scheduleCompletionPraise, scheduleDailyRoutineReminders, scheduleIncompleteStepReminder, scheduleWeatherAlerts } from "@/shared/services/notifications";
 import { trackEvent } from "@/shared/services/analytics";
 import { palettes, spacing } from "@/shared/theme";
+import { visualCueForText } from "@/shared/visualCues";
 
 export default function Home() {
-  const { language, setLanguage, themeMode, setThemeMode, tier, setTier, profile, completion, toggleCompletion, todayCheckIn } = useApp();
+  const { language, setLanguage, themeMode, setThemeMode, tier, setTier, profile, completion, toggleCompletion, todayCheckIn, notificationPreferences } = useApp();
   const c = palettes[themeMode];
   const scrollRef = useRef<ScrollView>(null);
   const [showTopButton, setShowTopButton] = useState(false);
@@ -38,8 +40,9 @@ export default function Home() {
   const weatherActions = useMemo(() => (environment.data ? buildWeatherActions(environment.data) : []), [environment.data]);
   const visibleEvening = useMemo(() => (tier === "premium" ? result.evening : result.evening.slice(0, 4)), [result.evening, tier]);
   const routineSteps = useMemo(() => [...result.morning, ...visibleEvening], [result.morning, visibleEvening]);
-  const completed = routineSteps.filter((step) => completion[step.id]).length;
+  const completed = routineSteps.filter((step) => todayCheckIn.completedStepIds.includes(step.id)).length;
   const percent = routineSteps.length ? Math.round((completed / routineSteps.length) * 100) : 0;
+  const allVisibleStepsComplete = routineSteps.length > 0 && completed === routineSteps.length;
   const habitScore = useMemo(
     () => calculateSkinHabitScore({ completion, routineSteps, profile, checkIn: todayCheckIn, weatherActions }),
     [completion, profile, routineSteps, todayCheckIn, weatherActions]
@@ -73,15 +76,28 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    if (habitScore.score < 100) return;
-    AsyncStorage.getItem(`prabha-celebrated-v2-${today}`).then((value) => {
+    if (!allVisibleStepsComplete) return;
+    AsyncStorage.getItem(`prabha-celebrated-steps-${todayCheckIn.date}`).then((value) => {
       if (value) return;
       setShowCelebration(true);
-      AsyncStorage.setItem(`prabha-celebrated-v2-${today}`, "yes");
+      AsyncStorage.setItem(`prabha-celebrated-steps-${todayCheckIn.date}`, "yes");
+      scheduleCompletionPraise(todayCheckIn.date, notificationPreferences).catch(() => undefined);
       setTimeout(() => setShowCelebration(false), reducedMotion ? 4200 : 3600);
     });
-  }, [habitScore.score, reducedMotion]);
+  }, [allVisibleStepsComplete, notificationPreferences, reducedMotion, todayCheckIn.date]);
+
+  useEffect(() => {
+    scheduleDailyRoutineReminders(todayCheckIn.date, notificationPreferences).catch(() => undefined);
+  }, [notificationPreferences, todayCheckIn.date]);
+
+  useEffect(() => {
+    if (!environment.data) return;
+    scheduleWeatherAlerts(todayCheckIn.date, environment.data, notificationPreferences).catch(() => undefined);
+  }, [environment.data, notificationPreferences, todayCheckIn.date]);
+
+  useEffect(() => {
+    scheduleIncompleteStepReminder({ date: todayCheckIn.date, percent, completed, total: routineSteps.length }, notificationPreferences).catch(() => undefined);
+  }, [completed, notificationPreferences, percent, routineSteps.length, todayCheckIn.date]);
 
   return (
     <ErrorBoundary screenName="Home">
@@ -401,7 +417,7 @@ export default function Home() {
             {result.dietEatMore.slice(0, 3).map((food) => (
               <View key={food.food_en} style={styles.dietRow}>
                 <Body>
-                  {localized(language, food.food_en, food.food_ne)}
+                  {visualCueForText(food.food_en, food.food_ne)} {localized(language, food.food_en, food.food_ne)}
                 </Body>
                 <Body muted>{localized(language, food.reason_en ?? "", food.reason_ne)}</Body>
               </View>
@@ -411,7 +427,7 @@ export default function Home() {
             <Pill tone="danger">{language === "en" ? "Don't" : "नगर्नुहोस्"}</Pill>
             {result.dietAvoid.slice(0, 2).map((food) => (
               <View key={food.food_en} style={styles.dietRow}>
-                <Body>{localized(language, food.food_en, food.food_ne)}</Body>
+                <Body>{visualCueForText(food.food_en, food.food_ne)} {localized(language, food.food_en, food.food_ne)}</Body>
                 <Body muted>{localized(language, food.reason_en ?? "", food.reason_ne)}</Body>
               </View>
             ))}
@@ -502,7 +518,7 @@ export default function Home() {
                 </>
               ) : (
                 <>
-                  <Button label={`${completion[step.id] ? "Done: " : ""}${step.action}`} onPress={() => toggleCompletion(step.id)} secondary={!completion[step.id]} />
+                  <Button label={`${todayCheckIn.completedStepIds.includes(step.id) ? "Done: " : ""}${step.action}`} onPress={() => toggleCompletion(step.id)} secondary={!todayCheckIn.completedStepIds.includes(step.id)} />
                   <Body muted>{step.instruction[language]}</Body>
                   {step.durationSeconds ? <Pill tone="primary">{step.durationSeconds}s</Pill> : null}
                 </>
@@ -578,7 +594,7 @@ function HabitPreviewCard({
         <Pill tone="accent">{tip.tags[0]}</Pill>
         <Feather name="check-circle" color={colors.secondary} size={18} />
       </View>
-      <H2>{tip.title}</H2>
+      <H2>{visualCueForText(tip.title, tip.why, tip.how)} {tip.title}</H2>
       <Body>{tip.why}</Body>
       <Body muted>{tip.how}</Body>
     </View>

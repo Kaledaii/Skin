@@ -7,6 +7,7 @@ import { getArticleById } from "@/shared/knowledge/content";
 import { glossaryTerms, nutrientGuides } from "@/shared/knowledge/education";
 import { trackEvent } from "@/shared/services/analytics";
 import { palettes, spacing } from "@/shared/theme";
+import { visualCueForText } from "@/shared/visualCues";
 
 export default function ArticleDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -36,7 +37,7 @@ export default function ArticleDetail() {
           <>
             <Card variant="hero">
               <SectionLabel tone="accent">{article.category.replace(/_/g, " ")}</SectionLabel>
-              <H1>{title}</H1>
+              <H1>{visualCueForText(title, article.summary_en)} {title}</H1>
               <Body muted>{article.summary_en}</Body>
               <View style={styles.row}>
                 <Pill tone="primary">{article.reading_time_min} min read</Pill>
@@ -48,17 +49,17 @@ export default function ArticleDetail() {
               <Card>
                 <H2>Key takeaways</H2>
                 {article.takeaways.map((takeaway) => (
-                  <Body key={takeaway}>• {takeaway}</Body>
+                  <Body key={takeaway}>{visualCueForText(takeaway)} {takeaway}</Body>
                 ))}
               </Card>
             ) : null}
 
             {article.sections?.map((section) => (
               <Card key={section.heading_en}>
-                <H2>{language === "ne" ? section.heading_ne ?? section.heading_en : section.heading_en}</H2>
+                <H2>{visualCueForText(section.heading_en, section.body_en)} {language === "ne" ? section.heading_ne ?? section.heading_en : section.heading_en}</H2>
                 <Body>{language === "ne" ? section.body_ne ?? section.body_en : section.body_en}</Body>
                 {section.bullets?.map((bullet) => (
-                  <Body key={bullet} muted>• {bullet}</Body>
+                  <Body key={bullet} muted>{visualCueForText(bullet)} {bullet}</Body>
                 ))}
               </Card>
             ))}
@@ -68,7 +69,7 @@ export default function ArticleDetail() {
                 <H2>Words used here</H2>
                 {articleTerms.map((term) => (
                   <View key={term.id} style={[styles.tile, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
-                    <Pill tone="primary">{term.term}</Pill>
+                    <Pill tone="primary">{visualCueForText(term.term, term.meaning_en, term.meaning_ne)} {term.term}</Pill>
                     <Body>{term.meaning_en}</Body>
                     <Body muted>{term.meaning_ne}</Body>
                   </View>
@@ -81,7 +82,7 @@ export default function ArticleDetail() {
                 <H2>Nutrients connected to this guide</H2>
                 {articleNutrients.map((nutrient) => (
                   <View key={nutrient.id} style={[styles.tile, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
-                    <Pill tone="secondary">{nutrient.name}</Pill>
+                    <Pill tone="secondary">{visualCueForText(nutrient.name, nutrient.skin_benefit, nutrient.nepali_foods.join(" "))} {nutrient.name}</Pill>
                     <Body>{nutrient.skin_benefit}</Body>
                     <Body muted>{nutrient.nepali_foods.join(", ")}</Body>
                   </View>

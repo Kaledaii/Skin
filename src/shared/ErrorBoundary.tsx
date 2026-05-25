@@ -1,6 +1,6 @@
 import React, { Component, PropsWithChildren, ReactNode } from "react";
 import { View, Text, TouchableOpacity, ScrollView, Alert } from "react-native";
-import { themeColors } from "./theme";
+import { palettes } from "./theme";
 
 interface ErrorBoundaryProps extends PropsWithChildren {
   fallback?: (error: Error, retry: () => void) => ReactNode;
@@ -56,7 +56,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       return (
         <View style={{
           flex: 1,
-          backgroundColor: themeColors.light.background,
+          backgroundColor: palettes.light.bg,
           justifyContent: "center",
           alignItems: "center",
           paddingHorizontal: 20,
@@ -66,7 +66,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             <Text style={{
               fontSize: 32,
               fontWeight: "bold",
-              color: themeColors.light.primary,
+              color: palettes.light.primary,
               marginBottom: 12,
               textAlign: "center"
             }}>
@@ -74,7 +74,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             </Text>
             <Text style={{
               fontSize: 16,
-              color: themeColors.light.secondary,
+              color: palettes.light.secondary,
               marginBottom: 20,
               textAlign: "center",
               lineHeight: 24
@@ -103,7 +103,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             <TouchableOpacity
               onPress={this.resetError}
               style={{
-                backgroundColor: themeColors.light.primary,
+                backgroundColor: palettes.light.primary,
                 borderRadius: 8,
                 paddingVertical: 12,
                 paddingHorizontal: 24,
@@ -122,14 +122,14 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 // Navigate to home screen (would need router context in real app)
               }}
               style={{
-                backgroundColor: themeColors.light.border,
+                backgroundColor: palettes.light.border,
                 borderRadius: 8,
                 paddingVertical: 12,
                 paddingHorizontal: 24,
                 width: "100%"
               }}
             >
-              <Text style={{ color: themeColors.light.secondary, fontWeight: "600", textAlign: "center", fontSize: 14 }}>
+              <Text style={{ color: palettes.light.secondary, fontWeight: "600", textAlign: "center", fontSize: 14 }}>
                 Go to Home
               </Text>
             </TouchableOpacity>

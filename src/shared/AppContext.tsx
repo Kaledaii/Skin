@@ -20,7 +20,7 @@ import {
   updateUserSubscriptionForPayment,
   uploadPaymentScreenshot
 } from "./services/firebaseSync";
-import { BudgetTier, DailyCheckIn, Language, PaymentProvider, PaymentRequest, PaymentState, SkinType, SubscriptionInfo, SubscriptionPlanId, SubscriptionTier, ThemeMode, UserProfile } from "./types";
+import { BudgetTier, DailyCheckIn, Language, NotificationPreferences, PaymentProvider, PaymentRequest, PaymentState, SkinType, SubscriptionInfo, SubscriptionPlanId, SubscriptionTier, ThemeMode, UserProfile } from "./types";
 
 type AppState = {
   language: Language;
@@ -55,6 +55,8 @@ type AppState = {
   dailyCheckIns: Record<string, DailyCheckIn>;
   todayCheckIn: DailyCheckIn;
   updateTodayCheckIn: (patch: Partial<DailyCheckIn>) => void;
+  notificationPreferences: NotificationPreferences;
+  updateNotificationPreferences: (patch: Partial<NotificationPreferences>) => void;
   toggleLikedTip: (id: string) => void;
   toggleSavedTip: (id: string) => void;
   toggleSavedProduct: (id: string) => void;
@@ -79,6 +81,15 @@ const defaultProfile: UserProfile = {
   consentAccepted: false
 };
 
+export const defaultNotificationPreferences: NotificationPreferences = {
+  routineReminders: true,
+  weatherAlerts: true,
+  completionPraise: true,
+  quietHoursEnabled: true,
+  quietHoursStart: "22:00",
+  quietHoursEnd: "07:00"
+};
+
 const Context = createContext<AppState | null>(null);
 
 export function AppProvider({ children }: PropsWithChildren) {
@@ -94,7 +105,8 @@ export function AppProvider({ children }: PropsWithChildren) {
   const [savedTipIds, setSavedTipIds] = useState<string[]>([]);
   const [savedProductIds, setSavedProductIds] = useState<string[]>([]);
   const [dailyCheckIns, setDailyCheckIns] = useState<Record<string, DailyCheckIn>>({});
-  const today = getTodayKey();
+  const [today, setToday] = useState(getTodayKey);
+  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>(defaultNotificationPreferences);
   const todayCheckIn = dailyCheckIns[today] ?? createDefaultCheckIn(today, profile);
 
   useEffect(() => {
@@ -112,10 +124,11 @@ export function AppProvider({ children }: PropsWithChildren) {
         setProfile(nextProfile);
       }
       if (parsed.completion) setCompletion(parsed.completion);
-      const parsedState = JSON.parse(raw) as { likedTipIds?: string[]; savedTipIds?: string[]; savedProductIds?: string[] };
+      const parsedState = JSON.parse(raw) as { likedTipIds?: string[]; savedTipIds?: string[]; savedProductIds?: string[]; notificationPreferences?: NotificationPreferences };
       if (parsedState.likedTipIds) setLikedTipIds(parsedState.likedTipIds);
       if (parsedState.savedTipIds) setSavedTipIds(parsedState.savedTipIds);
       if (parsedState.savedProductIds) setSavedProductIds(parsedState.savedProductIds);
+      if (parsedState.notificationPreferences) setNotificationPreferences({ ...defaultNotificationPreferences, ...parsedState.notificationPreferences });
       const checkInState = JSON.parse(raw) as { dailyCheckIns?: Record<string, DailyCheckIn> };
       if (checkInState.dailyCheckIns) setDailyCheckIns(checkInState.dailyCheckIns);
       const paymentState = JSON.parse(raw) as { paymentState?: PaymentState; paymentRequests?: PaymentRequest[] };
@@ -126,8 +139,22 @@ export function AppProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     // Save state to local storage (cache backup)
-    AsyncStorage.setItem("skin-nepal-state", JSON.stringify({ language, themeMode, tier, subscription, paymentState, paymentRequests, profile, completion, likedTipIds, savedTipIds, savedProductIds, dailyCheckIns })).catch(() => undefined);
-  }, [language, themeMode, tier, subscription, paymentState, paymentRequests, profile, completion, likedTipIds, savedTipIds, savedProductIds, dailyCheckIns]);
+    AsyncStorage.setItem("skin-nepal-state", JSON.stringify({ language, themeMode, tier, subscription, paymentState, paymentRequests, profile, completion, likedTipIds, savedTipIds, savedProductIds, dailyCheckIns, notificationPreferences })).catch(() => undefined);
+  }, [language, themeMode, tier, subscription, paymentState, paymentRequests, profile, completion, likedTipIds, savedTipIds, savedProductIds, dailyCheckIns, notificationPreferences]);
+
+  useEffect(() => {
+    const ensureToday = () => {
+      const next = getTodayKey();
+      setToday((current) => (current === next ? current : next));
+    };
+    ensureToday();
+    const timer = setInterval(ensureToday, 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    setDailyCheckIns((current) => (current[today] ? current : { ...current, [today]: createDefaultCheckIn(today, profile) }));
+  }, [profile, today]);
 
   useEffect(() => {
     // Initialize Firebase authentication and load remote data
@@ -311,7 +338,12 @@ export function AppProvider({ children }: PropsWithChildren) {
       };
     }),
     completion,
-    toggleCompletion: (id) => setCompletion((current) => ({ ...current, [id]: !current[id] })),
+    toggleCompletion: (id) => setDailyCheckIns((current) => {
+      const checkIn = current[today] ?? createDefaultCheckIn(today, profile);
+      const existing = checkIn.completedStepIds ?? [];
+      const completedStepIds = existing.includes(id) ? existing.filter((item) => item !== id) : [...existing, id];
+      return { ...current, [today]: { ...checkIn, completedStepIds, date: today } };
+    }),
     likedTipIds,
     savedTipIds,
     savedProductIds,
@@ -321,6 +353,8 @@ export function AppProvider({ children }: PropsWithChildren) {
       ...current,
       [today]: { ...(current[today] ?? createDefaultCheckIn(today, profile)), ...patch, date: today }
     })),
+    notificationPreferences,
+    updateNotificationPreferences: (patch) => setNotificationPreferences((current) => ({ ...current, ...patch })),
     toggleLikedTip: (id) => setLikedTipIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id])),
     toggleSavedTip: (id) => setSavedTipIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id])),
     toggleSavedProduct: (id) => setSavedProductIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id])),
@@ -328,7 +362,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.75 });
       if (!result.canceled) setProfile((current) => ({ ...current, selfieUri: result.assets[0]?.uri }));
     },
-    exportData: () => JSON.stringify({ language, themeMode, tier, subscription, paymentState, paymentRequests, profile, completion, likedTipIds, savedTipIds, savedProductIds, dailyCheckIns }, null, 2),
+    exportData: () => JSON.stringify({ language, themeMode, tier, subscription, paymentState, paymentRequests, profile, completion, likedTipIds, savedTipIds, savedProductIds, dailyCheckIns, notificationPreferences }, null, 2),
     deleteCloudData: async () => {
       const result = await deleteCloudSnapshot();
       return result.ok ? "Cloud data delete request completed." : "Cloud delete is unavailable in local demo mode.";
@@ -347,8 +381,10 @@ export function AppProvider({ children }: PropsWithChildren) {
       setSavedTipIds([]);
       setSavedProductIds([]);
       setDailyCheckIns({});
+      setToday(getTodayKey());
+      setNotificationPreferences(defaultNotificationPreferences);
     }
-  }), [completion, language, profile, themeMode, tier, subscription, paymentState, paymentRequests, likedTipIds, savedTipIds, savedProductIds, dailyCheckIns, today, todayCheckIn]);
+  }), [completion, language, profile, themeMode, tier, subscription, paymentState, paymentRequests, likedTipIds, savedTipIds, savedProductIds, dailyCheckIns, notificationPreferences, today, todayCheckIn]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
@@ -363,7 +399,11 @@ export const skinTypes: SkinType[] = ["oily", "dry", "combination", "sensitive"]
 export const budgetTiers: BudgetTier[] = ["under200", "200to500", "500plus"];
 
 function getTodayKey() {
-  return new Date().toISOString().slice(0, 10);
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function createDefaultCheckIn(date: string, profile: UserProfile): DailyCheckIn {

@@ -40,7 +40,10 @@ export default function Progress() {
   const [reducedMotion, setReducedMotion] = useState(false);
   const routine = useMemo(() => generateRoutine(profile.quiz), [profile.quiz]);
   const weatherActions = useMemo(() => (environment.data ? buildWeatherActions(environment.data) : []), [environment.data]);
-  const habitScore = calculateSkinHabitScore({ completion, routineSteps: [...routine.morning, ...routine.evening], profile, checkIn: todayCheckIn, weatherActions });
+  const routineSteps = useMemo(() => [...routine.morning, ...routine.evening], [routine.evening, routine.morning]);
+  const completedSteps = routineSteps.filter((step) => todayCheckIn.completedStepIds.includes(step.id)).length;
+  const allVisibleStepsComplete = routineSteps.length > 0 && completedSteps === routineSteps.length;
+  const habitScore = calculateSkinHabitScore({ completion, routineSteps, profile, checkIn: todayCheckIn, weatherActions });
   const lifestyleSignals = useMemo(() => buildLifestyleSignals(profile, todayCheckIn), [profile, todayCheckIn]);
   const weeklyReport = useMemo(() => buildWeeklySkinReport(profile, todayCheckIn, habitScore), [profile, todayCheckIn, habitScore]);
 
@@ -49,15 +52,14 @@ export default function Progress() {
   }, []);
 
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    if (habitScore.score < 100) return;
-    AsyncStorage.getItem(`prabha-celebrated-v2-${today}`).then((value) => {
+    if (!allVisibleStepsComplete) return;
+    AsyncStorage.getItem(`prabha-celebrated-steps-${todayCheckIn.date}`).then((value) => {
       if (value) return;
       setShowCelebration(true);
-      AsyncStorage.setItem(`prabha-celebrated-v2-${today}`, "yes");
+      AsyncStorage.setItem(`prabha-celebrated-steps-${todayCheckIn.date}`, "yes");
       setTimeout(() => setShowCelebration(false), reducedMotion ? 4200 : 3600);
     });
-  }, [habitScore.score, reducedMotion]);
+  }, [allVisibleStepsComplete, reducedMotion, todayCheckIn.date]);
 
   return (
     <ErrorBoundary screenName="Progress">
@@ -394,6 +396,7 @@ const styles = StyleSheet.create({
     elevation: 6
   },
   scoreTooltipText: { fontSize: 12, lineHeight: 16, fontWeight: "700" },
+  previewGrid: { gap: spacing.xs },
   reportGrid: { gap: spacing.xs },
   reportTile: { borderWidth: 1, borderRadius: 8, padding: spacing.sm, gap: spacing.xs },
   checkRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },

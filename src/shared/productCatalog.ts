@@ -72,7 +72,9 @@ function verifiedStarterProducts(): Product[] {
     },
     trustScore: 84 - (index % 8),
     sponsored: false,
-    affiliateUrl: "https://www.daraz.com.np/"
+    affiliateUrl: "https://www.daraz.com.np/",
+    imageSourceKey: visualKeyFor(product.category),
+    visualCategory: product.category
   })) as Product[];
 }
 
@@ -111,7 +113,9 @@ function enrichCoreProduct(product: Product): Product {
     safetyNote: {
       en: "Patch test first. Avoid suspiciously cheap online listings and check expiry/batch.",
       ne: "Pahile patch test. Dherai sasto online listing avoid, expiry/batch check garnu."
-    }
+    },
+    imageSourceKey: visualKeyFor(product.category),
+    visualCategory: product.category
   };
 }
 
@@ -159,7 +163,9 @@ function generateProducts(): Product[] {
         },
         trustScore: 72 + ((index + catIndex) % 21),
         sponsored: index === 10 && catIndex % 3 === 0,
-        affiliateUrl: "https://www.daraz.com.np/"
+        affiliateUrl: "https://www.daraz.com.np/",
+        imageSourceKey: visualKeyFor(category),
+        visualCategory: category
       });
     }
   });
@@ -222,4 +228,18 @@ function labelBudget(budget: BudgetTier) {
 
 function slug(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+}
+
+function visualKeyFor(category: string) {
+  const value = category.toLowerCase();
+  if (value.includes("sunscreen")) return "sunscreen";
+  if (value.includes("moisturizer")) return "moisturizer";
+  if (value.includes("micellar")) return "micellar";
+  if (value.includes("acne")) return "acne";
+  if (value.includes("pigmentation")) return "pigmentation";
+  if (value.includes("barrier")) return "barrier";
+  if (value.includes("lip")) return "lip";
+  if (value.includes("heat")) return "heat";
+  if (value.includes("cleanser")) return "cleanser";
+  return "default";
 }

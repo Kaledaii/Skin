@@ -12,6 +12,7 @@ import { generateRoutine } from "@/shared/knowledge/engine";
 import { calculateSkinHabitScore } from "@/shared/knowledge/tracking";
 import { ImagePromoCard, marketingImages } from "@/shared/marketingVisuals";
 import { palettes, spacing } from "@/shared/theme";
+import { visualCueForText } from "@/shared/visualCues";
 
 const categories = ["recommended", "all", "education", "seasonal", "diet", "glow_up", "product_review", "motivation"];
 
@@ -88,7 +89,7 @@ export default function Learn() {
                 <Pill tone="accent">{tip.tags[0]}</Pill>
                 <Feather name="check-circle" color={c.secondary} size={18} />
               </View>
-              <H2>{tip.title}</H2>
+              <H2>{visualCueForText(tip.title, tip.why, tip.how)} {tip.title}</H2>
               <Body>{tip.why}</Body>
               <Body muted>{tip.how}</Body>
             </View>
@@ -124,7 +125,7 @@ export default function Learn() {
           <View style={styles.termGrid}>
             {glossaryTerms.map((term) => (
               <View key={term.id} style={[styles.infoTile, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
-                <Pill tone="primary">{term.term}</Pill>
+                <Pill tone="primary">{visualCueForText(term.term, term.meaning_en, term.meaning_ne)} {term.term}</Pill>
                 <Body>{term.meaning_en}</Body>
                 <Body muted>{term.meaning_ne}</Body>
               </View>
@@ -137,7 +138,7 @@ export default function Learn() {
           <View style={styles.termGrid}>
             {nutrientGuides.map((nutrient) => (
               <View key={nutrient.id} style={[styles.infoTile, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
-                <Pill tone="secondary">{nutrient.name}</Pill>
+                <Pill tone="secondary">{visualCueForText(nutrient.name, nutrient.skin_benefit, nutrient.nepali_foods.join(" "))} {nutrient.name}</Pill>
                 <Body>{nutrient.skin_benefit}</Body>
                 <Body muted>{nutrient.meaning_ne}</Body>
                 <Body muted>Foods: {nutrient.nepali_foods.join(", ")}</Body>
@@ -177,11 +178,11 @@ export default function Learn() {
         ]}
       >
         <View style={styles.row}>
-          <Pill tone={article.category === "diet" ? "accent" : article.category === "seasonal" ? "secondary" : "primary"}>{labelForCategory(article.category)}</Pill>
+          <Pill tone={article.category === "diet" ? "accent" : article.category === "seasonal" ? "secondary" : "primary"}>{visualCueForText(article.title_en, article.summary_en, article.category)} {labelForCategory(article.category)}</Pill>
           <Pill tone="primary">{article.reading_time_min} min</Pill>
           {locked ? <Pill tone="accent">Premium guide</Pill> : null}
         </View>
-        <H2>{title}</H2>
+        <H2>{visualCueForText(title, article.summary_en)} {title}</H2>
         <Body muted>{locked ? "Unlock the full long-form guide with budget options, local product examples, warning signs, and source notes." : article.summary_en}</Body>
         <View style={styles.row}>
           <Body muted>{locked ? "Tap to unlock" : "Tap to read full guide"}</Body>

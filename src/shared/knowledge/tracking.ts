@@ -25,7 +25,8 @@ export type HabitScore = {
 
 export function calculateSkinHabitScore({ completion, routineSteps, profile, checkIn, weatherActions = [] }: HabitScoreInput): HabitScore {
   const routineIds = Array.from(new Set(routineSteps.map((step) => step.id)));
-  const completed = routineIds.filter((id) => completion[id] || checkIn.completedStepIds.includes(id)).length;
+  void completion;
+  const completed = routineIds.filter((id) => checkIn.completedStepIds.includes(id)).length;
   const routine = routineIds.length ? Math.round((completed / routineIds.length) * 30) : 0;
 
   const sunscreen = checkIn.sunscreen || profile.quiz.currentRoutine.uses_sunscreen === "yes";
