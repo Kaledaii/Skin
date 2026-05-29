@@ -23,7 +23,7 @@ type FeedItem = {
 };
 
 export default function Tips() {
-  const { language, themeMode, tier, profile, likedTipIds, savedTipIds, toggleLikedTip, toggleSavedTip } = useApp();
+  const { language, themeMode, tier, profile, likedTipIds, toggleLikedTip } = useApp();
   const c = palettes[themeMode];
   const [ingredientText, setIngredientText] = useState("");
   const [activeModeId, setActiveModeId] = useState<string | null>(null);
@@ -37,7 +37,7 @@ export default function Tips() {
       id: tip.id,
       label: tip.tag,
       title: tip.text[language],
-      body: language === "en" ? "Quick routine nudge for today." : "आजको quick skincare nudge।",
+      body: "",
       colorTone: "accent" as const,
       kind: "micro" as const
     })),
@@ -51,9 +51,8 @@ export default function Tips() {
     }))
   ];
 
-  const favoriteIds = Array.from(new Set([...likedTipIds, ...savedTipIds]));
+  const favoriteIds = Array.from(new Set(likedTipIds));
   const favoriteItems = feedItems.filter((item) => favoriteIds.includes(item.id));
-  const remainingItems = feedItems.filter((item) => !favoriteIds.includes(item.id));
 
   return (
     <ErrorBoundary screenName="Tips">
@@ -178,9 +177,7 @@ export default function Tips() {
                 themeMode={themeMode}
                 color={c}
                 liked={likedTipIds.includes(item.id)}
-                saved={savedTipIds.includes(item.id)}
                 onLike={() => toggleLikedTip(item.id)}
-                onSave={() => toggleSavedTip(item.id)}
                 onShare={() => shareTip(item.title, item.body)}
                 compact
               />
@@ -190,7 +187,7 @@ export default function Tips() {
 
         <Card>
           <H2>{language === "en" ? "All tips" : "All tips"}</H2>
-          {remainingItems.map((item) => (
+          {feedItems.map((item) => (
             <FeedCard
               key={item.id}
               item={item}
@@ -198,9 +195,7 @@ export default function Tips() {
               themeMode={themeMode}
               color={c}
               liked={likedTipIds.includes(item.id)}
-              saved={savedTipIds.includes(item.id)}
               onLike={() => toggleLikedTip(item.id)}
-              onSave={() => toggleSavedTip(item.id)}
               onShare={() => shareTip(item.title, item.body)}
             />
           ))}
@@ -219,9 +214,7 @@ function FeedCard({
   item,
   color,
   liked,
-  saved,
   onLike,
-  onSave,
   onShare,
   compact = false
 }: {
@@ -230,9 +223,7 @@ function FeedCard({
   themeMode: "light" | "dark";
   color: (typeof palettes)["light"];
   liked: boolean;
-  saved: boolean;
   onLike: () => void;
-  onSave: () => void;
   onShare: () => void;
   compact?: boolean;
 }) {
@@ -243,16 +234,11 @@ function FeedCard({
           <Pill tone={item.colorTone}>{item.label}</Pill>
           <View style={styles.actions}>
             <ActionButton icon="heart" active={liked} activeColor={color.primary} inactiveColor={color.muted} onPress={onLike} />
-            <ActionButton icon="bookmark" active={saved} activeColor={color.secondary} inactiveColor={color.muted} onPress={onSave} />
             <ActionButton icon="share-2" active={false} activeColor={color.accent} inactiveColor={color.muted} onPress={onShare} />
           </View>
         </View>
         <H2>{item.title}</H2>
-        <Body muted>{item.body}</Body>
-        <View style={styles.badgeRow}>
-          <Pill tone={liked || saved ? "secondary" : "primary"}>{liked || saved ? "Saved" : "Tap heart to save"}</Pill>
-          {item.kind === "micro" ? <Pill tone="accent">micro tip</Pill> : null}
-        </View>
+        {item.body ? <Body muted>{item.body}</Body> : null}
       </View>
     </View>
   );
@@ -265,7 +251,7 @@ function ActionButton({
   inactiveColor,
   onPress
 }: {
-  icon: "heart" | "bookmark" | "share-2";
+  icon: "heart" | "share-2";
   active: boolean;
   activeColor: string;
   inactiveColor: string;

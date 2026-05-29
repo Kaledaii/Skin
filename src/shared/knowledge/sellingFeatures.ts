@@ -1,4 +1,5 @@
 import { Product, UserProfile } from "../types";
+import { glossaryTerms } from "./education";
 
 export const premiumModes = [
   mode("exam", "Exam Mode", "3-minute routine, stress breakouts, late-night sleep rescue, phone hygiene.", "Morning SPF, night cleanse, phone wipe, one glass water before chiya, and 5-minute sleep reset.", "Best for exam weeks, office deadlines, or high screen-time days.", "Your premium plan keeps this short and adjusts the night routine around sleep, stress, screen time, and active pimples.", [
@@ -98,6 +99,11 @@ export function checkIngredient(text: string) {
   if (value.includes("fragrance") || value.includes("perfume")) return "Caution: can irritate sensitive or pigmentation-prone skin. Patch test carefully.";
   if (value.includes("spf") || value.includes("sunscreen")) return "Good: for Nepal, SPF 30+ daily is minimum; SPF 50 PA+++ is better for marks and melasma.";
   if (value.includes("vitamin c")) return "Good for glow and pollution support, but start low if sensitive and always use sunscreen.";
+  const glossaryMatch = glossaryTerms.find((item) => {
+    const term = item.term.toLowerCase();
+    return value.includes(term) || term.split(/\s+/).some((part) => part.length > 3 && value.includes(part));
+  });
+  if (glossaryMatch) return `${glossaryMatch.term}: ${glossaryMatch.meaning_en} ${glossaryMatch.example_en}`;
   return "Unknown ingredient: patch test first, check expiry/batch, and stop if burning, swelling, or new bumps appear.";
 }
 

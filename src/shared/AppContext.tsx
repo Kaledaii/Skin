@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from "react";
+import { Alert } from "react-native";
 import { getDefaultQuizProfile } from "./knowledge/engine";
 import { activateSubscriptionFromRequest, createManualPaymentRequest, isSubscriptionActive, PaymentSubmissionResult } from "./services/payment";
 import {
@@ -61,6 +62,8 @@ type AppState = {
   toggleSavedTip: (id: string) => void;
   toggleSavedProduct: (id: string) => void;
   pickSelfie: () => Promise<void>;
+  pickSelfieFromCamera: () => Promise<void>;
+  pickSelfieFromLibrary: () => Promise<void>;
   exportData: () => string;
   deleteCloudData: () => Promise<string>;
   resetData: () => Promise<void>;
@@ -360,6 +363,19 @@ export function AppProvider({ children }: PropsWithChildren) {
     toggleSavedProduct: (id) => setSavedProductIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id])),
     pickSelfie: async () => {
       const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.75 });
+      if (!result.canceled) setProfile((current) => ({ ...current, selfieUri: result.assets[0]?.uri }));
+    },
+    pickSelfieFromLibrary: async () => {
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.75 });
+      if (!result.canceled) setProfile((current) => ({ ...current, selfieUri: result.assets[0]?.uri }));
+    },
+    pickSelfieFromCamera: async () => {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert("Camera permission needed", "Allow camera access to take a selfie, or choose one from your gallery.");
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.75, allowsEditing: false });
       if (!result.canceled) setProfile((current) => ({ ...current, selfieUri: result.assets[0]?.uri }));
     },
     exportData: () => JSON.stringify({ language, themeMode, tier, subscription, paymentState, paymentRequests, profile, completion, likedTipIds, savedTipIds, savedProductIds, dailyCheckIns, notificationPreferences }, null, 2),

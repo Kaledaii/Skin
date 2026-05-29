@@ -2,14 +2,12 @@ import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { ComponentProps } from "react";
 import { AccessibilityInfo, Image, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
-import { LineChart } from "react-native-chart-kit";
 import { useEffect, useMemo, useState } from "react";
 import { router } from "expo-router";
 import { useApp } from "@/shared/AppContext";
 import { Celebration } from "@/shared/Celebration";
 import { Body, BrandMark, Button, Card, H1, H2, Pill, ProgressBar, Screen, SectionLabel, SignalCard, ToggleGroup } from "@/shared/components";
 import { ErrorBoundary } from "@/shared/ErrorBoundary";
-import { routineLogs } from "@/shared/data";
 import { t } from "@/shared/i18n";
 import { generateRoutine } from "@/shared/knowledge/engine";
 import { buildLifestyleSignals } from "@/shared/knowledge/lifestyleSignals";
@@ -31,7 +29,7 @@ const scoreExplanations = {
 } satisfies Record<string, string>;
 
 export default function Progress() {
-  const { language, themeMode, tier, setTier, profile, completion, todayCheckIn, updateTodayCheckIn, pickSelfie } = useApp();
+  const { language, themeMode, tier, setTier, profile, completion, todayCheckIn, updateTodayCheckIn, pickSelfieFromCamera, pickSelfieFromLibrary } = useApp();
   const c = palettes[themeMode];
   const premiumLocked = tier !== "premium";
   const environment = useEnvironmentalData();
@@ -259,7 +257,10 @@ export default function Progress() {
         <Card>
           <H2>{language === "en" ? "Weekly photo log" : "Weekly photo log"}</H2>
           {profile.selfieUri ? <Image source={{ uri: profile.selfieUri }} style={styles.selfie} /> : <Body muted>{language === "en" ? "No selfie added yet." : "Selfie add gareko chhaina."}</Body>}
-          <Button label={language === "en" ? "Add weekly selfie" : "weekly selfie thapnuhos"} onPress={pickSelfie} secondary />
+          <View style={styles.photoActions}>
+            <Button label={language === "en" ? "Take photo" : "Photo khichnuhos"} onPress={pickSelfieFromCamera} secondary />
+            <Button label={language === "en" ? "Choose from gallery" : "Gallery bata channuhos"} onPress={pickSelfieFromLibrary} secondary />
+          </View>
         </Card>
 
         <Card>
@@ -278,37 +279,15 @@ export default function Progress() {
         <Card>
           <H2>{language === "en" ? "Consistency" : "Consistency"}</H2>
           <Body>{`You completed ${habitScore.parts.routine}/30 routine points today. Keep it kind and consistent.`}</Body>
-          {premiumLocked ? (
-            <>
-              <Pill>{t(language, "premium")}</Pill>
-              <Body muted>{language === "en" ? "Graphs unlock with premium." : "Graphs premium ma unlock huncha."}</Body>
-              <Button label={t(language, "upgrade")} onPress={() => setTier("premium")} />
-            </>
-          ) : (
-            <LineChart
-              data={{
-                labels: routineLogs.map((item) => item.date),
-                datasets: [
-                  { data: routineLogs.map((item) => item.hydration), color: () => c.secondary },
-                  { data: routineLogs.map((item) => item.sleep), color: () => c.primary }
-                ],
-                legend: ["Hydration", "Sleep"]
-              }}
-              width={330}
-              height={220}
-              yAxisSuffix="/10"
-              chartConfig={{
-                backgroundColor: c.surface,
-                backgroundGradientFrom: c.surface,
-                backgroundGradientTo: c.surface,
-                decimalPlaces: 0,
-                color: () => c.text,
-                labelColor: () => c.muted
-              }}
-              bezier
-              style={styles.chart}
-            />
-          )}
+          <View style={styles.habitCardGrid}>
+            <ProgressHabitCard icon="check-circle" label="Routine" value={`${completedSteps}/${routineSteps.length}`} detail={`${habitScore.parts.routine}/30 routine points`} colors={c} />
+            <ProgressHabitCard icon="sun" label="Sunscreen" value={todayCheckIn.sunscreen ? "Done" : "Not yet"} detail="Dark marks need daily protection." colors={c} />
+            <ProgressHabitCard icon="droplet" label="Water" value={humanWater(todayCheckIn.water)} detail="Hydration supports recovery." colors={c} />
+            <ProgressHabitCard icon="moon" label="Sleep" value={humanSleep(todayCheckIn.sleep)} detail="Skin repairs better with rest." colors={c} />
+            <ProgressHabitCard icon="edit-3" label="Check-in" value={todayCheckIn.skinNote || todayCheckIn.moodNote ? "Logged" : "Add note"} detail="Notes make weekly patterns clearer." colors={c} />
+            <ProgressHabitCard icon="camera" label="Photo log" value={profile.selfieUri || todayCheckIn.selfieUri ? "Added" : "Optional"} detail="Compare weekly, not daily." colors={c} />
+          </View>
+          {premiumLocked ? <Button label={t(language, "upgrade")} onPress={() => setTier("premium")} secondary /> : null}
         </Card>
       </ScrollView>
     </Screen>
@@ -375,6 +354,44 @@ async function shareReport(summary: string, score: number) {
   await Share.share({ message: `Prabha weekly skin report\nScore: ${score}/100\n${summary}\nGuidance only, not diagnosis.` });
 }
 
+function ProgressHabitCard({
+  icon,
+  label,
+  value,
+  detail,
+  colors
+}: {
+  icon: ComponentProps<typeof Feather>["name"];
+  label: string;
+  value: string;
+  detail: string;
+  colors: (typeof palettes)["light"];
+}) {
+  return (
+    <View style={[styles.habitProgressCard, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+      <View style={styles.habitProgressHeader}>
+        <Feather name={icon} color={colors.primary} size={18} />
+        <Text style={[styles.habitProgressLabel, { color: colors.muted }]}>{label}</Text>
+      </View>
+      <Text style={[styles.habitProgressValue, { color: colors.text }]}>{value}</Text>
+      <Body muted>{detail}</Body>
+    </View>
+  );
+}
+
+function humanWater(value: DailyCheckIn["water"]) {
+  if (value === "less_than_1") return "<1L";
+  if (value === "more_than_2") return "2L+";
+  return "1-2L";
+}
+
+function humanSleep(value: DailyCheckIn["sleep"]) {
+  if (value === "less_than_5") return "<5h";
+  if (value === "5_to_6") return "5-6h";
+  if (value === "more_than_8") return "8h+";
+  return "6-8h";
+}
+
 const styles = StyleSheet.create({
   content: { gap: spacing.md, paddingBottom: spacing.xl },
   heroRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
@@ -405,8 +422,13 @@ const styles = StyleSheet.create({
   weatherAction: { gap: spacing.xs },
   input: { borderWidth: 1, borderRadius: 12, minHeight: 46, paddingHorizontal: spacing.md, fontSize: 15 },
   selfie: { width: "100%", height: 240, borderRadius: 8 },
+  photoActions: { gap: spacing.xs },
   timelineRow: { flexDirection: "row", gap: spacing.xs },
   timelineSlot: { flex: 1, minHeight: 92, borderWidth: 1, borderRadius: 8, alignItems: "center", justifyContent: "center", gap: spacing.xs, overflow: "hidden" },
   timelineImage: { width: "100%", height: 66 },
-  chart: { borderRadius: 8, alignSelf: "center" }
+  habitCardGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
+  habitProgressCard: { flex: 1, minWidth: 142, borderWidth: 1, borderRadius: 8, padding: spacing.sm, gap: spacing.xs },
+  habitProgressHeader: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  habitProgressLabel: { fontSize: 12, fontWeight: "900", textTransform: "uppercase" },
+  habitProgressValue: { fontSize: 18, fontWeight: "900" }
 });

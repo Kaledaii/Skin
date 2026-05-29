@@ -40,7 +40,7 @@ const symptomsToShow = [
 ];
 
 export default function Onboarding() {
-  const { language, setLanguage, themeMode, profile, updateProfile, updateQuiz, toggleQuizArray, pickSelfie } = useApp();
+  const { language, setLanguage, themeMode, profile, updateProfile, updateQuiz, toggleQuizArray, pickSelfieFromCamera, pickSelfieFromLibrary } = useApp();
   const c = palettes[themeMode];
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const symptoms = knowledgeBase.quiz_fields.symptoms.filter((symptom) => symptomsToShow.includes(symptom));
@@ -66,6 +66,20 @@ export default function Onboarding() {
           cta="Start Your Quiz ✨"
           tall
         />
+        <View style={styles.languageRow}>
+          <Pressable
+            onPress={() => setLanguage("en")}
+            style={[styles.languageButton, { borderColor: language === "en" ? c.borderStrong : c.border, backgroundColor: language === "en" ? c.primary : c.surfaceAlt }]}
+          >
+            <Text style={[styles.languageText, { color: language === "en" ? "#FFFFFF" : c.text }]}>EN</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setLanguage("ne")}
+            style={[styles.languageButton, { borderColor: language === "ne" ? c.borderStrong : c.border, backgroundColor: language === "ne" ? c.primary : c.surfaceAlt }]}
+          >
+            <Text style={[styles.languageText, { color: language === "ne" ? "#FFFFFF" : c.text }]}>ने</Text>
+          </Pressable>
+        </View>
         <PortraitGlowStrip
           title="Confidence in Every Shade"
           subtitle="Bright, festive, calm, outdoorsy, minimal - Prabha adapts to the girl using it."
@@ -78,11 +92,6 @@ export default function Onboarding() {
           ]}
         />
         <Card variant="hero" style={styles.heroCard}>
-          <View style={styles.heroTop}>
-            <View style={styles.flex}>
-          <Body muted>{language === "en" ? "A calmer, box-based quiz for Nepal skin concerns, with dropdowns instead of a wall of text." : "नेपालको लागि box-based quiz, dropdowns र कम text भएको flow।"}</Body>
-            </View>
-          </View>
           <View style={styles.progressHeader}>
             <Pill tone="secondary">{language === "en" ? "Quiz progress" : "Quiz progress"}</Pill>
             <Text style={[styles.percent, { color: c.primary }]}>{quizPercent}%</Text>
@@ -147,8 +156,8 @@ export default function Onboarding() {
             <DropdownField label="Sleep" value={profile.quiz.lifestyle.sleep_hours} options={knowledgeBase.quiz_fields.lifestyle.sleep_hours} onChange={(value) => updateQuiz("lifestyle", "sleep_hours", value)} />
             <DropdownField label="Stress" value={profile.quiz.lifestyle.stress_level} options={knowledgeBase.quiz_fields.lifestyle.stress_level} onChange={(value) => updateQuiz("lifestyle", "stress_level", value)} />
             <DropdownField label="Exercise" value={profile.quiz.lifestyle.exercise} options={knowledgeBase.quiz_fields.lifestyle.exercise} onChange={(value) => updateQuiz("lifestyle", "exercise", value)} />
-            <DropdownField label="Smoking" value={profile.quiz.lifestyle.smoking} options={knowledgeBase.quiz_fields.lifestyle.smoking} onChange={(value) => updateQuiz("lifestyle", "smoking", value)} />
-            <DropdownField label="Alcohol" value={profile.quiz.lifestyle.alcohol} options={knowledgeBase.quiz_fields.lifestyle.alcohol} onChange={(value) => updateQuiz("lifestyle", "alcohol", value)} />
+            <DropdownField label="Smoking" value={profile.quiz.lifestyle.smoking} options={["yes", "no", "occasional"]} onChange={(value) => updateQuiz("lifestyle", "smoking", value)} />
+            <DropdownField label="Alcohol" value={profile.quiz.lifestyle.alcohol} options={["yes", "no", "occasional"]} onChange={(value) => updateQuiz("lifestyle", "alcohol", value)} />
             <DropdownField label="Screen time" value={profile.quiz.lifestyle.screen_time_hours} options={knowledgeBase.quiz_fields.lifestyle.screen_time_hours} onChange={(value) => updateQuiz("lifestyle", "screen_time_hours", value)} />
           </SectionBody>
         </Card>
@@ -181,7 +190,10 @@ export default function Onboarding() {
             <H2>{language === "en" ? "Selfie progress" : "Selfie progress"}</H2>
           </View>
           <Body muted>{language === "en" ? "Optional. No AI analysis in v1; photos are for your own weekly timeline." : "Optional. v1 मा AI analysis छैन; photo weekly timeline का लागि मात्र।"}</Body>
-          <Button label={profile.selfieUri ? "Selfie selected" : "Upload selfie"} onPress={pickSelfie} secondary />
+          <View style={styles.selfieActions}>
+            <Button label={profile.selfieUri ? "Retake photo" : "Take photo"} onPress={pickSelfieFromCamera} secondary />
+            <Button label={profile.selfieUri ? "Choose another" : "Choose from gallery"} onPress={pickSelfieFromLibrary} secondary />
+          </View>
         </Card>
 
         <Card>
@@ -379,6 +391,9 @@ const styles = StyleSheet.create({
   content: { gap: spacing.md, paddingBottom: spacing.xl },
   heroCard: { gap: spacing.md },
   heroTop: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  languageRow: { flexDirection: "row", alignSelf: "flex-end", gap: spacing.xs },
+  languageButton: { minWidth: 46, minHeight: 36, borderWidth: 1, borderRadius: 999, alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.sm },
+  languageText: { fontSize: 14, fontWeight: "900" },
   progressHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   percent: { fontSize: 20, fontWeight: "900" },
   sectionHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.sm },
@@ -387,6 +402,7 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: 8, minHeight: 46, paddingHorizontal: spacing.md, fontSize: 15 },
   iconRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   wrap: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
+  selfieActions: { gap: spacing.xs },
   consentRow: { borderWidth: 1, borderRadius: 12, padding: spacing.md, flexDirection: "row", alignItems: "center", gap: spacing.sm },
   fieldCard: { borderWidth: 1, borderRadius: 10, padding: spacing.sm, gap: spacing.sm, overflow: "hidden" },
   fieldTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },

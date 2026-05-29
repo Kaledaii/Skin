@@ -72,16 +72,17 @@ export default function Products() {
             </View>
             <Pill tone={cartProducts.length ? "secondary" : "primary"}>🛒 cart</Pill>
           </View>
-          {cartProducts.slice(0, 4).map((item) => (
-            <View key={item.id} style={[styles.cartRow, { borderColor: c.border }]}>
-              <View style={styles.flex}>
-                <Body>{item.name}</Body>
-                <Body muted>{item.category} - {item.price}</Body>
+          <ScrollView nestedScrollEnabled style={styles.cartScroll} contentContainerStyle={styles.cartScrollContent}>
+            {cartProducts.map((item) => (
+              <View key={item.id} style={[styles.cartRow, { borderColor: c.border }]}>
+                <Pressable onPress={() => Linking.openURL(item.affiliateUrl)} style={styles.cartCopy}>
+                  <Body>{item.name}</Body>
+                  <Body muted>{item.category} - {item.price}</Body>
+                </Pressable>
+                <Button label="Remove" onPress={() => toggleSavedProduct(item.id)} secondary />
               </View>
-              <Button label="Remove" onPress={() => toggleSavedProduct(item.id)} secondary />
-            </View>
-          ))}
-          {cartProducts.length > 4 ? <Body muted>+{cartProducts.length - 4} more in cart.</Body> : null}
+            ))}
+          </ScrollView>
         </Card>
 
         <Card>
@@ -177,7 +178,17 @@ export default function Products() {
               <Pill tone="primary">{item.category}</Pill>
               <Pill tone="secondary">Trust {item.trustScore}%</Pill>
               <Pill tone={item.fakeRisk === "high" ? "danger" : item.fakeRisk === "low" ? "secondary" : "accent"}>Fake risk {item.fakeRisk ?? "medium"}</Pill>
-              <Button label={saved ? "🛒 Added" : "🛒 Add to cart"} onPress={() => toggleSavedProduct(item.id)} secondary />
+              <Button
+                label={saved ? "Open product" : "Add to cart"}
+                onPress={() => {
+                  if (saved) {
+                    trackEvent("product_clicked", { id: item.id, locked, sponsored: item.sponsored ?? false, source: "cart_button" });
+                    return Linking.openURL(item.affiliateUrl);
+                  }
+                  return toggleSavedProduct(item.id);
+                }}
+                secondary
+              />
               <Button
                 label={locked ? "Unlock smart match" : "Daraz / Pharmacy"}
                 onPress={() => {
@@ -223,7 +234,10 @@ const styles = StyleSheet.create({
   categoryText: { fontSize: 13, fontWeight: "800" },
   filterBlock: { gap: spacing.xs },
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
+  cartScroll: { maxHeight: 220 },
+  cartScrollContent: { gap: spacing.xs },
   cartRow: { borderTopWidth: 1, paddingTop: spacing.sm, gap: spacing.sm, flexDirection: "row", alignItems: "center" },
+  cartCopy: { flex: 1, minWidth: 0, gap: 2 },
   productAccent: { width: 46, height: 3, borderRadius: 99 },
   productImagePanel: { minHeight: 190, borderWidth: 1, borderRadius: 14, overflow: "hidden", alignItems: "center", justifyContent: "center", padding: spacing.sm },
   productImage: { width: "100%", height: 150 },

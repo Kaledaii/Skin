@@ -81,8 +81,6 @@ export function MarketingHero({
       <Pressable onPress={onPress} disabled={!onPress} style={({ pressed }) => [{ transform: [{ scale: pressed ? 0.99 : 1 }] }]}>
         <ImageBackground source={image} resizeMode="contain" imageStyle={styles.heroImage} style={[styles.hero, tall && styles.heroTall, { backgroundColor: c.surfaceGlow }]}>
           <View style={[styles.heroShade, { backgroundColor: themeMode === "dark" ? "rgba(20, 10, 14, 0.58)" : "rgba(255, 244, 239, 0.42)" }]} />
-          <View style={styles.sparkleOne} />
-          <View style={styles.sparkleTwo} />
           <View style={styles.heroCopy}>
             <Text style={[styles.eyebrow, { color: c.accent }]}>{eyebrow}</Text>
             <Text style={[styles.heroTitle, { color: themeMode === "dark" ? "#FFF8F5" : c.text }]}>{title}</Text>

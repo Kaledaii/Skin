@@ -59,7 +59,7 @@ export default function Home() {
   const glowPromos = useMemo(
     () => [
       { id: "glow-prabha", image: marketingImages.glowPrabha, eyebrow: "Glow with Prabha", title: "Simple routines for radiant skin ✨", body: "Your routine adapts to skin type, budget, water, makeup, and Nepal weather.", cta: "Explore Now", icon: "star" as const, emoji: "🌸" },
-      { id: "bright-protected", image: marketingImages.brightProtected, eyebrow: "Stay Bright & Protected", title: "SPF + weather care ☀️", body: "Daily UV, AQI, rain, sweat, and water tips without scary jargon.", cta: "Get Daily Tips", icon: "sun" as const, emoji: "🧴" },
+      { id: "bright-protected", image: marketingImages.brightProtected, eyebrow: "Stay Bright & Protected", title: "Sunscreen + weather care ☀️", body: "Daily UV, AQI, rain, sweat, and water tips without scary jargon.", cta: "Get Daily Tips", icon: "sun" as const, emoji: "🧴" },
       { id: "festive-ready", image: marketingImages.festiveReady, eyebrow: "Festive Ready Skin", title: "Dashain & Tihar glow prep 🪔", body: "A gentle plan for makeup, late nights, sweets, travel dust, and glow goals.", cta: "Get Glow Tips", icon: "zap" as const, emoji: "✨" }
     ],
     []
@@ -140,6 +140,73 @@ export default function Home() {
             </View>
           </View>
         </View>
+
+        <ImagePromoCard
+          compact
+          item={{
+            id: "daily-glow-check",
+            image: marketingImages.warmGlow,
+            eyebrow: "Today's glow check",
+            title: "Start with the steps that matter",
+            body: "Finish your simple routine first, then use tips, remedies, food, and weekly add-ons as support.",
+            cta: "Begin routine",
+            icon: "check-circle",
+            emoji: "✨"
+          }}
+        />
+
+        <Card>
+          <View style={styles.scoreHeader}>
+            <View style={styles.sectionTitle}>
+              <Feather name={routinePeriod === "morning" ? "sun" : "droplet"} color={routinePeriod === "morning" ? c.accent : c.secondary} size={22} />
+              <H2>{language === "en" ? "Routine ritual" : "Routine ritual"}</H2>
+            </View>
+            <Pill tone="secondary">{`Today ${percent}% • ${completed}/${routineSteps.length} done`}</Pill>
+          </View>
+          <ProgressBar value={percent} color={c.primary} />
+          <ToggleGroup
+            value={routinePeriod}
+            options={[
+              { label: t(language, "morning"), value: "morning" },
+              { label: t(language, "evening"), value: "evening" }
+            ]}
+            onChange={setRoutinePeriod}
+          />
+          <RoutineSection title={routinePeriod === "morning" ? t(language, "morning") : t(language, "evening")} icon={null} steps={activeSteps} />
+        </Card>
+
+        <Card>
+          <H2>{language === "en" ? "Daily micro-tip" : "Daily micro-tip"}</H2>
+          <Body>{result.dailyMicroTips[0]?.text[language]}</Body>
+          <Pill tone="accent">{result.dailyMicroTips[0]?.tag}</Pill>
+        </Card>
+
+        {remedies.length > 0 ? (
+          <Card variant="seasonal">
+            <View style={styles.sectionTitle}>
+              <Feather name="heart" color={c.secondary} size={22} />
+              <H2>{language === "en" ? "Home remedies for this match" : "Home remedies for this match"}</H2>
+            </View>
+            <Body muted>
+              {topMatch
+                ? `Only showing remedies connected to ${localized(language, topMatch.condition.name_en, topMatch.condition.name_ne)}. Stop anything that stings or worsens irritation.`
+                : "Only showing remedies that match your result."}
+            </Body>
+            {remedies.slice(0, 5).map((remedy) => (
+              <View key={`${remedy.remedy}-${remedy.verdict}`} style={[styles.remedyCard, { backgroundColor: c.surface, borderColor: c.border }]}>
+                <Pill tone={remedy.verdict === "harmful" ? "danger" : remedy.verdict === "safe_mild" ? "accent" : "secondary"}>
+                  {remedy.verdict === "harmful" ? "Avoid" : remedy.verdict === "safe_mild" ? "Mild" : "Safe"}
+                </Pill>
+                <Body>{remedy.nepali ? `${remedy.remedy} (${remedy.nepali})` : remedy.remedy}</Body>
+                {remedy.ingredients ? <Body muted>Ingredients: {remedy.ingredients}</Body> : null}
+                <Body muted>{remedy.method ?? remedy.reason ?? remedy.note ?? "Use gently and stop if irritation starts."}</Body>
+                {remedy.frequency ? <Pill tone="primary">{remedy.frequency}</Pill> : null}
+                {remedy.why_it_works ? <Body muted>{remedy.why_it_works}</Body> : null}
+                {remedy.caution ? <Body muted>Caution: {remedy.caution}</Body> : null}
+              </View>
+            ))}
+          </Card>
+        ) : null}
 
         <GlowCarousel
           items={glowPromos}
@@ -362,25 +429,6 @@ export default function Home() {
           <ProgressBar value={percent} color={c.secondary} />
         </Card>
 
-        <Card>
-          <View style={styles.scoreHeader}>
-            <View style={styles.sectionTitle}>
-              <Feather name={routinePeriod === "morning" ? "sun" : "droplet"} color={routinePeriod === "morning" ? c.accent : c.secondary} size={22} />
-              <H2>{language === "en" ? "Routine ritual" : "Routine ritual"}</H2>
-            </View>
-            <Pill tone="secondary">{`Today ${percent}% • ${completed}/${routineSteps.length} done`}</Pill>
-          </View>
-          <ProgressBar value={percent} color={c.primary} />
-          <ToggleGroup
-            value={routinePeriod}
-            options={[
-              { label: t(language, "morning"), value: "morning" },
-              { label: t(language, "evening"), value: "evening" }
-            ]}
-            onChange={setRoutinePeriod}
-          />
-          <RoutineSection title={routinePeriod === "morning" ? t(language, "morning") : t(language, "evening")} icon={null} steps={activeSteps} />
-        </Card>
 
         {result.weekly.length > 0 ? (
           <Card>
@@ -434,38 +482,7 @@ export default function Home() {
           </View>
         </Card>
 
-        <Card>
-          <H2>{language === "en" ? "Daily micro-tip" : "Daily micro-tip"}</H2>
-          <Body>{result.dailyMicroTips[0]?.text[language]}</Body>
-          <Pill tone="accent">{result.dailyMicroTips[0]?.tag}</Pill>
-        </Card>
 
-        {remedies.length > 0 ? (
-          <Card variant="seasonal">
-            <View style={styles.sectionTitle}>
-              <Feather name="heart" color={c.secondary} size={22} />
-              <H2>{language === "en" ? "Home remedies for this match" : "Home remedies for this match"}</H2>
-            </View>
-            <Body muted>
-              {topMatch
-                ? `Only showing remedies connected to ${localized(language, topMatch.condition.name_en, topMatch.condition.name_ne)}. Stop anything that stings or worsens irritation.`
-                : "Only showing remedies that match your result."}
-            </Body>
-            {remedies.slice(0, 5).map((remedy) => (
-              <View key={`${remedy.remedy}-${remedy.verdict}`} style={[styles.remedyCard, { backgroundColor: c.surface, borderColor: c.border }]}>
-                <Pill tone={remedy.verdict === "harmful" ? "danger" : remedy.verdict === "safe_mild" ? "accent" : "secondary"}>
-                  {remedy.verdict === "harmful" ? "Avoid / नगर्नुहोस्" : remedy.verdict === "safe_mild" ? "Mild / सावधानी" : "Safe / गर्न सकिन्छ"}
-                </Pill>
-                <Body>{remedy.nepali ? `${remedy.remedy} (${remedy.nepali})` : remedy.remedy}</Body>
-                {remedy.ingredients ? <Body muted>Ingredients: {remedy.ingredients}</Body> : null}
-                <Body muted>{remedy.method ?? remedy.reason ?? remedy.note ?? "Use gently and stop if irritation starts."}</Body>
-                {remedy.frequency ? <Pill tone="primary">{remedy.frequency}</Pill> : null}
-                {remedy.why_it_works ? <Body muted>{remedy.why_it_works}</Body> : null}
-                {remedy.caution ? <Body muted>Caution: {remedy.caution}</Body> : null}
-              </View>
-            ))}
-          </Card>
-        ) : null}
 
         <Card>
           <H2>{language === "en" ? "Matched product picks" : "Matched product picks"}</H2>

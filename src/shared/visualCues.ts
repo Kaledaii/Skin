@@ -1,4 +1,5 @@
 const cueRules: Array<[RegExp, string]> = [
+  [/\b(haldi doodh|turmeric milk)\b/i, "🥛"],
   [/\b(water|hydration|hydrate|dehydration|pani|पानी)\b/i, "💧"],
   [/\b(curd|dahi|mohi|probiotic|दही)\b/i, "🥣"],
   [/\b(dal|lentil|daal|दाल)\b/i, "🍲"],
