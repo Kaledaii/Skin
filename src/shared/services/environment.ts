@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
-import * as Notifications from "expo-notifications";
+import Constants from "expo-constants";
 import { useEffect, useState } from "react";
 import { Platform } from "react-native";
 
@@ -199,6 +199,8 @@ function optionalNumber(value: unknown) {
 
 async function schedulePollutionReminder(aqi: number) {
   if (aqi <= 100 || Platform.OS === "web") return;
+  const Notifications = await getNotifications();
+  if (!Notifications) return;
 
   const now = new Date();
   const reminderTime = new Date(now);
@@ -233,6 +235,11 @@ async function schedulePollutionReminder(aqi: number) {
   });
 
   await AsyncStorage.setItem(storageKey, notificationId);
+}
+
+async function getNotifications() {
+  if (Platform.OS === "web" || Constants.appOwnership === "expo") return undefined;
+  return import("expo-notifications");
 }
 
 function getLocalDateKey(date: Date) {

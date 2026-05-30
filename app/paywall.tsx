@@ -13,7 +13,7 @@ import { spacing } from "@/shared/theme";
 import { PaymentProvider, SubscriptionPlanId } from "@/shared/types";
 
 export default function Paywall() {
-  const { language, themeMode, paymentState, paymentRequests, submitManualPayment, pickPaymentScreenshot, activatePremium } = useApp();
+  const { language, themeMode, paymentState, paymentRequests, submitManualPayment, retryPendingPaymentSync, pickPaymentScreenshot, activatePremium } = useApp();
   const c = palettes[themeMode];
   const [plan, setPlan] = useState<Exclude<SubscriptionPlanId, "beta">>("monthly");
   const [provider, setProvider] = useState<PaymentProvider>("khalti");
@@ -76,6 +76,15 @@ export default function Paywall() {
                   : "तपाईंको payment review मा छ। 24 घण्टा भित्र premium status update हुन्छ।"}
               </Body>
               <Body muted>Request {pending.id} • {pending.provider} • Rs. {pending.amount}</Body>
+              <Pill tone={pending.cloudSyncStatus === "synced" ? "secondary" : "danger"}>
+                {pending.cloudSyncStatus === "synced" ? "Visible in admin" : "Local only"}
+              </Pill>
+              {pending.cloudSyncStatus !== "synced" ? (
+                <>
+                  <Body muted>{pending.cloudSyncError ?? "This request has not reached the admin panel yet."}</Body>
+                  <Button label="Retry admin sync" onPress={async () => setMessage(await retryPendingPaymentSync())} secondary />
+                </>
+              ) : null}
             </View>
           ) : null}
           {!pending && latestReviewed ? (

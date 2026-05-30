@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Notifications from "expo-notifications";
+import Constants from "expo-constants";
 import { Platform } from "react-native";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { EnvironmentalData } from "./environment";
@@ -17,6 +17,8 @@ type RoutineProgress = {
 
 export async function requestNotificationAccess() {
   if (Platform.OS === "web") return { granted: false, reason: "web" as const };
+  const Notifications = await getNotifications();
+  if (!Notifications) return { granted: false, reason: "expo-go" as const };
   const existing = await Notifications.getPermissionsAsync();
   const permission = existing.granted ? existing : await Notifications.requestPermissionsAsync();
   if (!permission.granted) return { granted: false, reason: "denied" as const };
@@ -91,9 +93,12 @@ export async function scheduleWeatherAlerts(date: string, data: EnvironmentalDat
 
 export async function registerExpoPushToken() {
   if (Platform.OS === "web") return { ok: false, mode: "web" as const, token: undefined };
+  if (Constants.appOwnership === "expo") return { ok: false, mode: "expo-go" as const, token: undefined };
   const access = await requestNotificationAccess();
   if (!access.granted) return { ok: false, mode: access.reason, token: undefined };
   try {
+    const Notifications = await getNotifications();
+    if (!Notifications) return { ok: false, mode: "expo-go" as const, token: undefined };
     const token = (await Notifications.getExpoPushTokenAsync()).data;
     const firebase = getFirebase();
     const user = firebase?.auth.currentUser;
@@ -109,6 +114,8 @@ export async function registerExpoPushToken() {
 
 export async function cancelTodayNotifications(date: string) {
   if (Platform.OS === "web") return;
+  const Notifications = await getNotifications();
+  if (!Notifications) return;
   const keys = await AsyncStorage.getAllKeys();
   const todayKeys = keys.filter((key) => key.startsWith(`${STORAGE_PREFIX}-${date}`));
   const pairs = await AsyncStorage.multiGet(todayKeys);
@@ -141,6 +148,8 @@ async function scheduleOnce(
   input: { title: string; body: string; triggerDate?: Date; channelId: string },
   extraId = "default"
 ) {
+  const Notifications = await getNotifications();
+  if (!Notifications) throw new Error("Notifications are unavailable in Expo Go.");
   const storageKey = `${STORAGE_PREFIX}-${date}-${kind}-${extraId}`;
   const existing = await AsyncStorage.getItem(storageKey);
   if (existing) return JSON.parse(existing) as ScheduledNotificationRecord;
@@ -161,6 +170,8 @@ async function scheduleOnce(
 
 async function ensureChannels() {
   if (Platform.OS !== "android") return;
+  const Notifications = await getNotifications();
+  if (!Notifications) return;
   await Notifications.setNotificationChannelAsync("routine-reminders", {
     name: "Routine reminders",
     importance: Notifications.AndroidImportance.DEFAULT
@@ -169,6 +180,11 @@ async function ensureChannels() {
     name: "Weather skin alerts",
     importance: Notifications.AndroidImportance.DEFAULT
   });
+}
+
+async function getNotifications() {
+  if (Platform.OS === "web" || Constants.appOwnership === "expo") return undefined;
+  return import("expo-notifications");
 }
 
 function nextLocalDateAt(hour: number, minute: number) {

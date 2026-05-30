@@ -36,7 +36,8 @@ type AppState = {
   submitManualPayment: (input: { provider: PaymentProvider; plan: Exclude<SubscriptionPlanId, "beta">; transactionId: string; payerName: string; payerPhone: string; screenshotUri: string }) => Promise<PaymentSubmissionResult>;
   approvePaymentRequest: (id: string, note?: string) => Promise<string>;
   rejectPaymentRequest: (id: string, note: string) => Promise<string>;
-  refreshPaymentRequests: (status?: PaymentRequest["status"] | "all") => Promise<void>;
+  refreshPaymentRequests: (status?: PaymentRequest["status"] | "all") => Promise<string>;
+  retryPendingPaymentSync: () => Promise<string>;
   paymentRequests: PaymentRequest[];
   pickPaymentScreenshot: () => Promise<string | undefined>;
   loadSubscription: () => Promise<void>;
@@ -260,12 +261,29 @@ export function AppProvider({ children }: PropsWithChildren) {
         return result;
       }
       const request = { ...result.request, id: draftId };
-      const saved = await savePaymentRequest(request);
-      const savedRequest = saved.ok && saved.request ? saved.request : request;
+      let saved: Awaited<ReturnType<typeof savePaymentRequest>>;
+      try {
+        saved = await savePaymentRequest(request);
+      } catch {
+        saved = { ok: false, mode: "local-demo", request };
+      }
+      const savedRequest = saved.ok && saved.request
+        ? { ...saved.request, cloudSyncStatus: "synced" as const, cloudSyncError: undefined }
+        : { ...request, cloudSyncStatus: "local_only" as const, cloudSyncError: "error" in saved ? saved.error : "Could not sync to Firebase admin inbox." };
       setPaymentRequests((current) => [savedRequest, ...current.filter((item) => item.id !== savedRequest.id)]);
       setPaymentState("pending_review");
-      await syncUserSnapshot({ profile, subscription: { ...subscription, paymentState: "pending_review" }, dailyCheckIns, paymentRequests: [savedRequest, ...paymentRequests] });
-      return { ...result, request: savedRequest };
+      try {
+        await syncUserSnapshot({ profile, subscription: { ...subscription, paymentState: "pending_review" }, dailyCheckIns, paymentRequests: [savedRequest, ...paymentRequests] });
+      } catch {
+        // Keep the local pending review record when cloud sync is unavailable.
+      }
+      return {
+        ...result,
+        request: savedRequest,
+        message: saved.ok
+          ? "Payment submitted for review and synced to the admin panel."
+          : "Payment saved on this device, but it did not reach the admin panel yet. Enable Firebase Anonymous Auth or tap Retry admin sync after fixing Firebase."
+      };
     },
     approvePaymentRequest: async (id, note = "Approved") => {
       const request = paymentRequests.find((item) => item.id === id);
@@ -293,7 +311,24 @@ export function AppProvider({ children }: PropsWithChildren) {
     },
     refreshPaymentRequests: async (status = "pending_review") => {
       const result = await listPaymentRequests(status === "all" ? undefined : status);
-      if (result.ok) setPaymentRequests(result.requests);
+      if (result.ok) {
+        setPaymentRequests(result.requests);
+        return `Loaded ${result.requests.length} cloud payment request${result.requests.length === 1 ? "" : "s"}.`;
+      }
+      return `Could not load cloud payment requests: ${"error" in result ? result.error : "Firebase is unavailable."}`;
+    },
+    retryPendingPaymentSync: async () => {
+      const pending = paymentRequests.find((item) => item.status === "pending_review" && item.cloudSyncStatus !== "synced");
+      if (!pending) return "No local-only pending request to sync.";
+      const saved = await savePaymentRequest(pending);
+      if (!saved.ok || !saved.request) {
+        const message = "error" in saved ? saved.error : "Firebase sync failed.";
+        setPaymentRequests((current) => current.map((item) => item.id === pending.id ? { ...item, cloudSyncStatus: "local_only", cloudSyncError: message } : item));
+        return `Still local-only: ${message}`;
+      }
+      const synced = { ...saved.request, cloudSyncStatus: "synced" as const, cloudSyncError: undefined };
+      setPaymentRequests((current) => current.map((item) => item.id === pending.id ? synced : item));
+      return "Payment request synced to the admin panel.";
     },
     paymentRequests,
     pickPaymentScreenshot: async () => {

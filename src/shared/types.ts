@@ -59,6 +59,8 @@ export type PaymentRequest = {
   screenshotUri: string;
   screenshotDownloadUrl?: string;
   status: PaymentRequestStatus;
+  cloudSyncStatus?: "synced" | "local_only";
+  cloudSyncError?: string;
   createdAt: string;
   reviewedAt?: string;
   reviewNote?: string;

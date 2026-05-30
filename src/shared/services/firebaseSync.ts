@@ -13,11 +13,26 @@ export type SyncPayload = {
 
 export type AuthResult = { ok: boolean; uid?: string; email?: string | null; mode: "local-demo" | "anonymous" | "email"; message: string };
 
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Firebase request failed.";
+}
+
+function withTimeout<T>(promise: Promise<T>, ms = 12000): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("Firebase request timed out.")), ms))
+  ]);
+}
+
 export async function ensureAnonymousUser(): Promise<AuthResult> {
-  const firebase = getFirebase();
-  if (!firebase) return { ok: false, mode: "local-demo", message: "Firebase is not configured; using local demo mode." };
-  const user = firebase.auth.currentUser ?? (await firebaseSignInAnonymously(firebase.auth)).user;
-  return { ok: true, uid: user.uid, email: user.email, mode: "anonymous", message: "Anonymous account ready." };
+  try {
+    const firebase = getFirebase();
+    if (!firebase) return { ok: false, mode: "local-demo", message: "Firebase is not configured; using local demo mode." };
+    const user = firebase.auth.currentUser ?? (await firebaseSignInAnonymously(firebase.auth)).user;
+    return { ok: true, uid: user.uid, email: user.email, mode: "anonymous", message: "Anonymous account ready." };
+  } catch {
+    return { ok: false, mode: "local-demo", message: "Could not connect to Firebase; using local mode." };
+  }
 }
 
 export async function signUpWithEmail(email: string, password: string): Promise<AuthResult> {
@@ -43,84 +58,144 @@ export async function signInWithGoogle(): Promise<AuthResult> {
 }
 
 export async function syncUserSnapshot(payload: SyncPayload) {
-  const firebase = getFirebase();
-  if (!firebase) {
+  try {
+    const firebase = getFirebase();
+    if (!firebase) {
+      return { ok: false, mode: "local-demo" as const };
+    }
+
+    const credential = firebase.auth.currentUser ? { user: firebase.auth.currentUser } : await firebaseSignInAnonymously(firebase.auth);
+    const uid = credential.user.uid;
+    await setDoc(
+      doc(firebase.db, "users", uid),
+      {
+        profile: payload.profile,
+        subscription: payload.subscription,
+        dailyCheckIns: payload.dailyCheckIns,
+        paymentRequests: payload.paymentRequests ?? [],
+        updatedAt: serverTimestamp()
+      },
+      { merge: true }
+    );
+    return {
+      ok: true,
+      mode: "firebase-synced" as const,
+      uid,
+      profileName: payload.profile.name,
+      checkInCount: Object.keys(payload.dailyCheckIns).length
+    };
+  } catch {
     return { ok: false, mode: "local-demo" as const };
   }
-
-  const credential = firebase.auth.currentUser ? { user: firebase.auth.currentUser } : await firebaseSignInAnonymously(firebase.auth);
-  const uid = credential.user.uid;
-  await setDoc(
-    doc(firebase.db, "users", uid),
-    {
-      profile: payload.profile,
-      subscription: payload.subscription,
-      dailyCheckIns: payload.dailyCheckIns,
-      paymentRequests: payload.paymentRequests ?? [],
-      updatedAt: serverTimestamp()
-    },
-    { merge: true }
-  );
-  return {
-    ok: true,
-    mode: "firebase-synced" as const,
-    uid,
-    profileName: payload.profile.name,
-    checkInCount: Object.keys(payload.dailyCheckIns).length
-  };
 }
 
 export async function uploadPaymentScreenshot(uri: string, requestId: string) {
-  const firebase = getFirebase();
-  if (!firebase || !uri) return undefined;
-  const user = firebase.auth.currentUser ?? (await firebaseSignInAnonymously(firebase.auth)).user;
-  const response = await fetch(uri);
-  const blob = await response.blob();
-  const storageRef = ref(firebase.storage, `payment-screenshots/${user.uid}/${requestId}.jpg`);
-  await uploadBytes(storageRef, blob);
-  return getDownloadURL(storageRef);
+  try {
+    const cloudinaryUrl = await uploadPaymentScreenshotToCloudinary(uri, requestId);
+    if (cloudinaryUrl) return cloudinaryUrl;
+
+    const firebase = getFirebase();
+    if (!firebase || !uri) return undefined;
+    const user = firebase.auth.currentUser ?? (await firebaseSignInAnonymously(firebase.auth)).user;
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    const storageRef = ref(firebase.storage, `payment-screenshots/${user.uid}/${requestId}.jpg`);
+    await uploadBytes(storageRef, blob);
+    return getDownloadURL(storageRef);
+  } catch {
+    return undefined;
+  }
+}
+
+async function uploadPaymentScreenshotToCloudinary(uri: string, requestId: string) {
+  const cloudName = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
+  const uploadPreset = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+  if (!uri || !cloudName || !uploadPreset) return undefined;
+
+  const formData = new FormData();
+  formData.append("file", {
+    uri,
+    name: `${requestId}.jpg`,
+    type: "image/jpeg"
+  } as unknown as Blob);
+  formData.append("upload_preset", uploadPreset);
+  formData.append("folder", "prabha-payment-screenshots");
+  formData.append("public_id", requestId);
+
+  try {
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+      method: "POST",
+      body: formData
+    });
+    if (!response.ok) return undefined;
+    const payload = await response.json() as { secure_url?: string };
+    return payload.secure_url;
+  } catch {
+    return undefined;
+  }
 }
 
 export async function savePaymentRequest(request: PaymentRequest) {
-  const firebase = getFirebase();
-  if (!firebase) return { ok: false, mode: "local-demo" as const };
-  const user = firebase.auth.currentUser ?? (await firebaseSignInAnonymously(firebase.auth)).user;
-  const next = { ...request, userId: user.uid, userEmail: user.email ?? request.userEmail ?? null };
-  await setDoc(doc(firebase.db, "paymentRequests", request.id), { ...next, updatedAt: serverTimestamp() }, { merge: true });
-  return { ok: true, mode: "firebase-synced" as const, request: next };
+  try {
+    const firebase = getFirebase();
+    if (!firebase) return { ok: false, mode: "local-demo" as const, request };
+    let next = { ...request };
+    try {
+      const user = firebase.auth.currentUser ?? (await withTimeout(firebaseSignInAnonymously(firebase.auth), 8000)).user;
+      next = { ...next, userId: user.uid, userEmail: user.email ?? request.userEmail ?? null };
+    } catch {
+      next = { ...next, userId: request.userId || "local-demo-user", userEmail: request.userEmail ?? null };
+    }
+    await withTimeout(setDoc(doc(firebase.db, "paymentRequests", request.id), { ...next, cloudSyncStatus: "synced", cloudSyncError: null, updatedAt: serverTimestamp() }, { merge: true }));
+    return { ok: true, mode: "firebase-synced" as const, request: next };
+  } catch (error) {
+    return { ok: false, mode: "local-demo" as const, request, error: errorMessage(error) };
+  }
 }
 
 export async function listPaymentRequests(status?: PaymentRequest["status"]) {
-  const firebase = getFirebase();
-  if (!firebase) return { ok: false, mode: "local-demo" as const, requests: [] as PaymentRequest[] };
-  const requestQuery = status
-    ? query(collection(firebase.db, "paymentRequests"), where("status", "==", status), orderBy("createdAt", "desc"))
-    : query(collection(firebase.db, "paymentRequests"), orderBy("createdAt", "desc"));
-  const snapshot = await getDocs(requestQuery);
-  return { ok: true, mode: "firebase-synced" as const, requests: snapshot.docs.map((item) => item.data() as PaymentRequest) };
+  try {
+    const firebase = getFirebase();
+    if (!firebase) return { ok: false, mode: "local-demo" as const, requests: [] as PaymentRequest[] };
+    const requestQuery = status
+      ? query(collection(firebase.db, "paymentRequests"), where("status", "==", status), orderBy("createdAt", "desc"))
+      : query(collection(firebase.db, "paymentRequests"), orderBy("createdAt", "desc"));
+    const snapshot = await withTimeout(getDocs(requestQuery));
+    return { ok: true, mode: "firebase-synced" as const, requests: snapshot.docs.map((item) => item.data() as PaymentRequest) };
+  } catch (error) {
+    return { ok: false, mode: "local-demo" as const, requests: [] as PaymentRequest[], error: errorMessage(error) };
+  }
 }
 
 export async function updatePaymentRequest(request: PaymentRequest) {
-  const firebase = getFirebase();
-  if (!firebase) return { ok: false, mode: "local-demo" as const };
-  await updateDoc(doc(firebase.db, "paymentRequests", request.id), { ...request, updatedAt: serverTimestamp() });
-  return { ok: true, mode: "firebase-synced" as const };
+  try {
+    const firebase = getFirebase();
+    if (!firebase) return { ok: false, mode: "local-demo" as const };
+    await updateDoc(doc(firebase.db, "paymentRequests", request.id), { ...request, updatedAt: serverTimestamp() });
+    return { ok: true, mode: "firebase-synced" as const };
+  } catch {
+    return { ok: false, mode: "local-demo" as const };
+  }
 }
 
 export async function updateUserSubscriptionForPayment(request: PaymentRequest, subscription: SubscriptionInfo) {
-  const firebase = getFirebase();
-  if (!firebase || !request.userId || request.userId === "local-demo-user") return { ok: false, mode: "local-demo" as const };
-  await setDoc(
-    doc(firebase.db, "users", request.userId),
-    {
-      subscription,
-      paymentState: subscription.paymentState ?? "active",
-      lastPaymentRequestId: request.id,
-      updatedAt: serverTimestamp()
-    },
-    { merge: true }
-  );
-  return { ok: true, mode: "firebase-synced" as const };
+  try {
+    const firebase = getFirebase();
+    if (!firebase || !request.userId || request.userId === "local-demo-user") return { ok: false, mode: "local-demo" as const };
+    await setDoc(
+      doc(firebase.db, "users", request.userId),
+      {
+        subscription,
+        paymentState: subscription.paymentState ?? "active",
+        lastPaymentRequestId: request.id,
+        updatedAt: serverTimestamp()
+      },
+      { merge: true }
+    );
+    return { ok: true, mode: "firebase-synced" as const };
+  } catch {
+    return { ok: false, mode: "local-demo" as const };
+  }
 }
 
 export function getCurrentAuthEmail() {
@@ -131,19 +206,23 @@ export function getCurrentAuthEmail() {
 export async function submitExpertQuestion(question: string, profileName: string) {
   const clean = question.trim();
   if (!clean) return { ok: false, mode: "validation" as const, message: "Question is required." };
-  const firebase = getFirebase();
-  if (!firebase) return { ok: false, mode: "local-demo" as const, message: "Firebase is not configured; question saved locally later." };
-  const user = firebase.auth.currentUser ?? (await firebaseSignInAnonymously(firebase.auth)).user;
-  const id = `expert_${Date.now()}`;
-  await setDoc(doc(firebase.db, "expertQuestions", id), {
-    id,
-    userId: user.uid,
-    profileName,
-    question: clean,
-    status: "new",
-    createdAt: serverTimestamp()
-  });
-  return { ok: true, mode: "firebase-synced" as const, message: "Question submitted. Expert review can be added from admin workflow." };
+  try {
+    const firebase = getFirebase();
+    if (!firebase) return { ok: false, mode: "local-demo" as const, message: "Question saved locally for now." };
+    const user = firebase.auth.currentUser ?? (await firebaseSignInAnonymously(firebase.auth)).user;
+    const id = `expert_${Date.now()}`;
+    await setDoc(doc(firebase.db, "expertQuestions", id), {
+      id,
+      userId: user.uid,
+      profileName,
+      question: clean,
+      status: "new",
+      createdAt: serverTimestamp()
+    });
+    return { ok: true, mode: "firebase-synced" as const, message: "Question submitted. Expert review can be added from admin workflow." };
+  } catch {
+    return { ok: false, mode: "local-demo" as const, message: "Question saved locally for now." };
+  }
 }
 
 export async function loadRemoteSubscription() {
@@ -153,8 +232,7 @@ export async function loadRemoteSubscription() {
     const user = firebase.auth.currentUser ?? (await firebaseSignInAnonymously(firebase.auth)).user;
     const snapshot = await getDoc(doc(firebase.db, "users", user.uid));
     return snapshot.exists() ? (snapshot.data().subscription as SubscriptionInfo | undefined) : undefined;
-  } catch (error) {
-    console.error("Failed to load remote subscription:", error);
+  } catch {
     return undefined;
   }
 }
@@ -166,8 +244,7 @@ export async function loadRemoteProfile() {
     const user = firebase.auth.currentUser ?? (await firebaseSignInAnonymously(firebase.auth)).user;
     const snapshot = await getDoc(doc(firebase.db, "users", user.uid));
     return snapshot.exists() ? (snapshot.data().profile as UserProfile | undefined) : undefined;
-  } catch (error) {
-    console.error("Failed to load remote profile:", error);
+  } catch {
     return undefined;
   }
 }
@@ -179,16 +256,19 @@ export async function loadRemoteCheckIns() {
     const user = firebase.auth.currentUser ?? (await firebaseSignInAnonymously(firebase.auth)).user;
     const snapshot = await getDoc(doc(firebase.db, "users", user.uid));
     return snapshot.exists() ? (snapshot.data().dailyCheckIns as Record<string, DailyCheckIn> | undefined) : undefined;
-  } catch (error) {
-    console.error("Failed to load remote check-ins:", error);
+  } catch {
     return undefined;
   }
 }
 
 export async function deleteCloudSnapshot() {
-  const firebase = getFirebase();
-  if (!firebase) return { ok: false, mode: "local-demo" as const };
-  const user = firebase.auth.currentUser ?? (await firebaseSignInAnonymously(firebase.auth)).user;
-  await deleteDoc(doc(firebase.db, "users", user.uid));
-  return { ok: true, mode: "firebase-deleted" as const, uid: user.uid };
+  try {
+    const firebase = getFirebase();
+    if (!firebase) return { ok: false, mode: "local-demo" as const };
+    const user = firebase.auth.currentUser ?? (await firebaseSignInAnonymously(firebase.auth)).user;
+    await deleteDoc(doc(firebase.db, "users", user.uid));
+    return { ok: true, mode: "firebase-deleted" as const, uid: user.uid };
+  } catch {
+    return { ok: false, mode: "local-demo" as const };
+  }
 }

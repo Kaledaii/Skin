@@ -141,81 +141,6 @@ export default function Home() {
           </View>
         </View>
 
-        <ImagePromoCard
-          compact
-          item={{
-            id: "daily-glow-check",
-            image: marketingImages.warmGlow,
-            eyebrow: "Today's glow check",
-            title: "Start with the steps that matter",
-            body: "Finish your simple routine first, then use tips, remedies, food, and weekly add-ons as support.",
-            cta: "Begin routine",
-            icon: "check-circle",
-            emoji: "✨"
-          }}
-        />
-
-        <Card>
-          <View style={styles.scoreHeader}>
-            <View style={styles.sectionTitle}>
-              <Feather name={routinePeriod === "morning" ? "sun" : "droplet"} color={routinePeriod === "morning" ? c.accent : c.secondary} size={22} />
-              <H2>{language === "en" ? "Routine ritual" : "Routine ritual"}</H2>
-            </View>
-            <Pill tone="secondary">{`Today ${percent}% • ${completed}/${routineSteps.length} done`}</Pill>
-          </View>
-          <ProgressBar value={percent} color={c.primary} />
-          <ToggleGroup
-            value={routinePeriod}
-            options={[
-              { label: t(language, "morning"), value: "morning" },
-              { label: t(language, "evening"), value: "evening" }
-            ]}
-            onChange={setRoutinePeriod}
-          />
-          <RoutineSection title={routinePeriod === "morning" ? t(language, "morning") : t(language, "evening")} icon={null} steps={activeSteps} />
-        </Card>
-
-        <Card>
-          <H2>{language === "en" ? "Daily micro-tip" : "Daily micro-tip"}</H2>
-          <Body>{result.dailyMicroTips[0]?.text[language]}</Body>
-          <Pill tone="accent">{result.dailyMicroTips[0]?.tag}</Pill>
-        </Card>
-
-        {remedies.length > 0 ? (
-          <Card variant="seasonal">
-            <View style={styles.sectionTitle}>
-              <Feather name="heart" color={c.secondary} size={22} />
-              <H2>{language === "en" ? "Home remedies for this match" : "Home remedies for this match"}</H2>
-            </View>
-            <Body muted>
-              {topMatch
-                ? `Only showing remedies connected to ${localized(language, topMatch.condition.name_en, topMatch.condition.name_ne)}. Stop anything that stings or worsens irritation.`
-                : "Only showing remedies that match your result."}
-            </Body>
-            {remedies.slice(0, 5).map((remedy) => (
-              <View key={`${remedy.remedy}-${remedy.verdict}`} style={[styles.remedyCard, { backgroundColor: c.surface, borderColor: c.border }]}>
-                <Pill tone={remedy.verdict === "harmful" ? "danger" : remedy.verdict === "safe_mild" ? "accent" : "secondary"}>
-                  {remedy.verdict === "harmful" ? "Avoid" : remedy.verdict === "safe_mild" ? "Mild" : "Safe"}
-                </Pill>
-                <Body>{remedy.nepali ? `${remedy.remedy} (${remedy.nepali})` : remedy.remedy}</Body>
-                {remedy.ingredients ? <Body muted>Ingredients: {remedy.ingredients}</Body> : null}
-                <Body muted>{remedy.method ?? remedy.reason ?? remedy.note ?? "Use gently and stop if irritation starts."}</Body>
-                {remedy.frequency ? <Pill tone="primary">{remedy.frequency}</Pill> : null}
-                {remedy.why_it_works ? <Body muted>{remedy.why_it_works}</Body> : null}
-                {remedy.caution ? <Body muted>Caution: {remedy.caution}</Body> : null}
-              </View>
-            ))}
-          </Card>
-        ) : null}
-
-        <GlowCarousel
-          items={glowPromos}
-          onItemPress={(item) => {
-            if (item.id === "bright-protected") router.push("/(tabs)/tips" as never);
-            else if (item.id === "festive-ready") router.push("/(tabs)/tips" as never);
-          }}
-        />
-
         <PortraitGlowStrip
           title="Your glow, your mood"
           subtitle="From college days to festivals, the plan should feel personal, pretty, and practical."
@@ -228,6 +153,27 @@ export default function Home() {
           ]}
         />
 
+        <GlowCarousel
+          items={glowPromos}
+          onItemPress={(item) => {
+            if (item.id === "bright-protected") router.push("/(tabs)/tips" as never);
+            else if (item.id === "festive-ready") router.push("/(tabs)/tips" as never);
+          }}
+        />
+
+        <EnvironmentalCard environment={environment} colors={c} />
+
+        {weatherActions.length > 0 ? (
+          <Card>
+            <View style={styles.sectionTitle}>
+              <Feather name="cloud" color={c.secondary} size={22} />
+              <H2>Today's weather actions</H2>
+            </View>
+            {weatherActions.slice(0, 4).map((action) => (
+              <WeatherActionCard key={action.id} action={action} />
+            ))}
+          </Card>
+        ) : null}
         <Card variant="hero">
           <View style={styles.heroRow}>
             <BrandMark />
@@ -253,20 +199,6 @@ export default function Home() {
             emoji: "🌸"
           }}
         />
-
-        <EnvironmentalCard environment={environment} colors={c} />
-
-        {weatherActions.length > 0 ? (
-          <Card>
-            <View style={styles.sectionTitle}>
-              <Feather name="cloud" color={c.secondary} size={22} />
-              <H2>Today's weather actions</H2>
-            </View>
-            {weatherActions.slice(0, 4).map((action) => (
-              <WeatherActionCard key={action.id} action={action} />
-            ))}
-          </Card>
-        ) : null}
 
         <Card>
           <H2>{language === "en" ? "Matched skin concern" : "Matched skin concern"}</H2>
@@ -325,6 +257,72 @@ export default function Home() {
           </Card>
         ) : null}
 
+        <ImagePromoCard
+          compact
+          item={{
+            id: "daily-glow-check",
+            image: marketingImages.warmGlow,
+            eyebrow: "When you're ready",
+            title: "Start with the steps that matter",
+            body: "Now that you know your skin read, follow a simple routine first and use tips, remedies, food, and add-ons as support.",
+            cta: "Begin routine",
+            icon: "check-circle",
+            emoji: "✨"
+          }}
+        />
+
+        <Card>
+          <View style={styles.scoreHeader}>
+            <View style={styles.sectionTitle}>
+              <Feather name={routinePeriod === "morning" ? "sun" : "droplet"} color={routinePeriod === "morning" ? c.accent : c.secondary} size={22} />
+              <H2>{language === "en" ? "Routine ritual" : "Routine ritual"}</H2>
+            </View>
+            <Pill tone="secondary">{`Today ${percent}% - ${completed}/${routineSteps.length} done`}</Pill>
+          </View>
+          <ProgressBar value={percent} color={c.primary} />
+          <ToggleGroup
+            value={routinePeriod}
+            options={[
+              { label: t(language, "morning"), value: "morning" },
+              { label: t(language, "evening"), value: "evening" }
+            ]}
+            onChange={setRoutinePeriod}
+          />
+          <RoutineSection title={routinePeriod === "morning" ? t(language, "morning") : t(language, "evening")} icon={null} steps={activeSteps} />
+        </Card>
+
+        <Card>
+          <H2>{language === "en" ? "Daily micro-tip" : "Daily micro-tip"}</H2>
+          <Body>{result.dailyMicroTips[0]?.text[language]}</Body>
+          <Pill tone="accent">{result.dailyMicroTips[0]?.tag}</Pill>
+        </Card>
+
+        {remedies.length > 0 ? (
+          <Card variant="seasonal">
+            <View style={styles.sectionTitle}>
+              <Feather name="heart" color={c.secondary} size={22} />
+              <H2>{language === "en" ? "Home remedies for this match" : "Home remedies for this match"}</H2>
+            </View>
+            <Body muted>
+              {topMatch
+                ? `Only showing remedies connected to ${localized(language, topMatch.condition.name_en, topMatch.condition.name_ne)}. Stop anything that stings or worsens irritation.`
+                : "Only showing remedies that match your result."}
+            </Body>
+            {remedies.slice(0, 5).map((remedy) => (
+              <View key={`${remedy.remedy}-${remedy.verdict}`} style={[styles.remedyCard, { backgroundColor: c.surface, borderColor: c.border }]}>
+                <Pill tone={remedy.verdict === "harmful" ? "danger" : remedy.verdict === "safe_mild" ? "accent" : "secondary"}>
+                  {remedy.verdict === "harmful" ? "Avoid" : remedy.verdict === "safe_mild" ? "Mild" : "Safe"}
+                </Pill>
+                <Body>{remedy.nepali ? `${remedy.remedy} (${remedy.nepali})` : remedy.remedy}</Body>
+                {remedy.ingredients ? <Body muted>Ingredients: {remedy.ingredients}</Body> : null}
+                <Body muted>{remedy.method ?? remedy.reason ?? remedy.note ?? "Use gently and stop if irritation starts."}</Body>
+                {remedy.frequency ? <Pill tone="primary">{remedy.frequency}</Pill> : null}
+                {remedy.why_it_works ? <Body muted>{remedy.why_it_works}</Body> : null}
+                {remedy.caution ? <Body muted>Caution: {remedy.caution}</Body> : null}
+              </View>
+            ))}
+          </Card>
+        ) : null}
         {result.matches.length > 0 ? (
           <Card>
             <H2>{language === "en" ? "Other likely concerns" : "Other likely concerns"}</H2>
@@ -844,3 +842,4 @@ const styles = StyleSheet.create({
     elevation: 4
   }
 });
+

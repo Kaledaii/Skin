@@ -26,17 +26,20 @@ export default function AdminReview() {
   const [status, setStatus] = useState<string | null>(null);
   const [rejectNotes, setRejectNotes] = useState<Record<string, string>>({});
   const adminMode = process.env.EXPO_PUBLIC_ADMIN_MODE === "true";
+  const adminUnlocked = process.env.EXPO_PUBLIC_ADMIN_UNLOCKED === "true";
   const adminEmails = (process.env.EXPO_PUBLIC_ADMIN_EMAILS ?? "")
     .split(",")
     .map((item: string) => item.trim().toLowerCase())
     .filter(Boolean);
   const currentEmail = getCurrentAuthEmail();
   const emailAllowed = !firebaseReady || (Boolean(currentEmail) && adminEmails.includes(String(currentEmail).toLowerCase()));
-  const allowed = adminMode && emailAllowed;
+  const allowed = adminUnlocked || (adminMode && emailAllowed);
 
   useEffect(() => {
     if (!allowed) return;
-    refreshPaymentRequests("all").catch((error) => setStatus(error instanceof Error ? error.message : "Could not load payment requests."));
+    refreshPaymentRequests("all")
+      .then(setStatus)
+      .catch((error) => setStatus(error instanceof Error ? error.message : "Could not load payment requests."));
   }, [allowed]);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -78,11 +81,12 @@ export default function AdminReview() {
             <H1>Payment review is locked</H1>
             <Body muted>
               {!adminMode
-                ? "Set EXPO_PUBLIC_ADMIN_MODE=true to open this beta admin panel."
+                ? "Set EXPO_PUBLIC_ADMIN_MODE=true or EXPO_PUBLIC_ADMIN_UNLOCKED=true to open this beta admin panel."
                 : firebaseReady
                   ? "Firebase is configured, so this route also requires your signed-in email to be listed in EXPO_PUBLIC_ADMIN_EMAILS."
                   : "Admin access is unavailable."}
             </Body>
+            <Body muted>Local beta override: {adminUnlocked ? "enabled" : "disabled"}</Body>
             {firebaseReady ? <Body muted>Current email: {currentEmail ?? "not signed in"}</Body> : null}
           </Card>
         </ScrollView>
@@ -99,7 +103,7 @@ export default function AdminReview() {
             <H1>Admin payment panel</H1>
             <Body muted>Review eSewa/Khalti screenshots, approve premium, or reject with a clear note.</Body>
           </View>
-          <Pill tone="secondary">Admin mode</Pill>
+          <Pill tone="secondary">{adminUnlocked ? "Local admin unlocked" : "Admin mode"}</Pill>
         </View>
 
         <View style={styles.statsGrid}>
@@ -124,8 +128,7 @@ export default function AdminReview() {
             <Button
               label="Refresh"
               onPress={async () => {
-                await refreshPaymentRequests("all");
-                setStatus("Payment requests refreshed.");
+                setStatus(await refreshPaymentRequests("all"));
               }}
               secondary
             />
@@ -182,7 +185,7 @@ export default function AdminReview() {
         <Card variant="seasonal">
           <H2>Production safety note</H2>
           <Body muted>
-            This beta panel is guarded by admin mode and admin emails. Before public launch, approval/rejection should move behind Firestore security rules or Cloud Functions so only real admin claims can modify subscriptions.
+            This beta panel can be opened with local admin unlock for founder testing. Before public launch, approval/rejection should move behind Firestore security rules or Cloud Functions so only real admin claims can modify subscriptions.
           </Body>
         </Card>
       </ScrollView>
@@ -228,6 +231,9 @@ function PaymentReviewCard({
       <View style={styles.requestHeader}>
         <View style={styles.flex}>
           <Pill tone={statusTone}>{request.status.replace("_", " ")}</Pill>
+          <Pill tone={request.cloudSyncStatus === "local_only" ? "danger" : "secondary"}>
+            {request.cloudSyncStatus === "local_only" ? "Local only" : "Cloud synced"}
+          </Pill>
           <H2>{request.profileName || request.payerName || "Unnamed user"}</H2>
           <Body muted>{request.userEmail || request.userId}</Body>
         </View>
