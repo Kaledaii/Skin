@@ -1,14 +1,12 @@
-import { Feather } from "@expo/vector-icons";
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import { useState } from "react";
 import { useApp } from "@/shared/AppContext";
 import { Body, Button, Card, H1, H2, Pill, Screen, Segment } from "@/shared/components";
 import { t } from "@/shared/i18n";
 import { premiumPlans } from "@/shared/monetization";
-import { syncUserSnapshot } from "@/shared/services/firebaseSync";
 import { registerExpoPushToken, requestNotificationAccess } from "@/shared/services/notifications";
-import { palettes, spacing } from "@/shared/theme";
+import { spacing } from "@/shared/theme";
 import { Language, ThemeMode } from "@/shared/types";
 
 export default function Settings() {
@@ -19,21 +17,10 @@ export default function Settings() {
     setThemeMode,
     tier,
     subscription,
-    profile,
-    dailyCheckIns,
-    paymentRequests,
-    signUpWithEmail,
-    signInWithEmail,
-    signInWithGoogle,
     loadSubscription,
     notificationPreferences,
     updateNotificationPreferences
   } = useApp();
-  const c = palettes[themeMode];
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [authStatus, setAuthStatus] = useState<string | null>(null);
   const [notificationStatus, setNotificationStatus] = useState<string | null>(null);
 
   return (
@@ -75,71 +62,16 @@ export default function Settings() {
           <H2>Subscription</H2>
           <Pill tone={tier === "premium" ? "secondary" : "accent"}>{subscription.status}</Pill>
           <Body muted>{`${premiumPlans.monthly.price}/month or ${premiumPlans.yearly.price}/year.`}</Body>
+          {subscription.expiresAt ? <Body muted>Premium ends on {new Date(subscription.expiresAt).toLocaleDateString()}.</Body> : null}
           <Button label="View premium plans" onPress={() => router.push("/paywall" as never)} secondary />
           <Button label="Refresh subscription" onPress={loadSubscription} secondary />
         </Card>
 
         <Card>
-          <H2>Account recovery</H2>
-          <Body muted>Email/password helps recover premium after refresh, reinstall, or another device.</Body>
-          {authStatus ? <Body muted>{authStatus}</Body> : null}
-          <TextInput value={email} onChangeText={setEmail} placeholder="Email" placeholderTextColor={c.muted} style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]} />
-          <View style={[styles.passwordWrap, { borderColor: c.border, backgroundColor: c.surfaceAlt }]}>
-            <TextInput value={password} onChangeText={setPassword} placeholder="Password" secureTextEntry={!showPassword} placeholderTextColor={c.muted} style={[styles.passwordInput, { color: c.text }]} />
-            <Pressable accessibilityRole="button" accessibilityLabel={showPassword ? "Hide password" : "Show password"} onPress={() => setShowPassword((value) => !value)} style={styles.eyeButton}>
-              <Feather name={showPassword ? "eye-off" : "eye"} color={c.muted} size={20} />
-            </Pressable>
-          </View>
-          <Button
-            label="Create email account"
-            onPress={async () => {
-              try {
-                if (!email.trim() || password.length < 6) {
-                  setAuthStatus("Enter a valid email and at least 6 characters password.");
-                  return;
-                }
-                const result = await signUpWithEmail(email, password);
-                if (result.ok) await syncUserSnapshot({ profile, subscription, dailyCheckIns, paymentRequests });
-                setAuthStatus(result.message);
-              } catch (error) {
-                setAuthStatus(error instanceof Error ? error.message : "Could not create account.");
-              }
-            }}
-            secondary
-          />
-          <Button
-            label="Sign in"
-            onPress={async () => {
-              try {
-                if (!email.trim() || !password) {
-                  setAuthStatus("Enter email and password first.");
-                  return;
-                }
-                const result = await signInWithEmail(email, password);
-                await loadSubscription();
-                setAuthStatus(result.message);
-              } catch (error) {
-                setAuthStatus(error instanceof Error ? error.message : "Could not sign in.");
-              }
-            }}
-            secondary
-          />
-          <Button
-            label="Sign in with Google"
-            onPress={async () => {
-              try {
-                const result = await signInWithGoogle();
-                if (result.ok) {
-                  await syncUserSnapshot({ profile, subscription, dailyCheckIns, paymentRequests });
-                  await loadSubscription();
-                }
-                setAuthStatus(result.message);
-              } catch (error) {
-                setAuthStatus(error instanceof Error ? error.message : "Google sign-in could not open.");
-              }
-            }}
-            secondary
-          />
+          <H2>Support / समस्या</H2>
+          <Body muted>For payment review, app query, or any problem, contact us directly.</Body>
+          <Pill tone="secondary">Phone: 9709185409</Pill>
+          <Pill tone="accent">Email: mishant480@gmail.com</Pill>
         </Card>
 
         <Card>
@@ -154,9 +86,5 @@ export default function Settings() {
 
 const styles = StyleSheet.create({
   content: { gap: spacing.md, paddingBottom: spacing.xl },
-  input: { borderWidth: 1, borderRadius: 8, minHeight: 46, paddingHorizontal: spacing.md, fontSize: 15 },
-  passwordWrap: { borderWidth: 1, borderRadius: 8, minHeight: 46, paddingLeft: spacing.md, paddingRight: spacing.xs, flexDirection: "row", alignItems: "center" },
-  passwordInput: { flex: 1, minHeight: 44, fontSize: 15 },
-  eyeButton: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
   notificationGrid: { gap: spacing.xs }
 });

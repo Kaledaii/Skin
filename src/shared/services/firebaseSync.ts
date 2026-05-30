@@ -66,11 +66,21 @@ export async function syncUserSnapshot(payload: SyncPayload) {
 
     const credential = firebase.auth.currentUser ? { user: firebase.auth.currentUser } : await firebaseSignInAnonymously(firebase.auth);
     const uid = credential.user.uid;
+    const userRef = doc(firebase.db, "users", uid);
+    const existingSnapshot = await getDoc(userRef).catch(() => undefined);
+    const existingSubscription = existingSnapshot?.exists() ? existingSnapshot.data().subscription as SubscriptionInfo | undefined : undefined;
+    const existingPremiumActive =
+      existingSubscription?.tier === "premium" &&
+      (!existingSubscription.expiresAt || new Date(existingSubscription.expiresAt).getTime() > Date.now());
+    const localIsPremium = payload.subscription.tier === "premium";
+    const subscriptionToSave = existingPremiumActive && !localIsPremium ? existingSubscription : payload.subscription;
     await setDoc(
-      doc(firebase.db, "users", uid),
+      userRef,
       {
         profile: payload.profile,
-        subscription: payload.subscription,
+        subscription: subscriptionToSave,
+        paymentState: subscriptionToSave.paymentState,
+        lastPaymentRequestId: subscriptionToSave.paymentRequestId,
         dailyCheckIns: payload.dailyCheckIns,
         paymentRequests: payload.paymentRequests ?? [],
         updatedAt: serverTimestamp()
@@ -164,6 +174,21 @@ export async function listPaymentRequests(status?: PaymentRequest["status"]) {
     return { ok: true, mode: "firebase-synced" as const, requests: snapshot.docs.map((item) => item.data() as PaymentRequest) };
   } catch (error) {
     return { ok: false, mode: "local-demo" as const, requests: [] as PaymentRequest[], error: errorMessage(error) };
+  }
+}
+
+export async function getPaymentRequestById(id: string) {
+  try {
+    const firebase = getFirebase();
+    if (!firebase) return { ok: false, mode: "local-demo" as const, request: undefined as PaymentRequest | undefined };
+    const snapshot = await withTimeout(getDoc(doc(firebase.db, "paymentRequests", id)));
+    return {
+      ok: true,
+      mode: "firebase-synced" as const,
+      request: snapshot.exists() ? snapshot.data() as PaymentRequest : undefined
+    };
+  } catch (error) {
+    return { ok: false, mode: "local-demo" as const, request: undefined as PaymentRequest | undefined, error: errorMessage(error) };
   }
 }
 

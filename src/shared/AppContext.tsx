@@ -8,6 +8,7 @@ import {
   AuthResult,
   deleteCloudSnapshot,
   ensureAnonymousUser,
+  getPaymentRequestById,
   listPaymentRequests,
   loadRemoteCheckIns,
   loadRemoteProfile,
@@ -203,6 +204,50 @@ export function AppProvider({ children }: PropsWithChildren) {
     return () => clearTimeout(timeout);
   }, [profile, subscription, dailyCheckIns, paymentRequests]);
 
+  useEffect(() => {
+    const pending = paymentRequests.filter((item) => item.status === "pending_review" || item.status === "approved");
+    if (!pending.length || tier === "premium") return;
+    let cancelled = false;
+    const checkApprovedRequests = async () => {
+      for (const request of pending) {
+        const cloudRequest = await getPaymentRequestById(request.id);
+        if (cancelled || !cloudRequest.ok || !cloudRequest.request) continue;
+        if (cloudRequest.request.status === "approved") {
+          const nextSubscription = activateSubscriptionFromRequest(cloudRequest.request);
+          setPaymentRequests((current) => current.map((item) => item.id === cloudRequest.request?.id ? { ...cloudRequest.request, cloudSyncStatus: "synced" } : item));
+          setSubscription(nextSubscription);
+          setTierState("premium");
+          setPaymentState("active");
+          return;
+        }
+        if (cloudRequest.request.status === "rejected") {
+          setPaymentRequests((current) => current.map((item) => item.id === cloudRequest.request?.id ? { ...cloudRequest.request, cloudSyncStatus: "synced" } : item));
+          setPaymentState("rejected");
+          return;
+        }
+      }
+    };
+    checkApprovedRequests().catch(() => undefined);
+    const timer = setInterval(() => checkApprovedRequests().catch(() => undefined), 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [paymentRequests, tier]);
+
+  useEffect(() => {
+    const applyExpiry = () => {
+      if (subscription.tier !== "premium" || !subscription.expiresAt) return;
+      if (new Date(subscription.expiresAt).getTime() > Date.now()) return;
+      setSubscription((current) => ({ ...current, status: "expired", tier: "free", paymentState: "expired" }));
+      setTierState("free");
+      setPaymentState("expired");
+    };
+    applyExpiry();
+    const timer = setInterval(applyExpiry, 60 * 1000);
+    return () => clearInterval(timer);
+  }, [subscription.expiresAt, subscription.tier]);
+
   const value = useMemo<AppState>(() => ({
     language,
     setLanguage: setLanguageState,
@@ -341,7 +386,33 @@ export function AppProvider({ children }: PropsWithChildren) {
         setSubscription(remote);
         setTierState("premium");
         setPaymentState(remote.paymentState ?? "active");
-      } else if (subscription.expiresAt && new Date(subscription.expiresAt).getTime() <= Date.now()) {
+        return;
+      }
+      if (remote && remote.tier === "premium" && !isSubscriptionActive(remote)) {
+        setSubscription({ ...remote, status: "expired", tier: "free", paymentState: "expired" });
+        setTierState("free");
+        setPaymentState("expired");
+        return;
+      }
+
+      for (const localRequest of paymentRequests.filter((item) => item.status === "pending_review" || item.status === "approved")) {
+        const cloudRequest = await getPaymentRequestById(localRequest.id);
+        if (cloudRequest.ok && cloudRequest.request?.status === "approved") {
+          const nextSubscription = activateSubscriptionFromRequest(cloudRequest.request);
+          setPaymentRequests((current) => current.map((item) => item.id === cloudRequest.request?.id ? { ...cloudRequest.request, cloudSyncStatus: "synced" } : item));
+          setSubscription(nextSubscription);
+          setTierState("premium");
+          setPaymentState("active");
+          return;
+        }
+        if (cloudRequest.ok && cloudRequest.request?.status === "rejected") {
+          setPaymentRequests((current) => current.map((item) => item.id === cloudRequest.request?.id ? { ...cloudRequest.request, cloudSyncStatus: "synced" } : item));
+          setPaymentState("rejected");
+          return;
+        }
+      }
+
+      if (subscription.expiresAt && new Date(subscription.expiresAt).getTime() <= Date.now()) {
         setSubscription((current) => ({ ...current, status: "expired", tier: "free", paymentState: "expired" }));
         setTierState("free");
         setPaymentState("expired");

@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { budgetTiers, skinTypes, useApp } from "@/shared/AppContext";
 import { Body, Button, Card, H2, Pill, ProgressBar, Screen } from "@/shared/components";
@@ -43,6 +43,8 @@ export default function Onboarding() {
   const { language, setLanguage, themeMode, profile, updateProfile, updateQuiz, toggleQuizArray, pickSelfieFromCamera, pickSelfieFromLibrary } = useApp();
   const c = palettes[themeMode];
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const profileY = useRef(0);
   const symptoms = knowledgeBase.quiz_fields.symptoms.filter((symptom) => symptomsToShow.includes(symptom));
   const answeredCount =
     Number(Boolean(profile.name)) +
@@ -57,13 +59,14 @@ export default function Onboarding() {
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.content}>
         <MarketingHero
           image={marketingImages.glowJourney}
           eyebrow={t(language, "appName")}
           title="Your Glow, Your Journey"
           body="Personalized care for every Nepali skin tone."
-          cta="Start Your Quiz ✨"
+          cta="Start quiz - tap here"
+          onPress={() => scrollRef.current?.scrollTo({ y: Math.max(profileY.current - 16, 0), animated: true })}
           tall
         />
         <View style={styles.languageRow}>
@@ -107,7 +110,7 @@ export default function Onboarding() {
           <ProgressBar value={quizPercent} color={c.primary} />
         </Card>
 
-        <Card>
+        <Card onLayout={(event) => { profileY.current = event.nativeEvent.layout.y; }}>
           <SectionHeader title={language === "en" ? "Profile" : "Profile"} subtitle={language === "en" ? "Basic details and fit" : "Basic details and fit"} />
           <SectionBody>
             <TextInput value={profile.name} onChangeText={(name) => updateProfile({ name })} placeholder="Name" placeholderTextColor={c.muted} style={[styles.input, { borderColor: c.border, color: c.text }]} />
@@ -119,7 +122,7 @@ export default function Onboarding() {
         </Card>
 
         <Card>
-          <SectionHeader title={language === "en" ? "Symptoms" : "Symptoms"} subtitle={language === "en" ? "Choose all that apply" : "Choose all that apply"} />
+          <SectionHeader title={language === "en" ? "Symptoms" : "Symptoms"} subtitle={language === "en" ? "Multiple options can be selected." : "Multiple options select garna milcha."} />
           <SectionBody>
             <MultiSelectBox
               label={language === "en" ? "Primary concerns" : "Primary concerns"}
@@ -140,7 +143,7 @@ export default function Onboarding() {
           <SectionHeader title={language === "en" ? "Diet" : "Diet"} subtitle={language === "en" ? "Food pattern and hydration" : "Food pattern and hydration"} />
           <SectionBody>
             <DropdownField label="Diet pattern" value={profile.quiz.lifestyle.diet} options={knowledgeBase.quiz_fields.lifestyle.diet} onChange={(value) => updateQuiz("lifestyle", "diet", value)} />
-            <DropdownField label="Water intake" value={profile.quiz.lifestyle.water_intake_liters} options={knowledgeBase.quiz_fields.lifestyle.water_intake_liters} onChange={(value) => updateQuiz("lifestyle", "water_intake_liters", value)} />
+            <DropdownField label="Water intake (litres/L per day)" value={profile.quiz.lifestyle.water_intake_liters} options={knowledgeBase.quiz_fields.lifestyle.water_intake_liters} onChange={(value) => updateQuiz("lifestyle", "water_intake_liters", value)} />
             <DropdownField
               label="Junk food"
               value={profile.quiz.lifestyle.junk_food_frequency ?? "low"}

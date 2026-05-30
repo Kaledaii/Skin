@@ -11,7 +11,6 @@ import { ErrorBoundary } from "@/shared/ErrorBoundary";
 import { t } from "@/shared/i18n";
 import { contextualConditionDescription, generateRoutine, localized } from "@/shared/knowledge/engine";
 import { dailyHabitTips } from "@/shared/knowledge/education";
-import { buildLifestyleSignals } from "@/shared/knowledge/lifestyleSignals";
 import { buildPlanSections, buildTrustReasons, doctorWarning, getMatchConfidence } from "@/shared/knowledge/resultTrust";
 import { calculateSkinHabitScore } from "@/shared/knowledge/tracking";
 import { GeneratedStep, HomeRemedy } from "@/shared/knowledge/types";
@@ -36,7 +35,6 @@ export default function Home() {
   const [expandedConcernId, setExpandedConcernId] = useState<string | null>(null);
   const environment = useEnvironmentalData();
   const result = useMemo(() => generateRoutine(profile.quiz), [profile.quiz]);
-  const lifestyleSignals = useMemo(() => buildLifestyleSignals(profile, todayCheckIn), [profile, todayCheckIn]);
   const weatherActions = useMemo(() => (environment.data ? buildWeatherActions(environment.data) : []), [environment.data]);
   const visibleEvening = useMemo(() => (tier === "premium" ? result.evening : result.evening.slice(0, 4)), [result.evening, tier]);
   const routineSteps = useMemo(() => [...result.morning, ...visibleEvening], [result.morning, visibleEvening]);
@@ -288,6 +286,7 @@ export default function Home() {
             ]}
             onChange={setRoutinePeriod}
           />
+          <Body muted>Tap a routine step after you complete it. Pink/filled steps are done for today.</Body>
           <RoutineSection title={routinePeriod === "morning" ? t(language, "morning") : t(language, "evening")} icon={null} steps={activeSteps} />
         </Card>
 
@@ -385,23 +384,20 @@ export default function Home() {
 
         {result.contextTips.length > 0 ? (
           <Card>
-            <H2>{language === "en" ? "Lifestyle notes for your plan" : "Lifestyle notes"}</H2>
+            <View style={styles.sectionTitle}>
+              <Feather name="star" color={c.accent} size={22} />
+              <H2>{language === "en" ? "Lifestyle notes for you" : "Lifestyle notes"}</H2>
+            </View>
+            <Body muted>Short signals from your routine, food, sleep, stress, and habits.</Body>
             {result.contextTips.map((tip) => (
-              <View key={`${tip.category}-${tip.text.en}`} style={styles.tipLine}>
-                <Pill tone={tip.category === "smoking" || tip.category === "alcohol" ? "accent" : "secondary"}>{tip.category}</Pill>
-                <Body>{tip.text[language]}</Body>
-              </View>
-            ))}
-          </Card>
-        ) : null}
-
-        {lifestyleSignals.length > 0 ? (
-          <Card>
-            <H2>Your Lifestyle Signals</H2>
-            <Body muted>Every quiz and check-in answer should visibly change your plan. These are the strongest signals today.</Body>
-            {lifestyleSignals.slice(0, 6).map((signal) => (
-              <SignalCard key={signal.id} tone={signal.tone} icon={signal.icon} label={signal.label} title={signal.title}>
-                {signal.body}
+              <SignalCard
+                key={`${tip.category}-${tip.text.en}`}
+                tone={tip.category === "smoking" || tip.category === "alcohol" ? "warning" : "tip"}
+                icon={lifestyleNoteIcon(tip.category)}
+                label={tip.category}
+                title={`${lifestyleNoteEmoji(tip.category)} ${lifestyleNoteTitle(tip.category)}`}
+              >
+                {tip.text[language]}
               </SignalCard>
             ))}
           </Card>
@@ -523,7 +519,17 @@ export default function Home() {
         {steps.map((step, index) => {
           const locked = tier !== "premium" && index >= 3;
           return (
-            <View key={step.id} style={[styles.routineStep, locked && { borderColor: c.border, backgroundColor: c.surfaceAlt }]}>
+            <View
+              key={step.id}
+              style={[
+                styles.routineStep,
+                {
+                  borderColor: todayCheckIn.completedStepIds.includes(step.id) ? c.borderStrong : c.border,
+                  backgroundColor: todayCheckIn.completedStepIds.includes(step.id) ? c.primarySoft : c.surfaceAlt
+                },
+                locked && { borderColor: c.border, backgroundColor: c.surfaceAlt }
+              ]}
+            >
               {locked ? (
                 <>
                   <Pill tone="accent">Premium step</Pill>
@@ -533,6 +539,10 @@ export default function Home() {
                 </>
               ) : (
                 <>
+                  <View style={styles.stepHintRow}>
+                    <Feather name={todayCheckIn.completedStepIds.includes(step.id) ? "check-circle" : "circle"} color={todayCheckIn.completedStepIds.includes(step.id) ? c.secondary : c.muted} size={16} />
+                    <Body muted>{todayCheckIn.completedStepIds.includes(step.id) ? "Completed" : "Tap when completed"}</Body>
+                  </View>
                   <Button label={`${todayCheckIn.completedStepIds.includes(step.id) ? "Done: " : ""}${step.action}`} onPress={() => toggleCompletion(step.id)} secondary={!todayCheckIn.completedStepIds.includes(step.id)} />
                   <Body muted>{step.instruction[language]}</Body>
                   {step.durationSeconds ? <Pill tone="primary">{step.durationSeconds}s</Pill> : null}
@@ -693,6 +703,36 @@ function WeatherActionCard({ action }: { action: WeatherAction }) {
   );
 }
 
+function lifestyleNoteIcon(category: string): ComponentProps<typeof Feather>["name"] {
+  const value = category.toLowerCase();
+  if (value.includes("sleep")) return "moon";
+  if (value.includes("water") || value.includes("hydration")) return "droplet";
+  if (value.includes("diet") || value.includes("food") || value.includes("junk")) return "coffee";
+  if (value.includes("stress")) return "activity";
+  if (value.includes("screen")) return "smartphone";
+  if (value.includes("smoking") || value.includes("alcohol")) return "alert-triangle";
+  return "heart";
+}
+
+function lifestyleNoteEmoji(category: string) {
+  const value = category.toLowerCase();
+  if (value.includes("sleep")) return "🌙";
+  if (value.includes("water") || value.includes("hydration")) return "💧";
+  if (value.includes("diet") || value.includes("food")) return "🥗";
+  if (value.includes("junk")) return "🍟";
+  if (value.includes("stress")) return "🧘";
+  if (value.includes("screen")) return "📱";
+  if (value.includes("smoking")) return "🚭";
+  if (value.includes("alcohol")) return "⚠️";
+  return "✨";
+}
+
+function lifestyleNoteTitle(category: string) {
+  return category
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 function Metric({ label, value, colors }: { label: string; value: string; colors: (typeof palettes)["light"] }) {
   return (
     <View style={[styles.metricTile, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
@@ -820,7 +860,8 @@ const styles = StyleSheet.create({
   productLine: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: spacing.sm },
   tipLine: { gap: spacing.xs },
   routineGroup: { gap: spacing.sm },
-  routineStep: { gap: spacing.xs, borderWidth: 0, borderRadius: 8, padding: spacing.xs },
+  routineStep: { gap: spacing.xs, borderWidth: 1, borderRadius: 8, padding: spacing.sm },
+  stepHintRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   habitPreview: { borderWidth: 1, borderRadius: 8, padding: spacing.sm, gap: spacing.xs },
   dietBlock: { gap: spacing.xs },
   dietRow: { gap: 2 },

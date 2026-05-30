@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import type { ComponentProps, PropsWithChildren } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AccessibilityInfo, Animated, Easing, Image, Platform, Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
+import { AccessibilityInfo, Animated, Easing, Image, LayoutChangeEvent, Platform, Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
 import { palettes, spacing } from "./theme";
 import { useApp } from "./AppContext";
 
@@ -193,7 +193,7 @@ export function SectionTitle({ label, title, body }: { label?: string; title: st
   );
 }
 
-export function Card({ children, style, variant = "soft" }: PropsWithChildren<{ style?: ViewStyle; variant?: "soft" | "hero" | "seasonal" | "accent" }>) {
+export function Card({ children, style, variant = "soft", onLayout }: PropsWithChildren<{ style?: ViewStyle; variant?: "soft" | "hero" | "seasonal" | "accent"; onLayout?: (event: LayoutChangeEvent) => void }>) {
   const { themeMode } = useApp();
   const c = palettes[themeMode];
   const [hovered, setHovered] = useState(false);
@@ -202,6 +202,7 @@ export function Card({ children, style, variant = "soft" }: PropsWithChildren<{ 
     <Pressable onHoverIn={() => setHovered(true)} onHoverOut={() => setHovered(false)}>
       {({ pressed }) => (
         <Animated.View
+          onLayout={onLayout}
           style={[
             styles.card,
             {
@@ -246,22 +247,24 @@ export function Pill({ children, tone = "primary" }: PropsWithChildren<{ tone?: 
   return <Text style={[styles.pill, { backgroundColor: bg, color }]}>{children}</Text>;
 }
 
-export function Button({ label, onPress, secondary = false }: { label: string; onPress: () => void; secondary?: boolean }) {
+export function Button({ label, onPress, secondary = false, disabled = false }: { label: string; onPress: () => void; secondary?: boolean; disabled?: boolean }) {
   const { themeMode } = useApp();
   const c = palettes[themeMode];
   const [hovered, setHovered] = useState(false);
   return (
     <Pressable
-      onPress={onPress}
+      onPress={disabled ? undefined : onPress}
       onHoverIn={() => setHovered(true)}
       onHoverOut={() => setHovered(false)}
+      disabled={disabled}
       style={({ pressed }) => [
         styles.button,
         {
           backgroundColor: secondary ? (hovered ? c.primarySoft : c.surfaceAlt) : c.primary,
           borderColor: hovered ? c.borderStrong : c.border,
           shadowColor: c.primary,
-          shadowOpacity: hovered || !secondary ? 0.24 : 0.12,
+          opacity: disabled ? 0.58 : 1,
+          shadowOpacity: disabled ? 0.04 : hovered || !secondary ? 0.24 : 0.12,
           transform: [{ translateY: hovered ? -1 : pressed ? 1 : 0 }, { scale: pressed ? 0.98 : 1 }]
         }
       ]}

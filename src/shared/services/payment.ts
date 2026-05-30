@@ -125,7 +125,7 @@ export function createManualPaymentRequest(input: ManualPaymentInput): PaymentSu
 }
 
 export function activateSubscriptionFromRequest(request: PaymentRequest): SubscriptionInfo {
-  const now = new Date();
+  const now = request.reviewedAt ? new Date(request.reviewedAt) : new Date();
   const expires = new Date(now);
   expires.setMonth(expires.getMonth() + (request.plan === "yearly" ? 12 : 1));
   return {

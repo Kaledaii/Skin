@@ -24,6 +24,7 @@ export default function Paywall() {
   const [message, setMessage] = useState<string | null>(null);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [qrLoadError, setQrLoadError] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const adminMode = process.env.EXPO_PUBLIC_ADMIN_MODE === "true";
   const qrUri = provider === "esewa" ? process.env.EXPO_PUBLIC_ESEWA_QR_URL : process.env.EXPO_PUBLIC_KHALTI_QR_URL;
   const qrSource: ImageSourcePropType = qrUri ? { uri: qrUri } : paymentQrImages[provider];
@@ -173,21 +174,28 @@ export default function Paywall() {
             secondary
           />
           <Button
-            label={pending ? "Already under review" : paymentState === "pending" ? "Submitting..." : "Submit for review"}
+            label={pending ? "Already under review" : submitting || paymentState === "pending" ? "Submitting..." : "Submit for review"}
+            disabled={submitting || paymentState === "pending"}
             onPress={async () => {
               if (pending) {
                 setMessage("You already have a payment under review. Result will be updated within 24 hours.");
                 setReviewModalOpen(true);
                 return;
               }
+              setSubmitting(true);
               trackEvent("payment_started", { plan, provider });
-              const result = await submitManualPayment({ provider, plan, transactionId, payerName, payerPhone, screenshotUri: screenshotUri ?? "" });
-              setMessage(result.message);
-              if (result.ok) setReviewModalOpen(true);
-              trackEvent(result.ok ? "payment_succeeded" : "payment_failed", { plan, provider, state: result.request?.status ?? "failed" });
+              try {
+                const result = await submitManualPayment({ provider, plan, transactionId, payerName, payerPhone, screenshotUri: screenshotUri ?? "" });
+                setMessage(result.message);
+                if (result.ok) setReviewModalOpen(true);
+                trackEvent(result.ok ? "payment_succeeded" : "payment_failed", { plan, provider, state: result.request?.status ?? "failed" });
+              } finally {
+                setSubmitting(false);
+              }
             }}
           />
           <Body muted>Status: {pending ? "pending review" : paymentState}. {pending ? `Request ${pending.id}` : "No pending request yet."}</Body>
+          <Body muted>If payment is not verified within 24 hours, contact 9709185409 or mishant480@gmail.com.</Body>
           {message ? <Body>{message}</Body> : null}
         </Card>
 
