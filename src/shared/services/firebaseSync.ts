@@ -156,6 +156,30 @@ export async function savePaymentRequest(request: PaymentRequest) {
     } catch {
       next = { ...next, userId: request.userId || "local-demo-user", userEmail: request.userEmail ?? null };
     }
+    // Basic server-side rate limiting: prevent abuse
+    try {
+      const MAX_PER_HOUR = 5;
+      const MAX_PER_DAY = 20;
+      const cutoffHour = new Date(Date.now() - 60 * 60 * 1000);
+      const cutoffDay = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const qHour = query(collection(firebase.db, "paymentRequests"), where("userId", "==", next.userId), where("createdAt", ">", cutoffHour));
+      const qDay = query(collection(firebase.db, "paymentRequests"), where("userId", "==", next.userId), where("createdAt", ">", cutoffDay));
+      const [snapHour, snapDay] = await Promise.all([withTimeout(getDocs(qHour), 5000), withTimeout(getDocs(qDay), 5000)]);
+      if (snapHour.size >= MAX_PER_HOUR) return { ok: false, mode: "rate-limited" as const, request, error: "Too many submissions in the last hour." };
+      if (snapDay.size >= MAX_PER_DAY) return { ok: false, mode: "rate-limited" as const, request, error: "Too many submissions in the last 24 hours." };
+    } catch (e) {
+      // if rate-limit check fails (e.g., offline), continue to allow save but log
+      console.warn("rate-limit check failed", e);
+    }
+
+    // Basic sanitization: trim strings and cap lengths
+    next = {
+      ...next,
+      transactionId: String(next.transactionId ?? "").trim().slice(0, 128),
+      payerName: String(next.payerName ?? "").trim().slice(0, 128),
+      payerPhone: String(next.payerPhone ?? "").trim().slice(0, 32),
+      screenshotDownloadUrl: next.screenshotDownloadUrl ? String(next.screenshotDownloadUrl).trim().slice(0, 1024) : next.screenshotDownloadUrl
+    };
     await withTimeout(setDoc(doc(firebase.db, "paymentRequests", request.id), { ...next, cloudSyncStatus: "synced", cloudSyncError: null, updatedAt: serverTimestamp() }, { merge: true }));
     return { ok: true, mode: "firebase-synced" as const, request: next };
   } catch (error) {
@@ -200,6 +224,31 @@ export async function updatePaymentRequest(request: PaymentRequest) {
     return { ok: true, mode: "firebase-synced" as const };
   } catch {
     return { ok: false, mode: "local-demo" as const };
+  }
+}
+
+export async function addAdminAction(action: { actionType: string; requestId: string; adminId?: string | null; payload?: any }) {
+  try {
+    const firebase = getFirebase();
+    if (!firebase) return { ok: false, mode: "local-demo" as const };
+    const id = `admin_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const docRef = doc(firebase.db, "adminActions", id);
+    await setDoc(docRef, { id, createdAt: serverTimestamp(), ...action });
+    return { ok: true, mode: "firebase-synced" as const, id };
+  } catch (error) {
+    return { ok: false, mode: "local-demo" as const, error: errorMessage(error) };
+  }
+}
+
+export async function listAdminActions(requestId: string) {
+  try {
+    const firebase = getFirebase();
+    if (!firebase) return { ok: false, mode: "local-demo" as const, actions: [] as any[] };
+    const q = query(collection(firebase.db, "adminActions"), where("requestId", "==", requestId), orderBy("createdAt", "desc"));
+    const snapshot = await withTimeout(getDocs(q));
+    return { ok: true, mode: "firebase-synced" as const, actions: snapshot.docs.map((d) => d.data()) };
+  } catch (error) {
+    return { ok: false, mode: "local-demo" as const, actions: [] as any[], error: errorMessage(error) };
   }
 }
 

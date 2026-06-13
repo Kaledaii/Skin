@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Payment requests: users may create their own request, read their own, admins may read/update
+    match /paymentRequests/{requestId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      // Only admins may modify admin fields (status, reviewedAt, reviewNote, assigneeAdminId)
+      allow update: if isAdmin() || (
+        isAuthenticated()
+        && request.auth.uid == resource.data.userId
+        // owners may update non-admin fields only (cannot set status/review fields)
+        && !("status" in request.resource.data)
+        && !("reviewedAt" in request.resource.data)
+        && !("reviewNote" in request.resource.data)
+        && !("assigneeAdminId" in request.resource.data)
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Admin actions: only admins can write/read
+    match /adminActions/{actionId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Users collection: users can read/write their own profile, admins can read/write all
+    match /users/{userId} {
+      allow read: if isAdmin() || (isAuthenticated() && request.auth.uid == userId);
+      allow update: if isAdmin() || (
+        isAuthenticated() && request.auth.uid == userId
+        // prevent users from escalating themselves: disallow writing subscription/paymentState fields
+        && !("subscription" in request.resource.data)
+        && !("paymentState" in request.resource.data)
+      );
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow delete: if isAdmin();
+    }
+
+    // Other documents: default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

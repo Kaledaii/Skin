@@ -1,3 +1,4 @@
+import { initMonitoring } from "./services/monitoring";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from "react";
@@ -22,6 +23,7 @@ import {
   updateUserSubscriptionForPayment,
   uploadPaymentScreenshot
 } from "./services/firebaseSync";
+import { addAdminAction, getCurrentAuthEmail } from "./services/firebaseSync";
 import { BudgetTier, DailyCheckIn, Language, NotificationPreferences, PaymentProvider, PaymentRequest, PaymentState, SkinType, SubscriptionInfo, SubscriptionPlanId, SubscriptionTier, ThemeMode, UserProfile } from "./types";
 
 type AppState = {
@@ -115,6 +117,8 @@ export function AppProvider({ children }: PropsWithChildren) {
   const todayCheckIn = dailyCheckIns[today] ?? createDefaultCheckIn(today, profile);
 
   useEffect(() => {
+    // Initialize monitoring (Sentry) if configured
+    try { initMonitoring(); } catch {}
     // Load from local storage first (cached data)
     AsyncStorage.getItem("skin-nepal-state").then((raw) => {
       if (!raw) return;
@@ -337,6 +341,13 @@ export function AppProvider({ children }: PropsWithChildren) {
       const nextSubscription = activateSubscriptionFromRequest(reviewed);
       await updatePaymentRequest(reviewed);
       await updateUserSubscriptionForPayment(reviewed, nextSubscription);
+      // Audit: record admin approval action
+      try {
+        const currentAdminEmail = getCurrentAuthEmail();
+        await addAdminAction({ actionType: "approve", requestId: reviewed.id, adminId: currentAdminEmail ?? null, payload: { note } });
+      } catch {
+        // non-blocking
+      }
       setPaymentRequests((current) => current.map((item) => item.id === id ? reviewed : item));
       if (reviewed.userId === "local-demo-user") {
         setSubscription(nextSubscription);
@@ -350,6 +361,13 @@ export function AppProvider({ children }: PropsWithChildren) {
       if (!request) return "Payment request not found.";
       const reviewed: PaymentRequest = { ...request, status: "rejected", reviewedAt: new Date().toISOString(), reviewNote: note || "Rejected" };
       await updatePaymentRequest(reviewed);
+      // Audit: record admin rejection action
+      try {
+        const currentAdminEmail = getCurrentAuthEmail();
+        await addAdminAction({ actionType: "reject", requestId: reviewed.id, adminId: currentAdminEmail ?? null, payload: { note } });
+      } catch {
+        // non-blocking
+      }
       setPaymentRequests((current) => current.map((item) => item.id === id ? reviewed : item));
       if (reviewed.userId === "local-demo-user") setPaymentState("rejected");
       return "Payment request rejected.";

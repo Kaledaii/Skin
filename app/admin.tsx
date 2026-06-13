@@ -5,7 +5,7 @@ import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, Vie
 import { useApp } from "@/shared/AppContext";
 import { Body, Button, Card, H1, H2, Pill, Screen, SectionLabel } from "@/shared/components";
 import { firebaseReady } from "@/shared/services/firebase";
-import { getCurrentAuthEmail } from "@/shared/services/firebaseSync";
+import { getCurrentAuthEmail, listAdminActions } from "@/shared/services/firebaseSync";
 import { palettes, spacing } from "@/shared/theme";
 import { PaymentRequest } from "@/shared/types";
 
@@ -225,6 +225,20 @@ function PaymentReviewCard({
   const c = palettes[themeMode];
   const screenshot = request.screenshotDownloadUrl ?? request.screenshotUri;
   const statusTone = request.status === "approved" ? "secondary" : request.status === "rejected" ? "danger" : "accent";
+  const [auditOpen, setAuditOpen] = useState(false);
+  const [auditActions, setAuditActions] = useState<any[]>([]);
+  const [loadingAudit, setLoadingAudit] = useState(false);
+
+  const fetchAudit = async () => {
+    setLoadingAudit(true);
+    try {
+      const res = await listAdminActions(request.id);
+      if (res.ok) setAuditActions(res.actions ?? []);
+    } catch {
+      // ignore
+    }
+    setLoadingAudit(false);
+  };
 
   return (
     <Card>
@@ -274,11 +288,43 @@ function PaymentReviewCard({
           <View style={styles.actionRow}>
             <Button label="Approve premium" onPress={onApprove} />
             <Button label="Reject" onPress={onReject} secondary />
+            <Button
+              label={auditOpen ? (loadingAudit ? "Loading…" : "Hide audit") : "Show audit"}
+              onPress={async () => {
+                if (!auditOpen) await fetchAudit();
+                setAuditOpen((v) => !v);
+              }}
+              secondary
+            />
           </View>
         </>
       ) : (
         <View style={[styles.reviewedBox, { borderColor: c.border, backgroundColor: c.surfaceAlt }]}>
           <Body muted>Reviewed: {formatDate(request.reviewedAt)} • {request.reviewNote ?? "No note"}</Body>
+          <View style={{ marginTop: 8 }}>
+            <Button
+              label={auditOpen ? (loadingAudit ? "Loading…" : "Hide audit") : "Show audit"}
+              onPress={async () => {
+                if (!auditOpen) await fetchAudit();
+                setAuditOpen((v) => !v);
+              }}
+              secondary
+            />
+            {auditOpen && (
+              <View style={{ marginTop: 8 }}>
+                {auditActions.length === 0 ? (
+                  <Body muted>No admin actions found.</Body>
+                ) : (
+                  auditActions.map((a) => (
+                    <View key={a.id} style={{ paddingVertical: 6 }}>
+                      <Body muted>{a.actionType} • {a.adminId ?? 'unknown'} • {a.createdAt?.toDate ? a.createdAt.toDate().toLocaleString() : String(a.createdAt)}</Body>
+                      {a.payload?.note ? <Body>{a.payload.note}</Body> : null}
+                    </View>
+                  ))
+                )}
+              </View>
+            )}
+          </View>
         </View>
       )}
     </Card>
