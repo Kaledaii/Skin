@@ -8,6 +8,7 @@ import { Body, BrandMark, Button, Card, H1, H2, Pill, Screen, SectionLabel, Segm
 import { premiumFeatures, premiumPlans } from "@/shared/monetization";
 import { paymentQrImages } from "@/shared/paymentAssets";
 import { trackEvent } from "@/shared/services/analytics";
+import { firebaseReady } from "@/shared/services/firebase";
 import { palettes } from "@/shared/theme";
 import { spacing } from "@/shared/theme";
 import { PaymentProvider, SubscriptionPlanId } from "@/shared/types";
@@ -25,7 +26,7 @@ export default function Paywall() {
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [qrLoadError, setQrLoadError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const adminMode = process.env.EXPO_PUBLIC_ADMIN_MODE === "true";
+  const adminMode = Boolean(__DEV__) && process.env.EXPO_PUBLIC_ADMIN_MODE === "true";
   const qrUri = provider === "esewa" ? process.env.EXPO_PUBLIC_ESEWA_QR_URL : process.env.EXPO_PUBLIC_KHALTI_QR_URL;
   const qrSource: ImageSourcePropType = qrUri ? { uri: qrUri } : paymentQrImages[provider];
   const qrLabel = provider === "esewa" ? "eSewa" : "Khalti";
@@ -67,6 +68,15 @@ export default function Paywall() {
           <Pill tone="accent">Web/PWA paid beta</Pill>
           <H2>{premiumPlans[plan].price} - {premiumPlans[plan].label}</H2>
           <Body muted>{premiumPlans[plan].note}</Body>
+          {!firebaseReady ? (
+            <View style={[styles.reviewStatus, { borderColor: c.danger, backgroundColor: c.surface }]}>
+              <Pill tone="danger">Admin sync off</Pill>
+              <H2>Firebase is not connected in this build</H2>
+              <Body muted>
+                Payment requests will stay only on this phone until Expo/EAS build environment variables are added and the APK is rebuilt.
+              </Body>
+            </View>
+          ) : null}
           {pending ? (
             <View style={[styles.reviewStatus, { borderColor: c.borderStrong, backgroundColor: c.surface }]}>
               <Pill tone="accent">Pending review</Pill>

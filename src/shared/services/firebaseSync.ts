@@ -74,19 +74,20 @@ export async function syncUserSnapshot(payload: SyncPayload) {
       (!existingSubscription.expiresAt || new Date(existingSubscription.expiresAt).getTime() > Date.now());
     const localIsPremium = payload.subscription.tier === "premium";
     const subscriptionToSave = existingPremiumActive && !localIsPremium ? existingSubscription : payload.subscription;
-    await setDoc(
-      userRef,
-      {
-        profile: payload.profile,
-        subscription: subscriptionToSave,
-        paymentState: subscriptionToSave.paymentState,
-        lastPaymentRequestId: subscriptionToSave.paymentRequestId,
-        dailyCheckIns: payload.dailyCheckIns,
-        paymentRequests: payload.paymentRequests ?? [],
-        updatedAt: serverTimestamp()
-      },
-      { merge: true }
-    );
+    const basePayload = {
+      profile: payload.profile,
+      dailyCheckIns: payload.dailyCheckIns,
+      paymentRequests: payload.paymentRequests ?? [],
+      updatedAt: serverTimestamp()
+    };
+    const subscriptionPayload = existingSnapshot?.exists()
+      ? {}
+      : {
+          subscription: subscriptionToSave,
+          paymentState: subscriptionToSave.paymentState,
+          lastPaymentRequestId: subscriptionToSave.paymentRequestId
+        };
+    await setDoc(userRef, { ...basePayload, ...subscriptionPayload }, { merge: true });
     return {
       ok: true,
       mode: "firebase-synced" as const,

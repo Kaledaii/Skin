@@ -17,10 +17,12 @@ service cloud.firestore {
         isAuthenticated()
         && request.auth.uid == resource.data.userId
         // owners may update non-admin fields only (cannot set status/review fields)
-        && !("status" in request.resource.data)
-        && !("reviewedAt" in request.resource.data)
-        && !("reviewNote" in request.resource.data)
-        && !("assigneeAdminId" in request.resource.data)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          "status",
+          "reviewedAt",
+          "reviewNote",
+          "assigneeAdminId"
+        ])
       );
       allow delete: if isAdmin();
     }
@@ -35,9 +37,12 @@ service cloud.firestore {
       allow read: if isAdmin() || (isAuthenticated() && request.auth.uid == userId);
       allow update: if isAdmin() || (
         isAuthenticated() && request.auth.uid == userId
-        // prevent users from escalating themselves: disallow writing subscription/paymentState fields
-        && !("subscription" in request.resource.data)
-        && !("paymentState" in request.resource.data)
+        // prevent users from escalating themselves: disallow changing subscription/payment fields
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          "subscription",
+          "paymentState",
+          "lastPaymentRequestId"
+        ])
       );
       allow create: if isAuthenticated() && request.auth.uid == userId;
       allow delete: if isAdmin();

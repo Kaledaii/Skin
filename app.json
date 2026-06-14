@@ -3,7 +3,15 @@
     "name": "Prabha Skincare",
     "slug": "prabha-skincare",
     "description": "Prabha is a personalized skincare companion designed for Nepal's weather, water, food, budget, festivals, makeup habits, and local products.",
-    "keywords": ["skincare", "beauty", "nepal", "routine", "skin", "glow", "prabha"],
+    "keywords": [
+      "skincare",
+      "beauty",
+      "nepal",
+      "routine",
+      "skin",
+      "glow",
+      "prabha"
+    ],
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "prabha",
@@ -28,7 +36,12 @@
     "android": {
       "package": "com.prabha.skincare",
       "versionCode": 1,
-      "permissions": ["CAMERA", "READ_MEDIA_IMAGES", "ACCESS_FINE_LOCATION", "POST_NOTIFICATIONS"],
+      "permissions": [
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "ACCESS_FINE_LOCATION",
+        "POST_NOTIFICATIONS"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/brand/prabha-adaptive-icon.png",
         "backgroundColor": "#F98B9E"
@@ -52,7 +65,11 @@
     ],
     "extra": {
       "privacyPolicyUrl": "https://prabhaskincare.com/privacy",
-      "termsOfServiceUrl": "https://prabhaskincare.com/terms"
+      "termsOfServiceUrl": "https://prabhaskincare.com/terms",
+      "router": {},
+      "eas": {
+        "projectId": "53191e08-3927-4084-8d9e-758dd4b87c20"
+      }
     },
     "experiments": {
       "typedRoutes": true

@@ -26,7 +26,7 @@ export default function AdminReview() {
   const [status, setStatus] = useState<string | null>(null);
   const [rejectNotes, setRejectNotes] = useState<Record<string, string>>({});
   const adminMode = process.env.EXPO_PUBLIC_ADMIN_MODE === "true";
-  const adminUnlocked = process.env.EXPO_PUBLIC_ADMIN_UNLOCKED === "true";
+  const adminUnlocked = Boolean(__DEV__) && process.env.EXPO_PUBLIC_ADMIN_UNLOCKED === "true";
   const adminEmails = (process.env.EXPO_PUBLIC_ADMIN_EMAILS ?? "")
     .split(",")
     .map((item: string) => item.trim().toLowerCase())
@@ -81,7 +81,7 @@ export default function AdminReview() {
             <H1>Payment review is locked</H1>
             <Body muted>
               {!adminMode
-                ? "Set EXPO_PUBLIC_ADMIN_MODE=true or EXPO_PUBLIC_ADMIN_UNLOCKED=true to open this beta admin panel."
+                ? "Set EXPO_PUBLIC_ADMIN_MODE=true and sign in with an allowed admin email to open this beta admin panel."
                 : firebaseReady
                   ? "Firebase is configured, so this route also requires your signed-in email to be listed in EXPO_PUBLIC_ADMIN_EMAILS."
                   : "Admin access is unavailable."}

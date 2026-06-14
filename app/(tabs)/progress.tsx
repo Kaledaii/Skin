@@ -29,7 +29,7 @@ const scoreExplanations = {
 } satisfies Record<string, string>;
 
 export default function Progress() {
-  const { language, themeMode, tier, setTier, profile, completion, todayCheckIn, updateTodayCheckIn, pickSelfieFromCamera, pickSelfieFromLibrary } = useApp();
+  const { language, themeMode, tier, profile, completion, todayCheckIn, updateTodayCheckIn, pickSelfieFromCamera, pickSelfieFromLibrary } = useApp();
   const c = palettes[themeMode];
   const premiumLocked = tier !== "premium";
   const environment = useEnvironmentalData();
@@ -287,7 +287,7 @@ export default function Progress() {
             <ProgressHabitCard icon="edit-3" label="Check-in" value={todayCheckIn.skinNote || todayCheckIn.moodNote ? "Logged" : "Add note"} detail="Notes make weekly patterns clearer." colors={c} />
             <ProgressHabitCard icon="camera" label="Photo log" value={profile.selfieUri || todayCheckIn.selfieUri ? "Added" : "Optional"} detail="Compare weekly, not daily." colors={c} />
           </View>
-          {premiumLocked ? <Button label={t(language, "upgrade")} onPress={() => setTier("premium")} secondary /> : null}
+          {premiumLocked ? <Button label={t(language, "upgrade")} onPress={() => router.push("/paywall" as never)} secondary /> : null}
         </Card>
       </ScrollView>
     </Screen>

@@ -25,7 +25,7 @@ import { palettes, spacing } from "@/shared/theme";
 import { visualCueForText } from "@/shared/visualCues";
 
 export default function Home() {
-  const { language, setLanguage, themeMode, setThemeMode, tier, setTier, profile, completion, toggleCompletion, todayCheckIn, notificationPreferences } = useApp();
+  const { language, setLanguage, themeMode, setThemeMode, tier, profile, completion, toggleCompletion, todayCheckIn, notificationPreferences } = useApp();
   const c = palettes[themeMode];
   const scrollRef = useRef<ScrollView>(null);
   const [showTopButton, setShowTopButton] = useState(false);
@@ -448,7 +448,7 @@ export default function Home() {
           {tier === "premium" ? (
             <Pill tone="secondary">Weather + water adaptive</Pill>
           ) : (
-            <Button label={t(language, "upgrade")} onPress={() => setTier("premium")} secondary />
+            <Button label={t(language, "upgrade")} onPress={() => router.push("/paywall" as never)} secondary />
           )}
         </Card>
 
