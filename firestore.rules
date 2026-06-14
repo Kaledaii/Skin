@@ -32,6 +32,19 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // Beta app reviews: signed-in/anonymous users can submit, admins can read/moderate
+    match /appReviews/{reviewId} {
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && request.resource.data.experience is string
+        && request.resource.data.experience.size() >= 8
+        && request.resource.data.experience.size() <= 1200;
+      allow read, update, delete: if isAdmin();
+    }
+
     // Users collection: users can read/write their own profile, admins can read/write all
     match /users/{userId} {
       allow read: if isAdmin() || (isAuthenticated() && request.auth.uid == userId);

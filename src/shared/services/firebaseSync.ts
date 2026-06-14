@@ -1,4 +1,4 @@
-import { DailyCheckIn, PaymentRequest, SubscriptionInfo, UserProfile } from "../types";
+import { AppReview, DailyCheckIn, PaymentRequest, SubscriptionInfo, UserProfile } from "../types";
 import { getFirebase } from "./firebase";
 import { collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInAnonymously as firebaseSignInAnonymously, signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
@@ -297,6 +297,49 @@ export async function submitExpertQuestion(question: string, profileName: string
     return { ok: true, mode: "firebase-synced" as const, message: "Question submitted. Expert review can be added from admin workflow." };
   } catch {
     return { ok: false, mode: "local-demo" as const, message: "Question saved locally for now." };
+  }
+}
+
+export async function submitAppReview(input: { rating: AppReview["rating"]; experience: string; profileName?: string; profileLocation?: string }) {
+  const clean = input.experience.trim().slice(0, 1200);
+  if (!input.rating || input.rating < 1 || input.rating > 5) {
+    return { ok: false, mode: "validation" as const, message: "Please choose a star rating." };
+  }
+  if (clean.length < 8) {
+    return { ok: false, mode: "validation" as const, message: "Please write a short experience before submitting." };
+  }
+  try {
+    const firebase = getFirebase();
+    if (!firebase) return { ok: false, mode: "local-demo" as const, message: "Review saved on this device only. Firebase is not connected in this build." };
+    const user = firebase.auth.currentUser ?? (await firebaseSignInAnonymously(firebase.auth)).user;
+    const id = `review_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const review: AppReview = {
+      id,
+      userId: user.uid,
+      userEmail: user.email ?? null,
+      profileName: input.profileName?.trim().slice(0, 120),
+      profileLocation: input.profileLocation?.trim().slice(0, 120),
+      rating: input.rating,
+      experience: clean,
+      appVersion: "1.0.0",
+      platform: "app",
+      createdAt: new Date().toISOString()
+    };
+    await setDoc(doc(firebase.db, "appReviews", id), { ...review, createdAtServer: serverTimestamp() });
+    return { ok: true, mode: "firebase-synced" as const, message: "Thank you. Your review has been submitted.", review };
+  } catch (error) {
+    return { ok: false, mode: "local-demo" as const, message: `Review could not sync yet: ${errorMessage(error)}` };
+  }
+}
+
+export async function listAppReviews(limitCount = 25) {
+  try {
+    const firebase = getFirebase();
+    if (!firebase) return { ok: false, mode: "local-demo" as const, reviews: [] as AppReview[] };
+    const snapshot = await withTimeout(getDocs(query(collection(firebase.db, "appReviews"), orderBy("createdAt", "desc"))));
+    return { ok: true, mode: "firebase-synced" as const, reviews: snapshot.docs.slice(0, limitCount).map((item) => item.data() as AppReview) };
+  } catch (error) {
+    return { ok: false, mode: "local-demo" as const, reviews: [] as AppReview[], error: errorMessage(error) };
   }
 }
 

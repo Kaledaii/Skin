@@ -19,12 +19,13 @@ import {
   signInWithEmail,
   signUpWithEmail,
   syncUserSnapshot,
+  submitAppReview,
   updatePaymentRequest,
   updateUserSubscriptionForPayment,
   uploadPaymentScreenshot
 } from "./services/firebaseSync";
 import { addAdminAction, getCurrentAuthEmail } from "./services/firebaseSync";
-import { BudgetTier, DailyCheckIn, Language, NotificationPreferences, PaymentProvider, PaymentRequest, PaymentState, SkinType, SubscriptionInfo, SubscriptionPlanId, SubscriptionTier, ThemeMode, UserProfile } from "./types";
+import { AppReview, BudgetTier, DailyCheckIn, Language, NotificationPreferences, PaymentProvider, PaymentRequest, PaymentState, SkinType, SubscriptionInfo, SubscriptionPlanId, SubscriptionTier, ThemeMode, UserProfile } from "./types";
 
 type AppState = {
   language: Language;
@@ -48,6 +49,7 @@ type AppState = {
   signUpWithEmail: (email: string, password: string) => Promise<AuthResult>;
   signInWithEmail: (email: string, password: string) => Promise<AuthResult>;
   signInWithGoogle: () => Promise<AuthResult>;
+  submitReview: (input: { rating: AppReview["rating"]; experience: string }) => Promise<string>;
   profile: UserProfile;
   updateProfile: (patch: Partial<UserProfile>) => void;
   updateQuiz: (section: "lifestyle" | "environment" | "currentRoutine", key: string, value: string) => void;
@@ -440,6 +442,14 @@ export function AppProvider({ children }: PropsWithChildren) {
     signUpWithEmail,
     signInWithEmail,
     signInWithGoogle,
+    submitReview: async (input) => {
+      const result = await submitAppReview({
+        ...input,
+        profileName: profile.name,
+        profileLocation: profile.location
+      });
+      return result.message;
+    },
     profile,
     updateProfile: (patch) => setProfile((current) => ({ ...current, ...patch })),
     updateQuiz: (section, key, optionValue) => setProfile((current) => ({

@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { useState } from "react";
 import { useApp } from "@/shared/AppContext";
@@ -6,8 +6,8 @@ import { Body, Button, Card, H1, H2, Pill, Screen, Segment } from "@/shared/comp
 import { t } from "@/shared/i18n";
 import { premiumPlans } from "@/shared/monetization";
 import { registerExpoPushToken, requestNotificationAccess } from "@/shared/services/notifications";
-import { spacing } from "@/shared/theme";
-import { Language, ThemeMode } from "@/shared/types";
+import { palettes, spacing } from "@/shared/theme";
+import { AppReview, Language, ThemeMode } from "@/shared/types";
 
 export default function Settings() {
   const {
@@ -19,9 +19,15 @@ export default function Settings() {
     subscription,
     loadSubscription,
     notificationPreferences,
-    updateNotificationPreferences
+    updateNotificationPreferences,
+    submitReview
   } = useApp();
+  const c = palettes[themeMode];
   const [notificationStatus, setNotificationStatus] = useState<string | null>(null);
+  const [rating, setRating] = useState<AppReview["rating"] | 0>(0);
+  const [experience, setExperience] = useState("");
+  const [reviewStatus, setReviewStatus] = useState<string | null>(null);
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   return (
     <Screen>
@@ -75,6 +81,58 @@ export default function Settings() {
         </Card>
 
         <Card>
+          <H2>Review</H2>
+          <Body muted>Tell us how Prabha felt to use. Your feedback helps us improve the beta.</Body>
+          <View style={styles.starRow}>
+            {[1, 2, 3, 4, 5].map((value) => {
+              const active = value <= rating;
+              return (
+                <Pressable
+                  key={value}
+                  onPress={() => setRating(value as AppReview["rating"])}
+                  style={({ pressed }) => [
+                    styles.starButton,
+                    {
+                      backgroundColor: active ? c.accentSoft : c.surfaceAlt,
+                      borderColor: active ? c.accent : c.border,
+                      transform: [{ scale: pressed ? 0.94 : 1 }]
+                    }
+                  ]}
+                >
+                  <Text style={[styles.starText, { color: active ? c.accent : c.muted }]}>★</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <TextInput
+            value={experience}
+            onChangeText={setExperience}
+            multiline
+            maxLength={1200}
+            placeholder="Write your experience, confusion, favorite feature, or what should improve..."
+            placeholderTextColor={c.muted}
+            style={[styles.reviewInput, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]}
+            textAlignVertical="top"
+          />
+          <Body muted>{experience.length}/1200 characters</Body>
+          <Button
+            label={submittingReview ? "Submitting review..." : "Submit review"}
+            disabled={submittingReview}
+            onPress={async () => {
+              setSubmittingReview(true);
+              try {
+                const message = await submitReview({ rating: (rating || 0) as AppReview["rating"], experience });
+                setReviewStatus(message);
+                if (rating && experience.trim().length >= 8) setExperience("");
+              } finally {
+                setSubmittingReview(false);
+              }
+            }}
+          />
+          {reviewStatus ? <Body muted>{reviewStatus}</Body> : null}
+        </Card>
+
+        <Card>
           <H2>Privacy</H2>
           <Body>{t(language, "disclaimer")}</Body>
           <Button label="Privacy + launch safety" onPress={() => router.push("/legal" as never)} secondary />
@@ -86,5 +144,23 @@ export default function Settings() {
 
 const styles = StyleSheet.create({
   content: { gap: spacing.md, paddingBottom: spacing.xl },
-  notificationGrid: { gap: spacing.xs }
+  notificationGrid: { gap: spacing.xs },
+  starRow: { flexDirection: "row", gap: spacing.xs, flexWrap: "wrap" },
+  starButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  starText: { fontSize: 24, fontWeight: "900" },
+  reviewInput: {
+    minHeight: 120,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: spacing.md,
+    fontSize: 15,
+    lineHeight: 22
+  }
 });

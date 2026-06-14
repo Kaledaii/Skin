@@ -66,6 +66,19 @@ export type PaymentRequest = {
   reviewNote?: string;
 };
 
+export type AppReview = {
+  id: string;
+  userId: string;
+  userEmail?: string | null;
+  profileName?: string;
+  profileLocation?: string;
+  rating: 1 | 2 | 3 | 4 | 5;
+  experience: string;
+  appVersion?: string;
+  platform?: string;
+  createdAt: string;
+};
+
 export type RoutineStep = {
   id: string;
   title: Record<Language, string>;

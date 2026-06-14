@@ -5,9 +5,9 @@ import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, Vie
 import { useApp } from "@/shared/AppContext";
 import { Body, Button, Card, H1, H2, Pill, Screen, SectionLabel } from "@/shared/components";
 import { firebaseReady } from "@/shared/services/firebase";
-import { getCurrentAuthEmail, listAdminActions } from "@/shared/services/firebaseSync";
+import { getCurrentAuthEmail, listAdminActions, listAppReviews } from "@/shared/services/firebaseSync";
 import { palettes, spacing } from "@/shared/theme";
-import { PaymentRequest } from "@/shared/types";
+import { AppReview, PaymentRequest } from "@/shared/types";
 
 type ReviewFilter = "pending_review" | "approved" | "rejected" | "all";
 
@@ -25,6 +25,8 @@ export default function AdminReview() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [rejectNotes, setRejectNotes] = useState<Record<string, string>>({});
+  const [reviews, setReviews] = useState<AppReview[]>([]);
+  const [reviewStatus, setReviewStatus] = useState<string | null>(null);
   const adminMode = process.env.EXPO_PUBLIC_ADMIN_MODE === "true";
   const adminUnlocked = Boolean(__DEV__) && process.env.EXPO_PUBLIC_ADMIN_UNLOCKED === "true";
   const adminEmails = (process.env.EXPO_PUBLIC_ADMIN_EMAILS ?? "")
@@ -40,6 +42,12 @@ export default function AdminReview() {
     refreshPaymentRequests("all")
       .then(setStatus)
       .catch((error) => setStatus(error instanceof Error ? error.message : "Could not load payment requests."));
+    listAppReviews()
+      .then((result) => {
+        if (result.ok) setReviews(result.reviews);
+        else setReviewStatus("Could not load app reviews yet.");
+      })
+      .catch(() => setReviewStatus("Could not load app reviews yet."));
   }, [allowed]);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -112,6 +120,43 @@ export default function AdminReview() {
           <StatCard label="Rejected" value={stats.rejected} icon="x-circle" tone="danger" />
           <StatCard label="Reviewed" value={stats.reviewed} icon="clipboard" tone="primary" />
         </View>
+
+        <Card>
+          <View style={styles.toolbar}>
+            <View style={styles.flex}>
+              <SectionLabel tone="secondary">Beta feedback</SectionLabel>
+              <H2>Latest app reviews</H2>
+              <Body muted>Star ratings and tester experience notes submitted from Settings.</Body>
+            </View>
+            <Button
+              label="Refresh reviews"
+              onPress={async () => {
+                const result = await listAppReviews();
+                if (result.ok) {
+                  setReviews(result.reviews);
+                  setReviewStatus(`Loaded ${result.reviews.length} review${result.reviews.length === 1 ? "" : "s"}.`);
+                } else {
+                  setReviewStatus("Could not load app reviews yet.");
+                }
+              }}
+              secondary
+            />
+          </View>
+          {reviewStatus ? <Body muted>{reviewStatus}</Body> : null}
+          {reviews.length === 0 ? <Body muted>No app reviews submitted yet.</Body> : null}
+          <View style={styles.reviewList}>
+            {reviews.slice(0, 8).map((review) => (
+              <View key={review.id} style={[styles.reviewCard, { borderColor: c.border, backgroundColor: c.surfaceAlt }]}>
+                <View style={styles.reviewHeader}>
+                  <Text style={[styles.reviewStars, { color: c.accent }]}>{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</Text>
+                  <Text style={[styles.reviewMeta, { color: c.muted }]}>{new Date(review.createdAt).toLocaleString()}</Text>
+                </View>
+                <Body>{review.experience}</Body>
+                <Body muted>{review.profileName || "Anonymous tester"}{review.profileLocation ? ` • ${review.profileLocation}` : ""}</Body>
+              </View>
+            ))}
+          </View>
+        </Card>
 
         <Card>
           <View style={styles.toolbar}>
@@ -364,6 +409,11 @@ const styles = StyleSheet.create({
   filterRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
   filterChip: { borderWidth: 1, borderRadius: 999, minHeight: 38, paddingHorizontal: spacing.md, alignItems: "center", justifyContent: "center" },
   filterText: { fontSize: 13, fontWeight: "900" },
+  reviewList: { gap: spacing.sm },
+  reviewCard: { borderWidth: 1, borderRadius: 14, padding: spacing.md, gap: spacing.xs },
+  reviewHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
+  reviewStars: { fontSize: 16, fontWeight: "900" },
+  reviewMeta: { fontSize: 12, fontWeight: "800" },
   requestHeader: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md },
   amountBox: { alignItems: "flex-end", gap: 2 },
   amount: { fontSize: 22, fontWeight: "900" },
