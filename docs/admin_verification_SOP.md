@@ -9,6 +9,8 @@ Overview
 - New payment submissions are saved to `paymentRequests/{requestId}` with `status: pending_review`.
 - Admins use the Admin Panel (app/admin.tsx) to review screenshots and metadata, then Approve/Reject/Request Info.
 - Every admin action is recorded to `adminActions/{actionId}` for auditability.
+- Approved/rejected requests remain in `paymentRequests`; use the Admin Panel `All`, `Approved`, and `Rejected` filters as the payment proof/history archive.
+- Optional email alerts are sent by Cloud Functions when SMTP environment variables are configured.
 
 Quick Steps for Reviewers
 
@@ -97,6 +99,21 @@ Appendix: Firestore schema
 
 - `paymentRequests/{id}`: stores payment submission payload and status.
 - `adminActions/{id}`: { id, actionType, requestId, adminId, payload, createdAt }
+- `adminNotifications/{id}`: notification archive created by Cloud Functions for payment/review alerts.
+
+Email notification setup
+
+Set these environment variables for Cloud Functions before deploying notification functions:
+
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_SECURE`
+- `SMTP_USER`
+- `SMTP_PASS`
+- `ADMIN_NOTIFY_EMAIL`
+- `MAIL_FROM`
+
+If these are not configured, the app still works and the function writes/skips logs, but no email is sent.
 
 Contact
 

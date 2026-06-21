@@ -42,6 +42,12 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // Notification archive created by Cloud Functions and readable by admins.
+    match /adminNotifications/{notificationId} {
+      allow read, update, delete: if isAdmin();
+      allow create: if false;
+    }
+
     // Beta app reviews: signed-in/anonymous users can submit, admins can read/moderate
     match /appReviews/{reviewId} {
       allow create: if isAuthenticated()

@@ -21,11 +21,131 @@ const os = require("os");
 const path = require("path");
 const fs = require("fs");
 const sharp = require("sharp");
+const nodemailer = require("nodemailer");
 
 admin.initializeApp();
 const bucket = admin.storage().bucket();
 
 const RETENTION_DAYS = Number(process.env.PAYMENT_SCREENSHOT_RETENTION_DAYS || 90);
+
+function notificationEmailConfig() {
+  return {
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: String(process.env.SMTP_SECURE || "false") === "true",
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+    to: process.env.ADMIN_NOTIFY_EMAIL || process.env.SMTP_USER,
+    from: process.env.MAIL_FROM || process.env.SMTP_USER
+  };
+}
+
+async function sendAdminEmail({ subject, text }) {
+  const config = notificationEmailConfig();
+  if (!config.host || !config.user || !config.pass || !config.to || !config.from) {
+    console.log("Admin email notification skipped: SMTP env vars are not configured.", { subject });
+    return { sent: false, reason: "smtp_not_configured" };
+  }
+
+  const transport = nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    auth: { user: config.user, pass: config.pass }
+  });
+
+  await transport.sendMail({
+    from: config.from,
+    to: config.to,
+    subject,
+    text
+  });
+  return { sent: true };
+}
+
+async function writeAdminNotification(kind, sourceId, payload, emailResult) {
+  const id = `${kind}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  await admin.firestore().collection("adminNotifications").doc(id).set({
+    id,
+    kind,
+    sourceId,
+    payload,
+    emailSent: Boolean(emailResult?.sent),
+    emailStatus: emailResult?.sent ? "sent" : emailResult?.reason || "failed",
+    createdAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+}
+
+exports.notifyPaymentRequestCreated = functions.firestore.document("paymentRequests/{requestId}").onCreate(async (snapshot, context) => {
+  const request = snapshot.data() || {};
+  const subject = `New Prabha premium request - ${request.provider || "wallet"} Rs. ${request.amount || ""}`.trim();
+  const text = [
+    "A new Prabha premium payment request was submitted.",
+    "",
+    `Request ID: ${context.params.requestId}`,
+    `Status: ${request.status || "pending_review"}`,
+    `Provider: ${request.provider || "not provided"}`,
+    `Plan: ${request.plan || "not provided"}`,
+    `Amount: Rs. ${request.amount || "not provided"}`,
+    `Transaction ID: ${request.transactionId || "not provided"}`,
+    `Payer: ${request.payerName || "not provided"}`,
+    `Phone: ${request.payerPhone || "not provided"}`,
+    `Profile: ${request.profileName || "anonymous"} ${request.profileLocation ? `(${request.profileLocation})` : ""}`,
+    `Screenshot: ${request.screenshotDownloadUrl || request.screenshotUri || "not attached"}`,
+    "",
+    "Open the Prabha admin panel and filter to Pending or All."
+  ].join("\n");
+
+  let emailResult;
+  try {
+    emailResult = await sendAdminEmail({ subject, text });
+  } catch (err) {
+    console.error("notifyPaymentRequestCreated email error", err);
+    if (Sentry) Sentry.captureException(err);
+    emailResult = { sent: false, reason: String(err) };
+  }
+  await writeAdminNotification("payment_request", context.params.requestId, {
+    provider: request.provider || null,
+    plan: request.plan || null,
+    amount: request.amount || null,
+    transactionId: request.transactionId || null,
+    payerName: request.payerName || null,
+    payerPhone: request.payerPhone || null,
+    status: request.status || "pending_review"
+  }, emailResult);
+});
+
+exports.notifyAppReviewCreated = functions.firestore.document("appReviews/{reviewId}").onCreate(async (snapshot, context) => {
+  const review = snapshot.data() || {};
+  const subject = `New Prabha app review - ${review.rating || "?"}/5 stars`;
+  const text = [
+    "A new Prabha app review was submitted.",
+    "",
+    `Review ID: ${context.params.reviewId}`,
+    `Rating: ${review.rating || "not provided"}/5`,
+    `Profile: ${review.profileName || "anonymous"} ${review.profileLocation ? `(${review.profileLocation})` : ""}`,
+    "",
+    "Experience:",
+    review.experience || "No text provided",
+    "",
+    "Open the Prabha admin panel to review beta feedback."
+  ].join("\n");
+
+  let emailResult;
+  try {
+    emailResult = await sendAdminEmail({ subject, text });
+  } catch (err) {
+    console.error("notifyAppReviewCreated email error", err);
+    if (Sentry) Sentry.captureException(err);
+    emailResult = { sent: false, reason: String(err) };
+  }
+  await writeAdminNotification("app_review", context.params.reviewId, {
+    rating: review.rating || null,
+    profileName: review.profileName || null,
+    profileLocation: review.profileLocation || null,
+    experience: review.experience || null
+  }, emailResult);
+});
 
 exports.purgeOldScreenshots = functions.pubsub.schedule("every 24 hours").onRun(async (context) => {
   const cutoff = Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000;

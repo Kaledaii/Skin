@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import type { ComponentProps } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useApp } from "@/shared/AppContext";
 import { Body, Button, Card, H1, H2, Pill, Screen, SectionLabel } from "@/shared/components";
 import { firebaseReady } from "@/shared/services/firebase";
@@ -21,7 +21,7 @@ const filterLabels: Record<ReviewFilter, string> = {
 export default function AdminReview() {
   const { themeMode, paymentRequests, refreshPaymentRequests, approvePaymentRequest, rejectPaymentRequest, signInWithEmail } = useApp();
   const c = palettes[themeMode];
-  const [filter, setFilter] = useState<ReviewFilter>("pending_review");
+  const [filter, setFilter] = useState<ReviewFilter>("all");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [rejectNotes, setRejectNotes] = useState<Record<string, string>>({});
@@ -31,6 +31,12 @@ export default function AdminReview() {
   const [adminPassword, setAdminPassword] = useState("");
   const [authStatus, setAuthStatus] = useState<string | null>(null);
   const [adminAccess, setAdminAccess] = useState<{ allowed: boolean; uid: string | null; source?: string; error?: string }>({ allowed: false, uid: getCurrentAuthUid() });
+  const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [notificationPermission, setNotificationPermission] = useState<string | null>(null);
+  const [seenPendingIds, setSeenPendingIds] = useState<string[]>([]);
+  const [seenReviewIds, setSeenReviewIds] = useState<string[]>([]);
+  const [newActivity, setNewActivity] = useState<{ payments: number; reviews: number; message: string } | null>(null);
   const adminMode = process.env.EXPO_PUBLIC_ADMIN_MODE === "true";
   const adminUnlocked = Boolean(__DEV__) && process.env.EXPO_PUBLIC_ADMIN_UNLOCKED === "true";
   const currentEmail = getCurrentAuthEmail();
@@ -48,16 +54,54 @@ export default function AdminReview() {
 
   useEffect(() => {
     if (!allowed) return;
-    refreshPaymentRequests("all")
-      .then(setStatus)
-      .catch((error) => setStatus(error instanceof Error ? error.message : "Could not load payment requests."));
-    listAppReviews()
-      .then((result) => {
-        if (result.ok) setReviews(result.reviews);
-        else setReviewStatus("Could not load app reviews yet.");
-      })
-      .catch(() => setReviewStatus("Could not load app reviews yet."));
+    refreshAdminData().catch(() => undefined);
   }, [allowed]);
+
+  useEffect(() => {
+    if (!allowed || !autoRefresh) return;
+    const timer = setInterval(() => {
+      refreshAdminData().catch(() => undefined);
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [allowed, autoRefresh, seenPendingIds, seenReviewIds]);
+
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    const title = newActivity ? `(${newActivity.payments + newActivity.reviews}) Prabha Admin` : "Prabha Admin";
+    const previous = document.title;
+    document.title = title;
+    return () => {
+      document.title = previous;
+    };
+  }, [newActivity]);
+
+  const requestBrowserNotificationAccess = async () => {
+    if (Platform.OS !== "web" || typeof Notification === "undefined") {
+      setNotificationPermission("Browser notifications are only available on web.");
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    setNotificationPermission(permission);
+  };
+
+  const sendBrowserNotification = (title: string, body: string) => {
+    if (Platform.OS !== "web" || typeof Notification === "undefined") return;
+    if (Notification.permission !== "granted") return;
+    new Notification(title, { body });
+  };
+
+  const refreshAdminData = async () => {
+    const paymentMessage = await refreshPaymentRequests("all");
+    setStatus(paymentMessage);
+    const reviewResult = await listAppReviews();
+    if (reviewResult.ok) {
+      setReviews(reviewResult.reviews);
+      setReviewStatus(`Loaded ${reviewResult.reviews.length} review${reviewResult.reviews.length === 1 ? "" : "s"}.`);
+    } else {
+      setReviewStatus("Could not load app reviews yet.");
+    }
+    setLastCheckedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+  };
 
   const today = new Date().toISOString().slice(0, 10);
   const stats = useMemo(() => {
@@ -88,6 +132,38 @@ export default function AdminReview() {
         ].some((value) => value.toLowerCase().includes(clean));
       });
   }, [filter, paymentRequests, query]);
+
+  useEffect(() => {
+    if (!allowed) return;
+    const pendingIds = paymentRequests.filter((item) => item.status === "pending_review").map((item) => item.id);
+    if (seenPendingIds.length === 0) {
+      setSeenPendingIds(pendingIds);
+      return;
+    }
+    const newIds = pendingIds.filter((id) => !seenPendingIds.includes(id));
+    if (newIds.length > 0) {
+      const message = `${newIds.length} new premium request${newIds.length === 1 ? "" : "s"} received.`;
+      setNewActivity((current) => ({ payments: (current?.payments ?? 0) + newIds.length, reviews: current?.reviews ?? 0, message }));
+      sendBrowserNotification("New Prabha premium request", message);
+    }
+    setSeenPendingIds(pendingIds);
+  }, [paymentRequests, allowed]);
+
+  useEffect(() => {
+    if (!allowed) return;
+    const reviewIds = reviews.map((item) => item.id);
+    if (seenReviewIds.length === 0) {
+      setSeenReviewIds(reviewIds);
+      return;
+    }
+    const newIds = reviewIds.filter((id) => !seenReviewIds.includes(id));
+    if (newIds.length > 0) {
+      const message = `${newIds.length} new app review${newIds.length === 1 ? "" : "s"} received.`;
+      setNewActivity((current) => ({ payments: current?.payments ?? 0, reviews: (current?.reviews ?? 0) + newIds.length, message }));
+      sendBrowserNotification("New Prabha app review", message);
+    }
+    setSeenReviewIds(reviewIds);
+  }, [reviews, allowed]);
 
   if (!allowed) {
     return (
@@ -173,6 +249,34 @@ export default function AdminReview() {
           <StatCard label="Rejected" value={stats.rejected} icon="x-circle" tone="danger" />
           <StatCard label="Reviewed" value={stats.reviewed} icon="clipboard" tone="primary" />
         </View>
+        <Card variant={newActivity ? "accent" : "soft"}>
+          <View style={styles.toolbar}>
+            <View style={styles.flex}>
+              <SectionLabel tone={newActivity ? "accent" : "secondary"}>Free live alerts</SectionLabel>
+              <H2>{newActivity ? "New admin activity" : "Admin auto-check is running"}</H2>
+              <Body muted>
+                {newActivity
+                  ? `${newActivity.message} Open Pending or Latest reviews, then mark as seen.`
+                  : `Auto-refresh checks Firebase every 30 seconds while this admin page is open.`}
+              </Body>
+              <Body muted>Last checked: {lastCheckedAt ?? "not checked yet"}</Body>
+              {notificationPermission ? <Body muted>Browser notifications: {notificationPermission}</Body> : null}
+            </View>
+            <View style={styles.actionRow}>
+              <Button label={autoRefresh ? "Auto-check on" : "Auto-check off"} onPress={() => setAutoRefresh((value) => !value)} secondary />
+              <Button label="Check now" onPress={refreshAdminData} secondary />
+              <Button label="Enable browser alert" onPress={requestBrowserNotificationAccess} secondary />
+              {newActivity ? <Button label="Mark seen" onPress={() => setNewActivity(null)} /> : null}
+            </View>
+          </View>
+        </Card>
+        <Card>
+          <SectionLabel tone="secondary">History stays saved</SectionLabel>
+          <H2>Payment proof archive</H2>
+          <Body muted>
+            Approved and rejected requests do not disappear. They stay in Firestore under paymentRequests and remain visible here with the All, Approved, and Rejected filters.
+          </Body>
+        </Card>
 
         <Card>
           <View style={styles.toolbar}>

@@ -31,6 +31,8 @@ export default function Paywall() {
   const qrSource: ImageSourcePropType = qrUri ? { uri: qrUri } : paymentQrImages[provider];
   const qrLabel = provider === "esewa" ? "eSewa" : "Khalti";
   const qrTone = provider === "esewa" ? "#1FB20A" : "#D7193F";
+  const receiverName = "Kale Daii";
+  const walletNumber = "9709185409";
   const pending = paymentRequests.find((item) => item.status === "pending_review");
   const latestReviewed = paymentRequests.find((item) => item.status === "approved" || item.status === "rejected");
   useEffect(() => {
@@ -116,7 +118,7 @@ export default function Paywall() {
               <View style={[styles.providerDot, { backgroundColor: qrTone }]} />
               <View style={styles.flex}>
                 <H2>{qrLabel} QR payment</H2>
-                <Body muted>Official receiver: Ishant Kumar Mishra</Body>
+                <Body muted>Official receiver: {receiverName}</Body>
               </View>
             </View>
             <View style={[styles.qrPanel, { borderColor: c.borderStrong }]}>
@@ -133,11 +135,11 @@ export default function Paywall() {
                     </View>
                     <View style={styles.manualRow}>
                       <Text style={styles.manualLabel}>Receiver</Text>
-                      <Text style={styles.manualValue}>Ishant Kumar Mishra</Text>
+                      <Text style={styles.manualValue}>{receiverName}</Text>
                     </View>
                     <View style={styles.manualRow}>
                       <Text style={styles.manualLabel}>Wallet number</Text>
-                      <Text style={styles.manualValue}>9709185409</Text>
+                      <Text style={styles.manualValue}>{walletNumber}</Text>
                     </View>
                     <View style={styles.manualRow}>
                       <Text style={styles.manualLabel}>Amount</Text>
@@ -148,8 +150,8 @@ export default function Paywall() {
                 </View>
               )}
             </View>
-            <Body>{premiumPlans[plan].price} to Ishant Kumar Mishra</Body>
-            <Pill tone="secondary">Wallet number: 9709185409</Pill>
+            <Body>{premiumPlans[plan].price} to {receiverName}</Body>
+            <Pill tone="secondary">Wallet number: {walletNumber}</Pill>
             <Body muted>{!qrLoadError ? `Scan this ${qrLabel} QR, pay ${premiumPlans[plan].price}, then upload the payment screenshot below.` : `The official QR image file is not in the project yet. Users can still pay manually to this wallet number and submit proof.`}</Body>
           </View>
           <TextInput

@@ -57,7 +57,7 @@ jobs:
       - name: Install function deps
         run: |
           cd functions
-          npm ci
+          npm install
       - name: Write service account
         env:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
@@ -74,4 +74,4 @@ jobs:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
         run: |
           PROJECT_ID="${FIREBASE_PROJECT_ID:-prabha-skin}"
-          firebase deploy --project "$PROJECT_ID" --only functions:purgeOldScreenshots,functions:stripImageMetadataOnFinalize
+          firebase deploy --project "$PROJECT_ID" --only functions:purgeOldScreenshots,functions:stripImageMetadataOnFinalize,functions:notifyPaymentRequestCreated,functions:notifyAppReviewCreated
