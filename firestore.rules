@@ -2,7 +2,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function isAdmin() {
-      return request.auth != null && request.auth.token.admin == true;
+      return request.auth != null && (
+        request.auth.token.admin == true ||
+        exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid))
+      );
     }
     function isAuthenticated() {
       return request.auth != null;
@@ -30,6 +33,13 @@ service cloud.firestore {
     // Admin actions: only admins can write/read
     match /adminActions/{actionId} {
       allow read, write: if isAdmin();
+    }
+
+    // Admin allowlist: create the first document manually from Firebase Console.
+    // Document id must be the admin Firebase Auth UID.
+    match /adminUsers/{adminUid} {
+      allow read: if isAuthenticated() && request.auth.uid == adminUid || isAdmin();
+      allow create, update, delete: if isAdmin();
     }
 
     // Beta app reviews: signed-in/anonymous users can submit, admins can read/moderate

@@ -96,3 +96,10 @@ Progress photos and payment screenshots should be handled carefully. Production 
 ## Repository Notes
 
 Some local knowledge/database JSON files are intentionally ignored from Git to protect proprietary content. A cloned public repository may need replacement database files before it can build with the full local recommendation engine.
+
+## Launch Materials
+
+- [60-day traction launch playbook](docs/launch_60_day_playbook.md)
+- [Beta tester instructions](docs/beta_tester_instructions.md)
+- [Outreach templates](docs/outreach_templates.md)
+- [Traction tracker CSV](docs/traction_tracker.csv)

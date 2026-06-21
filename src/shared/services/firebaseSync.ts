@@ -278,6 +278,25 @@ export function getCurrentAuthEmail() {
   return firebase?.auth.currentUser?.email ?? null;
 }
 
+export function getCurrentAuthUid() {
+  const firebase = getFirebase();
+  return firebase?.auth.currentUser?.uid ?? null;
+}
+
+export async function checkCurrentUserAdminAccess() {
+  try {
+    const firebase = getFirebase();
+    const user = firebase?.auth.currentUser;
+    if (!firebase || !user) return { ok: false, uid: null as string | null, email: null as string | null, allowed: false };
+    const token = await user.getIdTokenResult(true);
+    if (token.claims.admin === true) return { ok: true, uid: user.uid, email: user.email, allowed: true, source: "claim" as const };
+    const snapshot = await getDoc(doc(firebase.db, "adminUsers", user.uid));
+    return { ok: true, uid: user.uid, email: user.email, allowed: snapshot.exists(), source: snapshot.exists() ? "adminUsers" as const : "none" as const };
+  } catch (error) {
+    return { ok: false, uid: getCurrentAuthUid(), email: getCurrentAuthEmail(), allowed: false, error: errorMessage(error) };
+  }
+}
+
 export async function submitExpertQuestion(question: string, profileName: string) {
   const clean = question.trim();
   if (!clean) return { ok: false, mode: "validation" as const, message: "Question is required." };

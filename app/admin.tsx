@@ -5,7 +5,7 @@ import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, Vie
 import { useApp } from "@/shared/AppContext";
 import { Body, Button, Card, H1, H2, Pill, Screen, SectionLabel } from "@/shared/components";
 import { firebaseReady } from "@/shared/services/firebase";
-import { getCurrentAuthEmail, listAdminActions, listAppReviews } from "@/shared/services/firebaseSync";
+import { checkCurrentUserAdminAccess, getCurrentAuthEmail, getCurrentAuthUid, listAdminActions, listAppReviews } from "@/shared/services/firebaseSync";
 import { palettes, spacing } from "@/shared/theme";
 import { AppReview, PaymentRequest } from "@/shared/types";
 
@@ -19,7 +19,7 @@ const filterLabels: Record<ReviewFilter, string> = {
 };
 
 export default function AdminReview() {
-  const { themeMode, paymentRequests, refreshPaymentRequests, approvePaymentRequest, rejectPaymentRequest } = useApp();
+  const { themeMode, paymentRequests, refreshPaymentRequests, approvePaymentRequest, rejectPaymentRequest, signInWithEmail } = useApp();
   const c = palettes[themeMode];
   const [filter, setFilter] = useState<ReviewFilter>("pending_review");
   const [query, setQuery] = useState("");
@@ -27,15 +27,24 @@ export default function AdminReview() {
   const [rejectNotes, setRejectNotes] = useState<Record<string, string>>({});
   const [reviews, setReviews] = useState<AppReview[]>([]);
   const [reviewStatus, setReviewStatus] = useState<string | null>(null);
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [authStatus, setAuthStatus] = useState<string | null>(null);
+  const [adminAccess, setAdminAccess] = useState<{ allowed: boolean; uid: string | null; source?: string; error?: string }>({ allowed: false, uid: getCurrentAuthUid() });
   const adminMode = process.env.EXPO_PUBLIC_ADMIN_MODE === "true";
   const adminUnlocked = Boolean(__DEV__) && process.env.EXPO_PUBLIC_ADMIN_UNLOCKED === "true";
-  const adminEmails = (process.env.EXPO_PUBLIC_ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((item: string) => item.trim().toLowerCase())
-    .filter(Boolean);
   const currentEmail = getCurrentAuthEmail();
-  const emailAllowed = !firebaseReady || (Boolean(currentEmail) && adminEmails.includes(String(currentEmail).toLowerCase()));
-  const allowed = adminUnlocked || (adminMode && emailAllowed);
+  const allowed = firebaseReady ? adminAccess.allowed : adminUnlocked || adminMode;
+
+  const refreshAdminAccess = async () => {
+    const result = await checkCurrentUserAdminAccess();
+    setAdminAccess({ allowed: result.allowed, uid: result.uid, source: "source" in result ? result.source : undefined, error: "error" in result ? result.error : undefined });
+    return result;
+  };
+
+  useEffect(() => {
+    refreshAdminAccess().catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     if (!allowed) return;
@@ -88,14 +97,58 @@ export default function AdminReview() {
             <SectionLabel tone="accent">Admin only</SectionLabel>
             <H1>Payment review is locked</H1>
             <Body muted>
-              {!adminMode
-                ? "Set EXPO_PUBLIC_ADMIN_MODE=true and sign in with an allowed admin email to open this beta admin panel."
+              {firebaseReady
+                ? "Firebase is configured, so sign in with an admin account that has an adminUsers/{uid} document or an admin custom claim."
+                : !adminMode
+                ? "Set EXPO_PUBLIC_ADMIN_MODE=true to open this beta admin panel in local-only mode."
                 : firebaseReady
-                  ? "Firebase is configured, so this route also requires your signed-in email to be listed in EXPO_PUBLIC_ADMIN_EMAILS."
-                  : "Admin access is unavailable."}
+                  ? "Admin access is unavailable."
+                  : "Firebase is not configured; local beta admin can be enabled for UI testing."}
             </Body>
-            <Body muted>Local beta override: {adminUnlocked ? "enabled" : "disabled"}</Body>
-            {firebaseReady ? <Body muted>Current email: {currentEmail ?? "not signed in"}</Body> : null}
+            <Body muted>Local beta override: {adminUnlocked ? "enabled" : "disabled"}{firebaseReady ? " (ignored for Firebase data)" : ""}</Body>
+            {firebaseReady ? (
+              <>
+                <Body muted>Current email: {currentEmail ?? "not signed in"}</Body>
+                <Body muted>Current UID: {adminAccess.uid ?? "not signed in"}</Body>
+                {adminAccess.error ? <Body muted>Admin access check: {adminAccess.error}</Body> : null}
+              </>
+            ) : null}
+            <View style={styles.authBox}>
+              <TextInput
+                value={adminEmail}
+                onChangeText={setAdminEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                placeholder="Admin email"
+                placeholderTextColor={c.muted}
+                style={[styles.searchInputStandalone, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]}
+              />
+              <TextInput
+                value={adminPassword}
+                onChangeText={setAdminPassword}
+                secureTextEntry
+                placeholder="Admin password"
+                placeholderTextColor={c.muted}
+                style={[styles.searchInputStandalone, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]}
+              />
+              <Button
+                label="Sign in as admin"
+                onPress={async () => {
+                  try {
+                    const result = await signInWithEmail(adminEmail, adminPassword);
+                    const access = await refreshAdminAccess();
+                    setAuthStatus(`${result.message} UID: ${access.uid ?? "none"}. Admin access: ${access.allowed ? "yes" : "no"}.`);
+                  } catch (error) {
+                    const message = error instanceof Error ? error.message : "Could not sign in.";
+                    setAuthStatus(`Admin sign-in failed: ${message}`);
+                  }
+                }}
+              />
+              {authStatus ? <Body muted>{authStatus}</Body> : null}
+              <Body muted>
+                {"If admin access says no, create Firestore document adminUsers/{Current UID} from Firebase Console, then refresh this page."}
+              </Body>
+            </View>
           </Card>
         </ScrollView>
       </Screen>
@@ -404,8 +457,10 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 28, fontWeight: "900" },
   statLabel: { fontSize: 13, fontWeight: "800" },
   toolbar: { gap: spacing.sm },
+  authBox: { gap: spacing.sm, marginTop: spacing.sm },
   searchBox: { borderWidth: 1, borderRadius: 999, minHeight: 46, paddingHorizontal: spacing.md, flexDirection: "row", alignItems: "center", gap: spacing.sm },
   searchInput: { flex: 1, minHeight: 44, fontSize: 15 },
+  searchInputStandalone: { borderWidth: 1, borderRadius: 12, minHeight: 46, paddingHorizontal: spacing.md, fontSize: 15 },
   filterRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
   filterChip: { borderWidth: 1, borderRadius: 999, minHeight: 38, paddingHorizontal: spacing.md, alignItems: "center", justifyContent: "center" },
   filterText: { fontSize: 13, fontWeight: "900" },
