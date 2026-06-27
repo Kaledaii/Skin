@@ -61,6 +61,12 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
+    // Admin-managed product catalog: users can only see active products, admins manage all.
+    match /adminProducts/{productId} {
+      allow read: if isAdmin() || resource.data.status == "active";
+      allow create, update, delete: if isAdmin();
+    }
+
     // Users collection: users can read/write their own profile, admins can read/write all
     match /users/{userId} {
       allow read: if isAdmin() || (isAuthenticated() && request.auth.uid == userId);

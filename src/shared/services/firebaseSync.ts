@@ -1,4 +1,4 @@
-import { AppReview, DailyCheckIn, PaymentRequest, SubscriptionInfo, UserProfile } from "../types";
+import { AdminMetrics, AdminProduct, AdminUserSummary, AppReview, DailyCheckIn, PaymentRequest, SubscriptionInfo, UserProfile } from "../types";
 import { getFirebase } from "./firebase";
 import { collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInAnonymously as firebaseSignInAnonymously, signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
@@ -359,6 +359,154 @@ export async function listAppReviews(limitCount = 25) {
     return { ok: true, mode: "firebase-synced" as const, reviews: snapshot.docs.slice(0, limitCount).map((item) => item.data() as AppReview) };
   } catch (error) {
     return { ok: false, mode: "local-demo" as const, reviews: [] as AppReview[], error: errorMessage(error) };
+  }
+}
+
+export async function listAdminUsers() {
+  try {
+    const firebase = getFirebase();
+    if (!firebase) return { ok: false, mode: "local-demo" as const, users: [] as AdminUserSummary[] };
+    const snapshot = await withTimeout(getDocs(collection(firebase.db, "users")));
+    const users = snapshot.docs.map((item) => {
+      const data = item.data() as {
+        profile?: UserProfile;
+        subscription?: SubscriptionInfo;
+        dailyCheckIns?: Record<string, DailyCheckIn>;
+        updatedAt?: { toDate?: () => Date } | string;
+      };
+      const updatedAt = typeof data.updatedAt === "string" ? data.updatedAt : data.updatedAt?.toDate?.()?.toISOString();
+      return {
+        id: item.id,
+        name: data.profile?.name,
+        location: data.profile?.location,
+        skinType: data.profile?.skinType,
+        subscriptionStatus: data.subscription?.status,
+        subscriptionTier: data.subscription?.tier,
+        updatedAt,
+        checkInCount: Object.keys(data.dailyCheckIns ?? {}).length
+      } satisfies AdminUserSummary;
+    });
+    return { ok: true, mode: "firebase-synced" as const, users };
+  } catch (error) {
+    return { ok: false, mode: "local-demo" as const, users: [] as AdminUserSummary[], error: errorMessage(error) };
+  }
+}
+
+export async function listAdminProducts(includeArchived = true) {
+  try {
+    const firebase = getFirebase();
+    if (!firebase) return { ok: false, mode: "local-demo" as const, products: [] as AdminProduct[] };
+    const snapshot = await withTimeout(getDocs(collection(firebase.db, "adminProducts")));
+    const products = snapshot.docs
+      .map((item) => ({ id: item.id, ...item.data() }) as AdminProduct)
+      .filter((item) => includeArchived || item.status !== "archived")
+      .sort((a, b) => String(b.updatedAt ?? "").localeCompare(String(a.updatedAt ?? "")));
+    return { ok: true, mode: "firebase-synced" as const, products };
+  } catch (error) {
+    return { ok: false, mode: "local-demo" as const, products: [] as AdminProduct[], error: errorMessage(error) };
+  }
+}
+
+export async function listActiveAdminProducts() {
+  try {
+    const firebase = getFirebase();
+    if (!firebase) return { ok: false, mode: "local-demo" as const, products: [] as AdminProduct[] };
+    const q = query(collection(firebase.db, "adminProducts"), where("status", "==", "active"));
+    const snapshot = await withTimeout(getDocs(q));
+    const products = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as AdminProduct);
+    return { ok: true, mode: "firebase-synced" as const, products };
+  } catch (error) {
+    return { ok: false, mode: "local-demo" as const, products: [] as AdminProduct[], error: errorMessage(error) };
+  }
+}
+
+export async function saveAdminProduct(product: AdminProduct) {
+  try {
+    const firebase = getFirebase();
+    if (!firebase) return { ok: false, mode: "local-demo" as const, product };
+    const uid = getCurrentAuthUid();
+    const now = new Date().toISOString();
+    const id = product.id || `admin_product_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const next: AdminProduct = {
+      ...product,
+      id,
+      createdAt: product.createdAt || now,
+      updatedAt: now,
+      createdBy: product.createdBy ?? uid,
+      updatedBy: uid
+    };
+    await withTimeout(setDoc(doc(firebase.db, "adminProducts", id), next, { merge: true }));
+    await addAdminAction({ actionType: product.createdAt ? "update_product" : "add_product", requestId: id, adminId: uid, payload: { name: next.name, status: next.status } });
+    return { ok: true, mode: "firebase-synced" as const, product: next };
+  } catch (error) {
+    return { ok: false, mode: "local-demo" as const, product, error: errorMessage(error) };
+  }
+}
+
+export async function bulkSaveAdminProducts(products: AdminProduct[]) {
+  const saved: AdminProduct[] = [];
+  const errors: string[] = [];
+  for (const product of products) {
+    const result = await saveAdminProduct(product);
+    if (result.ok) saved.push(result.product);
+    else errors.push(`${product.name}: ${"error" in result ? result.error : "save failed"}`);
+  }
+  if (saved.length) {
+    await addAdminAction({
+      actionType: "import_products",
+      requestId: products[0]?.importBatchId ?? `import_${Date.now()}`,
+      adminId: getCurrentAuthUid(),
+      payload: { count: saved.length, errors: errors.length }
+    });
+  }
+  return { ok: errors.length === 0, mode: saved.length ? "firebase-synced" as const : "local-demo" as const, saved, errors };
+}
+
+export async function archiveAdminProduct(id: string) {
+  try {
+    const firebase = getFirebase();
+    if (!firebase) return { ok: false, mode: "local-demo" as const };
+    const uid = getCurrentAuthUid();
+    await withTimeout(updateDoc(doc(firebase.db, "adminProducts", id), { status: "archived", updatedAt: new Date().toISOString(), updatedBy: uid }));
+    await addAdminAction({ actionType: "archive_product", requestId: id, adminId: uid, payload: { status: "archived" } });
+    return { ok: true, mode: "firebase-synced" as const };
+  } catch (error) {
+    return { ok: false, mode: "local-demo" as const, error: errorMessage(error) };
+  }
+}
+
+export async function getAdminMetrics() {
+  try {
+    const [usersResult, paymentsResult, reviewsResult, productsResult] = await Promise.all([
+      listAdminUsers(),
+      listPaymentRequests(),
+      listAppReviews(500),
+      listAdminProducts(true)
+    ]);
+    const users = usersResult.users;
+    const payments = paymentsResult.requests;
+    const reviews = reviewsResult.reviews;
+    const products = productsResult.products;
+    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+    const metrics: AdminMetrics = {
+      totalUsers: users.length,
+      premiumUsers: users.filter((item) => item.subscriptionTier === "premium").length,
+      pendingPayments: payments.filter((item) => item.status === "pending_review").length,
+      approvedPayments: payments.filter((item) => item.status === "approved").length,
+      rejectedPayments: payments.filter((item) => item.status === "rejected").length,
+      totalReviews: reviews.length,
+      averageRating: reviews.length ? Math.round((totalRating / reviews.length) * 10) / 10 : 0,
+      activeProducts: products.filter((item) => item.status === "active").length,
+      draftProducts: products.filter((item) => item.status === "draft").length
+    };
+    return { ok: true, mode: "firebase-synced" as const, metrics };
+  } catch (error) {
+    return {
+      ok: false,
+      mode: "local-demo" as const,
+      metrics: { totalUsers: 0, premiumUsers: 0, pendingPayments: 0, approvedPayments: 0, rejectedPayments: 0, totalReviews: 0, averageRating: 0, activeProducts: 0, draftProducts: 0 } satisfies AdminMetrics,
+      error: errorMessage(error)
+    };
   }
 }
 

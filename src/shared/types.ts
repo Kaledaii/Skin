@@ -114,6 +114,42 @@ export type Product = {
   visualCategory?: string;
 };
 
+export type AdminProductStatus = "active" | "draft" | "archived";
+export type AdminProductSource = "admin_form" | "csv_import";
+
+export type AdminProduct = Product & {
+  status: AdminProductStatus;
+  source: AdminProductSource;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  importBatchId?: string;
+};
+
+export type AdminUserSummary = {
+  id: string;
+  name?: string;
+  location?: string;
+  skinType?: SkinType;
+  subscriptionStatus?: SubscriptionStatus;
+  subscriptionTier?: SubscriptionTier;
+  updatedAt?: string;
+  checkInCount: number;
+};
+
+export type AdminMetrics = {
+  totalUsers: number;
+  premiumUsers: number;
+  pendingPayments: number;
+  approvedPayments: number;
+  rejectedPayments: number;
+  totalReviews: number;
+  averageRating: number;
+  activeProducts: number;
+  draftProducts: number;
+};
+
 export type Tip = {
   id: string;
   title: Record<Language, string>;

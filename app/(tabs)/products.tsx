@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { useApp } from "@/shared/AppContext";
@@ -7,10 +7,11 @@ import { ErrorBoundary } from "@/shared/ErrorBoundary";
 import { launchProducts } from "@/shared/productCatalog";
 import { t } from "@/shared/i18n";
 import { palettes, spacing } from "@/shared/theme";
-import { BudgetTier, SkinType } from "@/shared/types";
+import { BudgetTier, Product, SkinType } from "@/shared/types";
 import { budgetTiers, skinTypes } from "@/shared/AppContext";
 import { trackEvent } from "@/shared/services/analytics";
 import { ImagePromoCard, marketingImages, productVisualForCategory } from "@/shared/marketingVisuals";
+import { listActiveAdminProducts } from "@/shared/services/firebaseSync";
 
 type ProductSort = "recommended" | "priceLow" | "priceHigh" | "trustHigh" | "sponsoredLast";
 
@@ -18,7 +19,16 @@ export default function Products() {
   const { language, themeMode, profile, updateProfile, tier, savedProductIds, toggleSavedProduct } = useApp();
   const c = palettes[themeMode];
   const [sortBy, setSortBy] = useState<ProductSort>("recommended");
-  const filtered = launchProducts.filter((item) => item.fit.includes(profile.skinType) && (tier === "premium" || item.budgetTier === profile.budgetTier));
+  const [adminProducts, setAdminProducts] = useState<Product[]>([]);
+  useEffect(() => {
+    listActiveAdminProducts()
+      .then((result) => {
+        if (result.ok) setAdminProducts(result.products);
+      })
+      .catch(() => undefined);
+  }, []);
+  const allProducts = useMemo(() => [...adminProducts, ...launchProducts], [adminProducts]);
+  const filtered = allProducts.filter((item) => item.fit.includes(profile.skinType) && (tier === "premium" || item.budgetTier === profile.budgetTier));
   const categories = useMemo(() => Array.from(new Set(filtered.map((item) => item.category))), [filtered]);
   const [selectedCategory, setSelectedCategory] = useState("Cleanser");
   const activeCategory = categories.includes(selectedCategory) ? selectedCategory : categories[0] ?? "Cleanser";
@@ -26,7 +36,7 @@ export default function Products() {
     () => sortProducts(filtered.filter((item) => item.category === activeCategory), sortBy),
     [activeCategory, filtered, sortBy]
   );
-  const cartProducts = launchProducts.filter((item) => savedProductIds.includes(item.id));
+  const cartProducts = allProducts.filter((item) => savedProductIds.includes(item.id));
 
   return (
     <ErrorBoundary screenName="Products">
