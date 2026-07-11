@@ -24,6 +24,11 @@ export default function Settings() {
     switchProfile,
     addProfile,
     activateProfileAddOn,
+    authUser,
+    authStatus,
+    recoveryPhone,
+    syncNow,
+    refreshAccountData,
     notificationPreferences,
     updateNotificationPreferences,
     submitReview
@@ -33,6 +38,7 @@ export default function Settings() {
   const [rating, setRating] = useState<AppReview["rating"] | 0>(0);
   const [experience, setExperience] = useState("");
   const [reviewStatus, setReviewStatus] = useState<string | null>(null);
+  const [accountStatus, setAccountStatus] = useState<string | null>(null);
   const [submittingReview, setSubmittingReview] = useState(false);
 
   return (
@@ -48,6 +54,20 @@ export default function Settings() {
         <Card>
           <H2>{t(language, "theme")}</H2>
           <Segment value={themeMode} options={["light", "dark"] as ThemeMode[]} onChange={setThemeMode} />
+        </Card>
+
+        <Card>
+          <H2>Account</H2>
+          <Body muted>Your email account protects premium, quiz answers, profiles, progress, and payment history after reinstall.</Body>
+          <Pill tone={authUser?.email ? "secondary" : "danger"}>{authUser?.email ? "Signed in" : "Email login required"}</Pill>
+          <Body>Email: {authUser?.email ?? "Not signed in"}</Body>
+          <Body muted>Recovery phone: {recoveryPhone || "Add it on the login screen or next payment."}</Body>
+          <View style={styles.notificationGrid}>
+            <Button label="Sync account now" onPress={async () => setAccountStatus(await syncNow())} secondary />
+            <Button label="Refresh account data" onPress={async () => setAccountStatus(await refreshAccountData())} secondary />
+          </View>
+          <Body muted>Paid but premium missing? Contact support with your account email, payment phone, transaction ID, and screenshot.</Body>
+          {accountStatus || authStatus ? <Body>{accountStatus ?? authStatus}</Body> : null}
         </Card>
 
         <Card>

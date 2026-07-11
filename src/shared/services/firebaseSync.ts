@@ -1,7 +1,7 @@
-import { AdminMetrics, AdminProduct, AdminUserSummary, AppReview, DailyCheckIn, PaymentRequest, SubscriptionInfo, UserProfile } from "../types";
+import { AdminMetrics, AdminProduct, AdminUserSummary, AppReview, DailyCheckIn, NotificationPreferences, PaymentRequest, SubscriptionInfo, UserProfile, UserSnapshot } from "../types";
 import { getFirebase } from "./firebase";
 import { collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
-import { createUserWithEmailAndPassword, GoogleAuthProvider, signInAnonymously as firebaseSignInAnonymously, signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
+import { createUserWithEmailAndPassword, EmailAuthProvider, GoogleAuthProvider, linkWithCredential, signInAnonymously as firebaseSignInAnonymously, signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
 export type SyncPayload = {
@@ -12,10 +12,14 @@ export type SyncPayload = {
   dailyCheckIns: Record<string, DailyCheckIn>;
   profileDailyCheckIns?: Record<string, Record<string, DailyCheckIn>>;
   profileSavedProductIds?: Record<string, string[]>;
+  recoveryPhone?: string;
+  notificationPreferences?: NotificationPreferences;
   paymentRequests?: PaymentRequest[];
 };
 
 export type AuthResult = { ok: boolean; uid?: string; email?: string | null; mode: "local-demo" | "anonymous" | "email"; message: string };
+export type AuthUserSummary = { uid: string; email: string | null; isAnonymous: boolean };
+export type SnapshotResult = { ok: boolean; uid?: string; email?: string | null; snapshot?: UserSnapshot; message: string };
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Firebase request failed.";
@@ -46,11 +50,51 @@ export async function signUpWithEmail(email: string, password: string): Promise<
   return { ok: true, uid: credential.user.uid, email: credential.user.email, mode: "email", message: "Email account created." };
 }
 
+export async function linkAnonymousUserWithEmail(email: string, password: string, phone: string): Promise<AuthResult> {
+  const firebase = getFirebase();
+  if (!firebase) return { ok: false, mode: "local-demo", message: "Firebase is not configured." };
+  const cleanEmail = email.trim();
+  const cleanPhone = phone.trim();
+  const currentUser = firebase.auth.currentUser ?? (await firebaseSignInAnonymously(firebase.auth)).user;
+  try {
+    const credential = EmailAuthProvider.credential(cleanEmail, password);
+    const linked = currentUser.isAnonymous ? await linkWithCredential(currentUser, credential) : { user: currentUser };
+    await setDoc(doc(firebase.db, "users", linked.user.uid), {
+      userEmail: linked.user.email ?? cleanEmail,
+      recoveryPhone: cleanPhone,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    return { ok: true, uid: linked.user.uid, email: linked.user.email ?? cleanEmail, mode: "email", message: "Account created. Your data is protected." };
+  } catch (error) {
+    return { ok: false, uid: currentUser.uid, email: currentUser.email, mode: currentUser.email ? "email" : "anonymous", message: errorMessage(error) };
+  }
+}
+
 export async function signInWithEmail(email: string, password: string): Promise<AuthResult> {
   const firebase = getFirebase();
   if (!firebase) return { ok: false, mode: "local-demo", message: "Firebase is not configured." };
   const credential = await signInWithEmailAndPassword(firebase.auth, email.trim(), password);
   return { ok: true, uid: credential.user.uid, email: credential.user.email, mode: "email", message: "Signed in." };
+}
+
+export async function signInAndLoadSnapshot(email: string, password: string, phone?: string): Promise<SnapshotResult> {
+  try {
+    const firebase = getFirebase();
+    if (!firebase) return { ok: false, message: "Firebase is not configured." };
+    const credential = await signInWithEmailAndPassword(firebase.auth, email.trim(), password);
+    const cleanPhone = phone?.trim();
+    if (cleanPhone) {
+      await setDoc(doc(firebase.db, "users", credential.user.uid), {
+        userEmail: credential.user.email,
+        recoveryPhone: cleanPhone,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    }
+    const snapshot = await loadUserSnapshot();
+    return { ok: true, uid: credential.user.uid, email: credential.user.email, snapshot: snapshot.snapshot, message: "Signed in and restored account data." };
+  } catch (error) {
+    return { ok: false, message: errorMessage(error) };
+  }
 }
 
 export async function signInWithGoogle(): Promise<AuthResult> {
@@ -79,12 +123,15 @@ export async function syncUserSnapshot(payload: SyncPayload) {
     const localIsPremium = payload.subscription.tier === "premium";
     const subscriptionToSave = existingPremiumActive && !localIsPremium ? existingSubscription : payload.subscription;
     const basePayload = {
+      userEmail: credential.user.email,
+      recoveryPhone: payload.recoveryPhone,
       profile: payload.profile,
       profiles: payload.profiles ?? { [payload.profile.profileId ?? "primary"]: payload.profile },
       activeProfileId: payload.activeProfileId ?? payload.profile.profileId ?? "primary",
       dailyCheckIns: payload.dailyCheckIns,
       profileDailyCheckIns: payload.profileDailyCheckIns,
       profileSavedProductIds: payload.profileSavedProductIds,
+      notificationPreferences: payload.notificationPreferences,
       paymentRequests: payload.paymentRequests ?? [],
       updatedAt: serverTimestamp()
     };
@@ -289,6 +336,31 @@ export function getCurrentAuthEmail() {
 export function getCurrentAuthUid() {
   const firebase = getFirebase();
   return firebase?.auth.currentUser?.uid ?? null;
+}
+
+export function getCurrentAuthUserSummary(): AuthUserSummary | null {
+  const firebase = getFirebase();
+  const user = firebase?.auth.currentUser;
+  return user ? { uid: user.uid, email: user.email, isAnonymous: user.isAnonymous } : null;
+}
+
+export async function loadUserSnapshot(): Promise<SnapshotResult> {
+  try {
+    const firebase = getFirebase();
+    if (!firebase) return { ok: false, message: "Firebase is not configured." };
+    const user = firebase.auth.currentUser;
+    if (!user) return { ok: false, message: "No signed-in user." };
+    const snapshot = await getDoc(doc(firebase.db, "users", user.uid));
+    return {
+      ok: true,
+      uid: user.uid,
+      email: user.email,
+      snapshot: snapshot.exists() ? (snapshot.data() as UserSnapshot) : undefined,
+      message: snapshot.exists() ? "Cloud data loaded." : "No cloud data found yet."
+    };
+  } catch (error) {
+    return { ok: false, message: errorMessage(error) };
+  }
 }
 
 export async function checkCurrentUserAdminAccess() {

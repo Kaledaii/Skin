@@ -13,6 +13,21 @@ export type BudgetTier = "under200" | "200to500" | "500plus";
 export type SeasonMode = "summer" | "monsoon" | "dashain" | "winter";
 export type ProfileAddOnStatus = "included" | "locked" | "active";
 
+export type UserSnapshot = {
+  profile?: UserProfile;
+  profiles?: Record<string, UserProfile>;
+  activeProfileId?: string;
+  subscription?: SubscriptionInfo;
+  paymentState?: PaymentState;
+  paymentRequests?: PaymentRequest[];
+  dailyCheckIns?: Record<string, DailyCheckIn>;
+  profileDailyCheckIns?: Record<string, Record<string, DailyCheckIn>>;
+  profileSavedProductIds?: Record<string, string[]>;
+  recoveryPhone?: string;
+  userEmail?: string | null;
+  notificationPreferences?: NotificationPreferences;
+};
+
 export type QuizReview = {
   id: string;
   day: 15 | 30;

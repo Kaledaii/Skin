@@ -14,7 +14,7 @@ import { spacing } from "@/shared/theme";
 import { PaymentProvider, SubscriptionPlanId } from "@/shared/types";
 
 export default function Paywall() {
-  const { language, themeMode, paymentState, paymentRequests, submitManualPayment, retryPendingPaymentSync, pickPaymentScreenshot, activatePremium } = useApp();
+  const { language, themeMode, authUser, paymentState, paymentRequests, submitManualPayment, retryPendingPaymentSync, pickPaymentScreenshot, activatePremium } = useApp();
   const c = palettes[themeMode];
   const [plan, setPlan] = useState<Exclude<SubscriptionPlanId, "beta">>("monthly");
   const [provider, setProvider] = useState<PaymentProvider>("khalti");
@@ -77,6 +77,14 @@ export default function Paywall() {
               <Body muted>
                 Payment requests will stay only on this phone until Expo/EAS build environment variables are added and the APK is rebuilt.
               </Body>
+            </View>
+          ) : null}
+          {!authUser?.email ? (
+            <View style={[styles.reviewStatus, { borderColor: c.danger, backgroundColor: c.surface }]}>
+              <Pill tone="danger">Account required</Pill>
+              <H2>Sign in before payment</H2>
+              <Body muted>Premium must be attached to your email account so it can be restored after reinstall or phone change.</Body>
+              <Button label="Go to sign in" onPress={() => router.replace("/auth" as never)} secondary />
             </View>
           ) : null}
           {pending ? (
@@ -186,8 +194,8 @@ export default function Paywall() {
             secondary
           />
           <Button
-            label={pending ? "Already under review" : submitting || paymentState === "pending" ? "Submitting..." : "Submit for review"}
-            disabled={submitting || paymentState === "pending"}
+            label={!authUser?.email ? "Sign in before payment" : pending ? "Already under review" : submitting || paymentState === "pending" ? "Submitting..." : "Submit for review"}
+            disabled={!authUser?.email || submitting || paymentState === "pending"}
             onPress={async () => {
               if (pending) {
                 setMessage("You already have a payment under review. Result will be updated within 24 hours.");

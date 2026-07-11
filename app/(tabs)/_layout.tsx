@@ -1,4 +1,4 @@
-import { Tabs, router, usePathname } from "expo-router";
+import { Redirect, Tabs, router, usePathname } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import { Modal, PanResponder, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -11,7 +11,7 @@ import { QuizReview } from "@/shared/types";
 const swipeTabs = ["home", "progress", "products", "tips", "learn", "community", "settings"] as const;
 
 export default function TabsLayout() {
-  const { language, themeMode, profile, dueQuizReviewDay, submitQuizReview } = useApp();
+  const { language, themeMode, authReady, authRequired, profile, dueQuizReviewDay, submitQuizReview } = useApp();
   const pathname = usePathname();
   const c = palettes[themeMode];
   const insets = useSafeAreaInsets();
@@ -41,6 +41,8 @@ export default function TabsLayout() {
       }),
     [pathname]
   );
+
+  if (authReady && authRequired) return <Redirect href={"/auth" as never} />;
 
   return (
     <View style={{ flex: 1 }} {...panResponder.panHandlers}>

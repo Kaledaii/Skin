@@ -1,5 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { Redirect, router } from "expo-router";
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -40,7 +40,7 @@ const symptomsToShow = [
 ];
 
 export default function Onboarding() {
-  const { language, setLanguage, themeMode, profile, updateProfile, updateQuiz, toggleQuizArray, pickSelfieFromCamera, pickSelfieFromLibrary } = useApp();
+  const { language, setLanguage, themeMode, authReady, authRequired, profile, updateProfile, updateQuiz, toggleQuizArray, pickSelfieFromCamera, pickSelfieFromLibrary } = useApp();
   const c = palettes[themeMode];
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
@@ -57,6 +57,8 @@ export default function Onboarding() {
     Number(Boolean(profile.quiz.environment.water_source)) +
     Number(Boolean(profile.quiz.currentRoutine.uses_sunscreen));
   const quizPercent = Math.round((answeredCount / 9) * 100);
+
+  if (authReady && authRequired) return <Redirect href={"/auth" as never} />;
 
   return (
     <Screen>

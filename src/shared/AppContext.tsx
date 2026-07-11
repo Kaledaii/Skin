@@ -7,14 +7,19 @@ import { getDefaultQuizProfile } from "./knowledge/engine";
 import { activateSubscriptionFromRequest, createManualPaymentRequest, isSubscriptionActive, PaymentSubmissionResult } from "./services/payment";
 import {
   AuthResult,
+  AuthUserSummary,
   deleteCloudSnapshot,
   ensureAnonymousUser,
+  getCurrentAuthUserSummary,
   getPaymentRequestById,
+  linkAnonymousUserWithEmail,
   listPaymentRequests,
   loadRemoteCheckIns,
   loadRemoteProfile,
   loadRemoteSubscription,
+  loadUserSnapshot,
   savePaymentRequest,
+  signInAndLoadSnapshot,
   signInWithGoogle,
   signInWithEmail,
   signUpWithEmail,
@@ -25,7 +30,7 @@ import {
   uploadPaymentScreenshot
 } from "./services/firebaseSync";
 import { addAdminAction, getCurrentAuthEmail } from "./services/firebaseSync";
-import { AppReview, BudgetTier, DailyCheckIn, Gender, Language, NotificationPreferences, PaymentProvider, PaymentRequest, PaymentState, ProfileAddOnStatus, QuizReview, SkinType, SubscriptionInfo, SubscriptionPlanId, SubscriptionTier, ThemeMode, UserProfile } from "./types";
+import { AppReview, BudgetTier, DailyCheckIn, Gender, Language, NotificationPreferences, PaymentProvider, PaymentRequest, PaymentState, ProfileAddOnStatus, QuizReview, SkinType, SubscriptionInfo, SubscriptionPlanId, SubscriptionTier, ThemeMode, UserProfile, UserSnapshot } from "./types";
 
 type AppState = {
   language: Language;
@@ -49,6 +54,16 @@ type AppState = {
   signUpWithEmail: (email: string, password: string) => Promise<AuthResult>;
   signInWithEmail: (email: string, password: string) => Promise<AuthResult>;
   signInWithGoogle: () => Promise<AuthResult>;
+  authUser: AuthUserSummary | null;
+  authStatus: string | null;
+  authReady: boolean;
+  authRequired: boolean;
+  recoveryPhone: string;
+  signUpAndSync: (input: { email: string; password: string; phone: string }) => Promise<AuthResult>;
+  signInAndRestore: (input: { email: string; password: string; phone?: string }) => Promise<AuthResult>;
+  syncNow: () => Promise<string>;
+  refreshAccountData: () => Promise<string>;
+  hydrateFromCloudSnapshot: (snapshot?: UserSnapshot) => void;
   submitReview: (input: { rating: AppReview["rating"]; experience: string }) => Promise<string>;
   profile: UserProfile;
   profiles: Record<string, UserProfile>;
@@ -118,6 +133,10 @@ export function AppProvider({ children }: PropsWithChildren) {
   const [subscription, setSubscription] = useState<SubscriptionInfo>({ status: "free", tier: "free", source: "demo" });
   const [paymentState, setPaymentState] = useState<PaymentState>("idle");
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
+  const [authUser, setAuthUser] = useState<AuthUserSummary | null>(null);
+  const [authStatus, setAuthStatus] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [recoveryPhone, setRecoveryPhone] = useState("");
   const [profile, setProfile] = useState<UserProfile>(defaultProfile);
   const [profiles, setProfiles] = useState<Record<string, UserProfile>>({ primary: defaultProfile });
   const [activeProfileId, setActiveProfileId] = useState("primary");
@@ -132,6 +151,7 @@ export function AppProvider({ children }: PropsWithChildren) {
   const dailyCheckIns = profileDailyCheckIns[activeProfileId] ?? {};
   const todayCheckIn = dailyCheckIns[today] ?? createDefaultCheckIn(today, profile);
   const dueQuizReviewDay = getDueQuizReviewDay(profile);
+  const authRequired = authReady && !authUser?.email;
 
   useEffect(() => {
     // Initialize monitoring (Sentry) if configured
@@ -144,11 +164,13 @@ export function AppProvider({ children }: PropsWithChildren) {
         activeProfileId?: string;
         profileDailyCheckIns?: Record<string, Record<string, DailyCheckIn>>;
         profileSavedProductIds?: Record<string, string[]>;
+        recoveryPhone?: string;
       };
       if (parsed.language) setLanguageState(parsed.language);
       if (parsed.themeMode) setThemeModeState(parsed.themeMode);
       if (parsed.tier) setTierState(parsed.tier);
       if (parsed.subscription) setSubscription(parsed.subscription);
+      if (parsed.recoveryPhone) setRecoveryPhone(parsed.recoveryPhone);
       const migratedProfiles = migrateProfiles(parsed.profiles, parsed.profile);
       const nextActiveProfileId = parsed.activeProfileId && migratedProfiles[parsed.activeProfileId] ? parsed.activeProfileId : Object.keys(migratedProfiles)[0] ?? "primary";
       setProfiles(migratedProfiles);
@@ -179,8 +201,8 @@ export function AppProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     // Save state to local storage (cache backup)
-    AsyncStorage.setItem("skin-nepal-state", JSON.stringify({ language, themeMode, tier, subscription, paymentState, paymentRequests, profile, profiles, activeProfileId, completion, likedTipIds, savedTipIds, savedProductIds, profileSavedProductIds, dailyCheckIns, profileDailyCheckIns, notificationPreferences })).catch(() => undefined);
-  }, [language, themeMode, tier, subscription, paymentState, paymentRequests, profile, profiles, activeProfileId, completion, likedTipIds, savedTipIds, savedProductIds, profileSavedProductIds, dailyCheckIns, profileDailyCheckIns, notificationPreferences]);
+    AsyncStorage.setItem("skin-nepal-state", JSON.stringify({ language, themeMode, tier, subscription, paymentState, paymentRequests, profile, profiles, activeProfileId, recoveryPhone, completion, likedTipIds, savedTipIds, savedProductIds, profileSavedProductIds, dailyCheckIns, profileDailyCheckIns, notificationPreferences })).catch(() => undefined);
+  }, [language, themeMode, tier, subscription, paymentState, paymentRequests, profile, profiles, activeProfileId, recoveryPhone, completion, likedTipIds, savedTipIds, savedProductIds, profileSavedProductIds, dailyCheckIns, profileDailyCheckIns, notificationPreferences]);
 
   useEffect(() => {
     const ensureToday = () => {
@@ -203,11 +225,22 @@ export function AppProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     // Initialize Firebase authentication and load remote data
     ensureAnonymousUser()
-      .then(() => Promise.all([
+      .then(async () => {
+        const currentAuth = getCurrentAuthUserSummary();
+        setAuthUser(currentAuth);
+        if (currentAuth?.email) {
+          const snapshot = await loadUserSnapshot();
+          if (snapshot.ok) {
+            hydrateFromCloudSnapshot(snapshot.snapshot);
+            setAuthStatus(snapshot.message);
+          }
+        }
+        return Promise.all([
         loadRemoteSubscription(),
         loadRemoteProfile(),
         loadRemoteCheckIns()
-      ]))
+        ]);
+      })
       .then(([remoteSubscription, remoteProfile, remoteCheckIns]) => {
         // Load subscription if valid
         if (remoteSubscription && isSubscriptionActive(remoteSubscription)) {
@@ -226,7 +259,8 @@ export function AppProvider({ children }: PropsWithChildren) {
           setProfileDailyCheckIns((current) => ({ ...current, [activeProfileId]: remoteCheckIns }));
         }
       })
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => setAuthReady(true));
   }, []);
 
   useEffect(() => {
@@ -241,13 +275,15 @@ export function AppProvider({ children }: PropsWithChildren) {
           dailyCheckIns,
           profileDailyCheckIns,
           profileSavedProductIds,
+          recoveryPhone,
+          notificationPreferences,
           paymentRequests
         }).catch(() => undefined);
       }
     }, 5000);
 
     return () => clearTimeout(timeout);
-  }, [profile, profiles, activeProfileId, subscription, dailyCheckIns, profileDailyCheckIns, profileSavedProductIds, paymentRequests]);
+  }, [profile, profiles, activeProfileId, subscription, dailyCheckIns, profileDailyCheckIns, profileSavedProductIds, recoveryPhone, notificationPreferences, paymentRequests]);
 
   useEffect(() => {
     const pending = paymentRequests.filter((item) => item.status === "pending_review" || item.status === "approved");
@@ -293,6 +329,36 @@ export function AppProvider({ children }: PropsWithChildren) {
     return () => clearInterval(timer);
   }, [subscription.expiresAt, subscription.tier]);
 
+  const hydrateFromCloudSnapshot = (snapshot?: UserSnapshot) => {
+    if (!snapshot) return;
+    if (snapshot.recoveryPhone) setRecoveryPhone(snapshot.recoveryPhone);
+    if (snapshot.subscription) {
+      setSubscription(snapshot.subscription);
+      setTierState(isSubscriptionActive(snapshot.subscription) ? "premium" : snapshot.subscription.tier);
+      setPaymentState(snapshot.subscription.paymentState ?? snapshot.paymentState ?? paymentState);
+    } else if (snapshot.paymentState) {
+      setPaymentState(snapshot.paymentState);
+    }
+    if (snapshot.paymentRequests) setPaymentRequests(snapshot.paymentRequests);
+    const nextProfiles = migrateProfiles(snapshot.profiles, snapshot.profile);
+    const nextActiveProfileId = snapshot.activeProfileId && nextProfiles[snapshot.activeProfileId] ? snapshot.activeProfileId : Object.keys(nextProfiles)[0] ?? "primary";
+    setProfiles(nextProfiles);
+    setActiveProfileId(nextActiveProfileId);
+    setProfile(nextProfiles[nextActiveProfileId] ?? defaultProfile);
+    if (snapshot.profileDailyCheckIns) {
+      setProfileDailyCheckIns(snapshot.profileDailyCheckIns);
+    } else if (snapshot.dailyCheckIns) {
+      setProfileDailyCheckIns({ [nextActiveProfileId]: snapshot.dailyCheckIns });
+    }
+    if (snapshot.profileSavedProductIds) {
+      setProfileSavedProductIds(snapshot.profileSavedProductIds);
+      setSavedProductIds(snapshot.profileSavedProductIds[nextActiveProfileId] ?? []);
+    }
+    if (snapshot.notificationPreferences) {
+      setNotificationPreferences({ ...defaultNotificationPreferences, ...snapshot.notificationPreferences });
+    }
+  };
+
   const value = useMemo<AppState>(() => ({
     language,
     setLanguage: setLanguageState,
@@ -329,6 +395,9 @@ export function AppProvider({ children }: PropsWithChildren) {
       setSubscription(nextSubscription);
     },
     submitManualPayment: async (input) => {
+      if (!authUser?.email) {
+        return { ok: false, message: "Please sign in with email before submitting payment so premium can be restored later." };
+      }
       setPaymentState("pending");
       const draftId = `pay_${input.provider}_${Date.now()}`;
       let screenshotDownloadUrl: string | undefined;
@@ -339,8 +408,8 @@ export function AppProvider({ children }: PropsWithChildren) {
       }
       const result = createManualPaymentRequest({
         ...input,
-        userId: "local-demo-user",
-        userEmail: null,
+        userId: authUser.uid,
+        userEmail: authUser.email,
         profileName: profile.name,
         profileLocation: profile.location,
         profileSkinType: profile.skinType,
@@ -361,9 +430,10 @@ export function AppProvider({ children }: PropsWithChildren) {
         ? { ...saved.request, cloudSyncStatus: "synced" as const, cloudSyncError: undefined }
         : { ...request, cloudSyncStatus: "local_only" as const, cloudSyncError: "error" in saved ? saved.error : "Could not sync to Firebase admin inbox." };
       setPaymentRequests((current) => [savedRequest, ...current.filter((item) => item.id !== savedRequest.id)]);
+      setRecoveryPhone(input.payerPhone.trim());
       setPaymentState("pending_review");
       try {
-        await syncUserSnapshot({ profile, profiles, activeProfileId, subscription: { ...subscription, paymentState: "pending_review" }, dailyCheckIns, profileDailyCheckIns, profileSavedProductIds, paymentRequests: [savedRequest, ...paymentRequests] });
+        await syncUserSnapshot({ profile, profiles, activeProfileId, subscription: { ...subscription, paymentState: "pending_review" }, dailyCheckIns, profileDailyCheckIns, profileSavedProductIds, recoveryPhone: input.payerPhone.trim(), notificationPreferences, paymentRequests: [savedRequest, ...paymentRequests] });
       } catch {
         // Keep the local pending review record when cloud sync is unavailable.
       }
@@ -481,6 +551,82 @@ export function AppProvider({ children }: PropsWithChildren) {
     signUpWithEmail,
     signInWithEmail,
     signInWithGoogle,
+    authUser,
+    authStatus,
+    authReady,
+    authRequired,
+    recoveryPhone,
+    signUpAndSync: async ({ email, password, phone }) => {
+      setAuthStatus("Creating account...");
+      const result = await linkAnonymousUserWithEmail(email, password, phone);
+      setAuthStatus(result.message);
+      if (!result.ok) return result;
+      setRecoveryPhone(phone.trim());
+      setAuthUser(getCurrentAuthUserSummary());
+      await syncUserSnapshot({
+        profile,
+        profiles,
+        activeProfileId,
+        subscription,
+        dailyCheckIns,
+        profileDailyCheckIns,
+        profileSavedProductIds,
+        recoveryPhone: phone.trim(),
+        notificationPreferences,
+        paymentRequests
+      });
+      return result;
+    },
+    signInAndRestore: async ({ email, password, phone }) => {
+      setAuthStatus("Signing in...");
+      const result = await signInAndLoadSnapshot(email, password, phone);
+      setAuthStatus(result.message);
+      if (!result.ok) return { ok: false, mode: "email", message: result.message };
+      setAuthUser(getCurrentAuthUserSummary());
+      if (phone?.trim()) setRecoveryPhone(phone.trim());
+      if (result.snapshot) {
+        hydrateFromCloudSnapshot(result.snapshot);
+      } else {
+        await syncUserSnapshot({
+          profile,
+          profiles,
+          activeProfileId,
+          subscription,
+          dailyCheckIns,
+          profileDailyCheckIns,
+          profileSavedProductIds,
+          recoveryPhone: phone?.trim() || recoveryPhone,
+          notificationPreferences,
+          paymentRequests
+        });
+      }
+      return { ok: true, uid: result.uid, email: result.email, mode: "email", message: result.message };
+    },
+    syncNow: async () => {
+      if (!authUser?.email) return "Please sign in with email before syncing.";
+      const result = await syncUserSnapshot({
+        profile,
+        profiles,
+        activeProfileId,
+        subscription,
+        dailyCheckIns,
+        profileDailyCheckIns,
+        profileSavedProductIds,
+        recoveryPhone,
+        notificationPreferences,
+        paymentRequests
+      });
+      return result.ok ? "Account data synced." : "Could not sync account data yet.";
+    },
+    refreshAccountData: async () => {
+      const result = await loadUserSnapshot();
+      if (!result.ok) return result.message;
+      hydrateFromCloudSnapshot(result.snapshot);
+      setAuthUser(getCurrentAuthUserSummary());
+      setAuthStatus(result.message);
+      return result.message;
+    },
+    hydrateFromCloudSnapshot,
     submitReview: async (input) => {
       const result = await submitAppReview({
         ...input,
@@ -647,6 +793,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       setSubscription({ status: "free", tier: "free", source: "demo" });
       setPaymentState("idle");
       setPaymentRequests([]);
+      setRecoveryPhone("");
       setProfile(defaultProfile);
       setProfiles({ primary: defaultProfile });
       setActiveProfileId("primary");
@@ -659,7 +806,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       setToday(getTodayKey());
       setNotificationPreferences(defaultNotificationPreferences);
     }
-  }), [activeProfileId, completion, dueQuizReviewDay, language, profile, profiles, profileSavedProductIds, themeMode, tier, subscription, paymentState, paymentRequests, likedTipIds, savedTipIds, savedProductIds, dailyCheckIns, profileDailyCheckIns, notificationPreferences, today, todayCheckIn]);
+  }), [activeProfileId, authReady, authRequired, authStatus, authUser, completion, dueQuizReviewDay, language, profile, profiles, profileSavedProductIds, recoveryPhone, themeMode, tier, subscription, paymentState, paymentRequests, likedTipIds, savedTipIds, savedProductIds, dailyCheckIns, profileDailyCheckIns, notificationPreferences, today, todayCheckIn]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
