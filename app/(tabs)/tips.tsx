@@ -3,15 +3,16 @@ import { useMemo, useState } from "react";
 import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { useApp } from "@/shared/AppContext";
-import { Body, BrandMark, Card, H1, H2, Pill, Screen, SectionLabel } from "@/shared/components";
+import { Body, BrandMark, Card, DetailDisclosure, H1, H2, Pill, Screen, SectionLabel } from "@/shared/components";
 import { ErrorBoundary } from "@/shared/ErrorBoundary";
-import { tips } from "@/shared/data";
 import { t } from "@/shared/i18n";
-import { generateRoutine, localized } from "@/shared/knowledge/engine";
+import { dailyHabitTips } from "@/shared/knowledge/education";
+import { generateRoutine } from "@/shared/knowledge/engine";
 import { buildBudgetRoutine, buildSkinTwin, checkIngredient, premiumModes } from "@/shared/knowledge/sellingFeatures";
 import { ImagePromoCard, marketingImages } from "@/shared/marketingVisuals";
 import { launchProducts } from "@/shared/productCatalog";
 import { palettes, spacing } from "@/shared/theme";
+import { visualCueForText } from "@/shared/visualCues";
 
 type FeedItem = {
   id: string;
@@ -19,7 +20,7 @@ type FeedItem = {
   title: string;
   body: string;
   colorTone: "primary" | "secondary" | "accent";
-  kind: "micro" | "tip";
+  kind: "micro" | "habit";
 };
 
 export default function Tips() {
@@ -41,13 +42,13 @@ export default function Tips() {
       colorTone: "accent" as const,
       kind: "micro" as const
     })),
-    ...tips.map((tip) => ({
+    ...dailyHabitTips.map((tip) => ({
       id: tip.id,
-      label: `${tip.duration}`,
-      title: tip.title[language],
-      body: tip.body[language],
+      label: tip.tags[0] ?? "habit",
+      title: `${visualCueForText(tip.title, tip.why, tip.how)} ${tip.title}`,
+      body: `${tip.why} ${tip.how}`,
       colorTone: "primary" as const,
-      kind: "tip" as const
+      kind: "habit" as const
     }))
   ];
 
@@ -186,7 +187,8 @@ export default function Tips() {
         ) : null}
 
         <Card>
-          <H2>{language === "en" ? "All tips" : "All tips"}</H2>
+          <H2>{language === "en" ? "Daily healthy habits" : "Daily healthy habits"}</H2>
+          <Body muted>Quick habits first. Long articles now live in Learn when you want to read deeper.</Body>
           {feedItems.map((item) => (
             <FeedCard
               key={item.id}
@@ -238,7 +240,12 @@ function FeedCard({
           </View>
         </View>
         <H2>{item.title}</H2>
-        {item.body ? <Body muted>{item.body}</Body> : null}
+        {item.body ? (
+          <DetailDisclosure collapsedLabel={item.kind === "habit" ? "How this helps" : "See more"} expandedLabel="See less" emoji={liked ? "💗" : "✨"}>
+            <Body muted>{item.body}</Body>
+          </DetailDisclosure>
+        ) : null}
+        {liked ? <Pill tone="secondary">Saved</Pill> : null}
       </View>
     </View>
   );

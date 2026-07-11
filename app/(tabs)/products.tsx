@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { useApp } from "@/shared/AppContext";
-import { Body, BrandMark, Button, Card, H1, H2, Pill, Screen, SectionLabel, Segment } from "@/shared/components";
+import { Body, BrandMark, Button, Card, DetailDisclosure, H1, H2, Pill, Screen, SectionLabel, Segment } from "@/shared/components";
 import { ErrorBoundary } from "@/shared/ErrorBoundary";
 import { launchProducts } from "@/shared/productCatalog";
 import { t } from "@/shared/i18n";
@@ -48,7 +48,7 @@ export default function Products() {
             <View style={styles.flex}>
               <SectionLabel tone="accent">{language === "en" ? "Matched local picks" : "Matched local picks"}</SectionLabel>
               <H1>{t(language, "products")}</H1>
-              <Body muted>{language === "en" ? "Smart shopping assistant with local availability, fake-product warnings, and affiliate-ready store links." : "Skin type, budget ra local availability anusar product picks."}</Body>
+              <Body muted>{language === "en" ? "Short, practical product picks by skin type and budget." : "Skin type, budget ra local availability anusar product picks."}</Body>
             </View>
           </View>
         </Card>
@@ -59,7 +59,7 @@ export default function Products() {
             image: marketingImages.productFlatlay,
             eyebrow: "🧴 Prabha product picks",
             title: "Beauty-store browsing, smarter",
-            body: "Compare budget, trust, fake-product risk, and your added-to-cart shortlist before buying.",
+            body: "Compare price, ingredients, use, and your shortlist before buying.",
             cta: "Build cart 🛒",
             icon: "shopping-bag",
             emoji: "✨"
@@ -97,7 +97,7 @@ export default function Products() {
 
         <Card>
           <Pill tone="primary">Shopping trust</Pill>
-          <Body muted>Store links can be affiliate links later, and sponsored picks are labeled as Ad. Always check seller rating, spelling, batch, seal, expiry, and stop if a product burns.</Body>
+          <Body muted>Sponsored picks are labeled as Ad. Always check seller rating, spelling, batch, seal, expiry, and stop if a product burns.</Body>
         </Card>
 
         <Card>
@@ -167,7 +167,6 @@ export default function Products() {
               <Image source={productImage} style={styles.productImage} resizeMode="contain" />
               <View style={styles.productImageBadges}>
                 <Pill tone="secondary">Trust {item.trustScore}%</Pill>
-                <Pill tone={item.fakeRisk === "high" ? "danger" : item.fakeRisk === "low" ? "secondary" : "accent"}>Fake risk {item.fakeRisk ?? "medium"}</Pill>
               </View>
             </View>
             <View style={styles.row}>
@@ -175,19 +174,25 @@ export default function Products() {
               {item.sponsored ? <Pill tone="accent">Ad</Pill> : null}
             </View>
             <Body muted>{item.category} - {item.price}</Body>
-            <Body>{item.ingredientLabel[language]}</Body>
-            <Body muted>{locked ? "Premium unlocks exact match reason, alternatives, and fake-product checks." : item.whyMatched?.[language] ?? item.whyMatched?.en}</Body>
-            {tier === "premium" ? (
-              <>
-                <Body muted>Why not: {item.whyNot?.[language] ?? item.whyNot?.en}</Body>
-                <Body muted>Safety: {item.safetyNote?.[language] ?? item.safetyNote?.en}</Body>
-                <Body muted>Where: {(item.whereToBuy ?? ["Daraz", "pharmacy"]).join(", ")} | Fake risk: {item.fakeRisk ?? "medium"}</Body>
-              </>
-            ) : null}
+            <View style={styles.productFacts}>
+              <Pill tone="primary">Ingredients</Pill>
+              <Body>{shortIngredients(item, language)}</Body>
+              <Pill tone="secondary">Use</Pill>
+              <Body>{howToUseProduct(item)}</Body>
+              <Pill tone="accent">When not to use</Pill>
+              <Body>{whenNotToUseProduct(item, language)}</Body>
+            </View>
+            <DetailDisclosure title="Match details" collapsedLabel="See details" expandedLabel="Hide details" emoji="🧴">
+              <Body muted>{locked ? "Premium unlocks exact match reason and alternatives." : item.whyMatched?.[language] ?? item.whyMatched?.en ?? "Matched to your skin type and budget."}</Body>
+              {tier === "premium" ? (
+                <>
+                  <Body muted>Safety: {item.safetyNote?.[language] ?? item.safetyNote?.en ?? "Patch test first and stop if it burns."}</Body>
+                  <Body muted>Where: {(item.whereToBuy ?? ["Daraz", "pharmacy"]).join(", ")}</Body>
+                </>
+              ) : null}
+            </DetailDisclosure>
             <View style={styles.row}>
               <Pill tone="primary">{item.category}</Pill>
-              <Pill tone="secondary">Trust {item.trustScore}%</Pill>
-              <Pill tone={item.fakeRisk === "high" ? "danger" : item.fakeRisk === "low" ? "secondary" : "accent"}>Fake risk {item.fakeRisk ?? "medium"}</Pill>
               <Button
                 label={saved ? "Open product" : "Add to cart"}
                 onPress={() => {
@@ -233,6 +238,27 @@ function sortProducts<T extends { priceMin?: number; trustScore: number; sponsor
   return sorted.sort((a, b) => Number(a.sponsored ?? false) - Number(b.sponsored ?? false) || b.trustScore - a.trustScore);
 }
 
+function shortIngredients(item: Product, language: "en" | "ne") {
+  if (item.ingredients?.length) return item.ingredients.slice(0, 4).join(", ");
+  return (item.ingredientLabel[language] ?? item.ingredientLabel.en).split(".")[0] || "Key ingredients listed on product label.";
+}
+
+function howToUseProduct(item: Product) {
+  const category = item.category.toLowerCase();
+  if (category.includes("cleanser") || category.includes("face wash")) return "Use gently, then rinse. Once daily is enough if skin feels dry.";
+  if (category.includes("sunscreen") || category.includes("spf")) return "Use before daylight/outdoor time on face and neck.";
+  if (category.includes("moistur") || category.includes("cream") || category.includes("barrier")) return "Apply a light layer after washing, especially when skin feels tight.";
+  if (category.includes("serum") || category.includes("treatment")) return "Start slowly, 2-3 nights weekly, and moisturize after.";
+  if (category.includes("toner") || category.includes("rose")) return "Pat lightly after cleansing. Do not rub.";
+  return "Use as directed on the label and patch test first.";
+}
+
+function whenNotToUseProduct(item: Product, language: "en" | "ne") {
+  const note = item.whyNot?.[language] ?? item.whyNot?.en ?? item.safetyNote?.[language] ?? item.safetyNote?.en;
+  if (note) return note.split(".")[0];
+  return "Skip if it burns, worsens bumps, smells off, is expired, or the seal is broken.";
+}
+
 const styles = StyleSheet.create({
   content: { gap: spacing.md, paddingBottom: spacing.xl },
   heroRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
@@ -244,6 +270,7 @@ const styles = StyleSheet.create({
   categoryText: { fontSize: 13, fontWeight: "800" },
   filterBlock: { gap: spacing.xs },
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
+  productFacts: { gap: spacing.xs },
   cartScroll: { maxHeight: 220 },
   cartScrollContent: { gap: spacing.xs },
   cartRow: { borderTopWidth: 1, paddingTop: spacing.sm, gap: spacing.sm, flexDirection: "row", alignItems: "center" },

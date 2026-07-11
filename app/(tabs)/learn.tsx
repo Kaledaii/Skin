@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useApp } from "@/shared/AppContext";
-import { Body, BrandMark, Button, Card, FloatingBadge, H1, H2, Pill, ProgressBar, Screen, SectionLabel } from "@/shared/components";
+import { Body, BrandMark, Button, Card, DetailDisclosure, FloatingBadge, H1, H2, Pill, ProgressBar, Screen, SectionLabel } from "@/shared/components";
 import { ErrorBoundary } from "@/shared/ErrorBoundary";
 import { getAllArticles, getRecommendedArticles, getSeasonalCalendar } from "@/shared/knowledge/content";
 import { ContentArticle } from "@/shared/knowledge/contentTypes";
@@ -78,7 +78,9 @@ export default function Learn() {
             <Pill tone={habitScore.score >= 75 ? "secondary" : "accent"}>{habitScore.score}/100</Pill>
           </View>
           <ProgressBar value={habitScore.score} color={habitScore.score >= 75 ? c.secondary : c.primary} />
-          <Body muted>{habitScore.reasons.slice(0, 2).join(" ")}</Body>
+          <DetailDisclosure collapsedLabel="Why this score?" expandedLabel="Hide score detail" emoji="📈">
+            <Body muted>{habitScore.reasons.slice(0, 2).join(" ")}</Body>
+          </DetailDisclosure>
         </Card>
 
         <Card>
@@ -91,7 +93,9 @@ export default function Learn() {
               </View>
               <H2>{visualCueForText(tip.title, tip.why, tip.how)} {tip.title}</H2>
               <Body>{tip.why}</Body>
-              <Body muted>{tip.how}</Body>
+              <DetailDisclosure collapsedLabel="How to do it" expandedLabel="Hide habit detail" emoji="✨">
+                <Body muted>{tip.how}</Body>
+              </DetailDisclosure>
             </View>
           ))}
         </Card>
@@ -126,8 +130,10 @@ export default function Learn() {
             {glossaryTerms.map((term) => (
               <View key={term.id} style={[styles.infoTile, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
                 <Pill tone="primary">{visualCueForText(term.term, term.meaning_en, term.meaning_ne)} {term.term}</Pill>
-                <Body>{term.meaning_en}</Body>
-                <Body muted>{term.meaning_ne}</Body>
+                <DetailDisclosure collapsedLabel="Simple meaning" expandedLabel="Hide meaning" emoji="📘">
+                  <Body>{term.meaning_en}</Body>
+                  <Body muted>{term.meaning_ne}</Body>
+                </DetailDisclosure>
               </View>
             ))}
           </View>
@@ -139,9 +145,11 @@ export default function Learn() {
             {nutrientGuides.map((nutrient) => (
               <View key={nutrient.id} style={[styles.infoTile, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
                 <Pill tone="secondary">{visualCueForText(nutrient.name, nutrient.skin_benefit, nutrient.nepali_foods.join(" "))} {nutrient.name}</Pill>
-                <Body>{nutrient.skin_benefit}</Body>
-                <Body muted>{nutrient.meaning_ne}</Body>
-                <Body muted>Foods: {nutrient.nepali_foods.join(", ")}</Body>
+                <DetailDisclosure collapsedLabel="Why it helps" expandedLabel="Hide nutrient detail" emoji="🥗">
+                  <Body>{nutrient.skin_benefit}</Body>
+                  <Body muted>{nutrient.meaning_ne}</Body>
+                  <Body muted>Foods: {nutrient.nepali_foods.join(", ")}</Body>
+                </DetailDisclosure>
               </View>
             ))}
           </View>
@@ -154,7 +162,9 @@ export default function Learn() {
               <View key={`${item.week}-${item.theme}`} style={styles.calendarLine}>
                 <Pill tone="secondary">Week {item.week}</Pill>
                 <Body>{item.theme}</Body>
-                <Body muted>{item.short_tip}</Body>
+                <DetailDisclosure collapsedLabel="Season tip" expandedLabel="Hide tip" emoji="🌦️">
+                  <Body muted>{item.short_tip}</Body>
+                </DetailDisclosure>
                 {item.campaign ? <Pill tone="accent">{item.campaign}</Pill> : null}
               </View>
             ))
@@ -183,9 +193,11 @@ export default function Learn() {
           {locked ? <Pill tone="accent">Premium guide</Pill> : null}
         </View>
         <H2>{visualCueForText(title, article.summary_en)} {title}</H2>
-        <Body muted>{locked ? "Unlock the full long-form guide with budget options, local product examples, warning signs, and source notes." : article.summary_en}</Body>
+        <DetailDisclosure collapsedLabel={locked ? "Preview guide" : "See summary"} expandedLabel="Hide summary" emoji="📖">
+          <Body muted>{locked ? "Unlock the full long-form guide with budget options, local product examples, warning signs, and source notes." : article.summary_en}</Body>
+        </DetailDisclosure>
         <View style={styles.row}>
-          <Body muted>{locked ? "Tap to unlock" : "Tap to read full guide"}</Body>
+          <Body muted>{locked ? "Tap to unlock" : "Click to read article"}</Body>
           <Feather name="arrow-right" color={c.primary} size={18} />
         </View>
         {locked ? <Button label="See premium value" onPress={() => router.push("/paywall" as never)} secondary /> : null}

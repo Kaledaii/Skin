@@ -84,16 +84,22 @@ export function generateRoutine(profile: QuizProfile): GeneratedRoutineResult {
   const conditionMorning = sourceConditions.flatMap((condition) => condition.routine.morning ?? []).map(toGeneratedStep);
   const conditionEvening = sourceConditions.flatMap((condition) => condition.routine.evening ?? []).map(toGeneratedStep);
   const movedToEvening = conditionMorning.filter(shouldMoveToEvening);
-  const morning =
+  const mergedMorning =
     sourceConditions.length > 0
-      ? mergeSteps([...coreMorningSteps(), ...contextual.morning, ...conditionMorning.filter((step) => shouldShowInDailyRoutine(step) && !shouldMoveToEvening(step))], "morning").slice(0, 8)
-      : mergeSteps([...fallbackMorning(), ...contextual.morning], "morning").slice(0, 8);
-  const evening =
+      ? mergeSteps([...coreMorningSteps(), ...contextual.morning, ...conditionMorning.filter((step) => shouldShowInDailyRoutine(step) && !shouldMoveToEvening(step))], "morning")
+      : mergeSteps([...fallbackMorning(), ...contextual.morning], "morning");
+  const mergedEvening =
     sourceConditions.length > 0
-      ? mergeSteps([...coreEveningSteps(), ...contextual.evening, ...conditionEvening.filter(shouldShowInDailyRoutine), ...movedToEvening], "evening").slice(0, 8)
-      : mergeSteps([...fallbackEvening(), ...contextual.evening], "evening").slice(0, 8);
+      ? mergeSteps([...coreEveningSteps(), ...contextual.evening, ...conditionEvening.filter(shouldShowInDailyRoutine), ...movedToEvening], "evening")
+      : mergeSteps([...fallbackEvening(), ...contextual.evening], "evening");
+  const morning = practicalDailySteps(mergedMorning, "morning");
+  const evening = practicalDailySteps(mergedEvening, "evening");
+  const dailyExtras = [...mergedMorning, ...mergedEvening]
+    .filter((step) => !morning.some((item) => item.id === step.id) && !evening.some((item) => item.id === step.id))
+    .slice(0, 4)
+    .map((step) => ({ ...step, frequency: optionalFrequency(step) }));
   const weekly =
-    sourceConditions.length > 0 ? mergeSteps([...contextual.weekly, ...sourceConditions.flatMap((condition) => condition.routine.weekly ?? []).map(toGeneratedWeeklyStep)], "weekly").slice(0, 6) : contextual.weekly;
+    sourceConditions.length > 0 ? mergeSteps([...dailyExtras, ...contextual.weekly, ...sourceConditions.flatMap((condition) => condition.routine.weekly ?? []).map(toGeneratedWeeklyStep)], "weekly").slice(0, 6) : mergeSteps([...dailyExtras, ...contextual.weekly], "weekly").slice(0, 6);
   const dietEatMore =
     sourceConditions.length > 0
       ? uniqueFoods(sourceConditions.flatMap((condition) => condition.diet_recommendations?.eat_more ?? [])).slice(0, 5)
@@ -633,10 +639,95 @@ function toGeneratedWeeklyStep(step: KnowledgeWeeklyStep): GeneratedStep {
 function mergeSteps(steps: GeneratedStep[], period: "morning" | "evening" | "weekly" = "morning") {
   const map = new Map<string, GeneratedStep>();
   for (const step of steps) {
-    const key = normalizeAction(step.action);
-    if (!map.has(key)) map.set(key, { ...step, id: key });
+    const key = routineCategory(step.action);
+    if (!map.has(key)) map.set(key, { ...step, id: `${period}-${key}` });
   }
   return Array.from(map.values()).sort((a, b) => priority(a.action, period) - priority(b.action, period));
+}
+
+function practicalDailySteps(steps: GeneratedStep[], period: "morning" | "evening") {
+  const required = period === "morning" ? ["cleanse", "moisturizer", "spf"] : ["cleanse", "treatment", "moisturizer"];
+  const picked: GeneratedStep[] = [];
+
+  for (const category of required) {
+    const match = steps.find((step) => routineCategory(step.action) === category);
+    if (match && !picked.some((step) => step.id === match.id)) picked.push(practicalCopy(match, period));
+  }
+
+  for (const step of steps) {
+    if (picked.length >= 3) break;
+    if (!picked.some((item) => item.id === step.id)) picked.push(practicalCopy(step, period));
+  }
+
+  return picked.slice(0, 3);
+}
+
+function practicalCopy(step: GeneratedStep, period: "morning" | "evening"): GeneratedStep {
+  const category = routineCategory(step.action);
+  if (category === "cleanse") {
+    return {
+      ...step,
+      action: period === "morning" ? "Wash gently" : "Cleanse the day off",
+      instruction: {
+        en: period === "morning" ? "Use a gentle face wash or plain lukewarm water if skin feels dry. No scrubbing." : "Remove sunscreen, makeup, sweat, and dust gently. Double cleanse only if you wore SPF or makeup.",
+        ne: period === "morning" ? "Gentle face wash wa skin dry cha bhane lukewarm water matra. Scrub nagarnu." : "Sunscreen, makeup, sweat ra dust gentle way ma hataunu. SPF/makeup lagako din matra double cleanse."
+      }
+    };
+  }
+  if (category === "moisturizer") {
+    return {
+      ...step,
+      action: period === "morning" ? "Moisturize if needed" : "Light night moisturizer",
+      instruction: {
+        en: "Use a light layer, especially if skin feels tight after washing.",
+        ne: "Wash pachi skin tight lage light layer moisturizer lagaunu."
+      }
+    };
+  }
+  if (category === "spf") {
+    return {
+      ...step,
+      action: "SPF before going out",
+      instruction: {
+        en: "Use sunscreen on face and neck before daylight/outdoor time. This matters most for marks and glow.",
+        ne: "Daylight/outdoor aghi face ra neck ma sunscreen. Marks ra glow ko lagi yo main step ho."
+      }
+    };
+  }
+  if (category === "treatment") {
+    return {
+      ...step,
+      action: "Spot care only if needed",
+      instruction: {
+        en: "Use spot care only on active pimples or the area your plan mentions. Skip if skin feels irritated.",
+        ne: "Active pimple wa plan le vaneko area ma matra spot care. Irritation cha bhane skip garnu."
+      }
+    };
+  }
+  return step;
+}
+
+function routineCategory(action: string) {
+  const normalized = action.toLowerCase();
+  if (normalized.includes("sunscreen") || normalized.includes("spf")) return "spf";
+  if (normalized.includes("cleanse") || normalized.includes("cleanser") || normalized.includes("wash") || normalized.includes("rinse")) return "cleanse";
+  if (normalized.includes("moistur") || normalized.includes("cream") || normalized.includes("barrier")) return "moisturizer";
+  if (normalized.includes("spot") || normalized.includes("treatment") || normalized.includes("serum") || normalized.includes("niacinamide") || normalized.includes("retinol") || normalized.includes("benzoyl") || normalized.includes("salicylic") || normalized.includes("acne")) return "treatment";
+  if (normalized.includes("toner") || normalized.includes("rose water")) return "toner";
+  if (normalized.includes("mask") || normalized.includes("multani") || normalized.includes("clay") || normalized.includes("aloe") || normalized.includes("turmeric")) return "mask";
+  if (normalized.includes("sleep") || normalized.includes("breath") || normalized.includes("phone")) return "habit";
+  if (normalized.includes("food") || normalized.includes("swap") || normalized.includes("water") || normalized.includes("hydration")) return "wellness";
+  return normalizeAction(action);
+}
+
+function optionalFrequency(step: GeneratedStep) {
+  const text = `${step.action} ${step.instruction.en}`.toLowerCase();
+  if (text.includes("makeup") || text.includes("sunscreen") || text.includes("pollution") || text.includes("dust")) return "Only if SPF/makeup/dust";
+  if (text.includes("period") || text.includes("cycle")) return "Period flare care";
+  if (text.includes("mask") || text.includes("clay") || text.includes("multani") || text.includes("exfoliat")) return "1-2x/week";
+  if (text.includes("sweat") || text.includes("heat") || text.includes("aqi") || text.includes("weather")) return "Weather extra";
+  if (text.includes("pimple") || text.includes("acne") || text.includes("spot")) return "Only if acne active";
+  return step.frequency ?? "Optional add-on";
 }
 
 function cleanRoutineAction(action: string) {
@@ -664,16 +755,6 @@ function coreMorningSteps(): GeneratedStep[] {
       instruction: { en: "Start by washing away sweat and overnight buildup with lukewarm water.", ne: "Start by washing away sweat and overnight buildup with lukewarm water." }
     },
     {
-      id: "toner-rose-water",
-      action: "Toner or rose water",
-      instruction: { en: "Pat on rose water or a gentle toner to prep skin without friction.", ne: "Pat on rose water or a gentle toner to prep skin without friction." }
-    },
-    {
-      id: "vitamin-c-antioxidant",
-      action: "Vitamin C or antioxidant serum",
-      instruction: { en: "Use this before moisturizer and SPF, especially on polluted or high-UV days.", ne: "Use this before moisturizer and SPF, especially on polluted or high-UV days." }
-    },
-    {
       id: "light-moisturizer",
       action: "Light moisturizer",
       instruction: { en: "Seal hydration while skin is still slightly damp.", ne: "Seal hydration while skin is still slightly damp." }
@@ -689,14 +770,9 @@ function coreMorningSteps(): GeneratedStep[] {
 function coreEveningSteps(): GeneratedStep[] {
   return [
     {
-      id: "first-cleanse",
-      action: "First cleanse",
-      instruction: { en: "Remove sunscreen, makeup, oil, and pollution with micellar water or an oil cleanse.", ne: "Remove sunscreen, makeup, oil, and pollution with micellar water or an oil cleanse." }
-    },
-    {
-      id: "second-cleanse",
-      action: "Second cleanse",
-      instruction: { en: "Follow with a gentle water-based cleanser so pores are actually clean.", ne: "Follow with a gentle water-based cleanser so pores are actually clean." }
+      id: "evening-cleanse",
+      action: "Evening cleanse",
+      instruction: { en: "Remove sunscreen, makeup, oil, and pollution gently. Double cleanse only when needed.", ne: "Sunscreen, makeup, oil ra pollution gentle tarika le hataunu. Double cleanse needed bhaye matra." }
     },
     {
       id: "treatment-serum",

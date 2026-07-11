@@ -2,7 +2,7 @@ import { ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { useApp } from "@/shared/AppContext";
-import { Body, BrandMark, Button, Card, H1, H2, Pill, Screen, SectionLabel } from "@/shared/components";
+import { Body, BrandMark, Button, Card, DetailDisclosure, H1, H2, Pill, Screen, SectionLabel } from "@/shared/components";
 import { ErrorBoundary } from "@/shared/ErrorBoundary";
 import { questions } from "@/shared/data";
 import { t } from "@/shared/i18n";
@@ -15,6 +15,7 @@ export default function Community() {
   const c = palettes[themeMode];
   const locked = tier !== "premium";
   const [query, setQuery] = useState("");
+  const [visibleCount, setVisibleCount] = useState(18);
   const [expertQuestion, setExpertQuestion] = useState("");
   const [expertStatus, setExpertStatus] = useState<string | null>(null);
   const filteredQAs = useMemo(() => {
@@ -50,12 +51,14 @@ export default function Community() {
             placeholderTextColor={c.muted}
             style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]}
           />
-          {filteredQAs.map((qa, index) => {
+          {filteredQAs.slice(0, visibleCount).map((qa, index) => {
             const gated = locked && index >= 12;
             return (
             <View key={qa.id} style={[styles.qaBlock, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
               <H2>{gated ? "Premium Q&A archive" : language === "ne" ? qa.question_ne : qa.question_en}</H2>
-              <Body>{gated ? "Unlock 50+ Nepal-context Q&As covering periods, makeup, hostel life, sunscreen, water, food, festivals, and product shopping." : language === "ne" ? qa.answer_ne : qa.answer_en}</Body>
+              <DetailDisclosure collapsedLabel="Tap for answer" expandedLabel="Hide answer" emoji="💬">
+                <Body>{gated ? "Unlock 50+ Nepal-context Q&As covering periods, makeup, hostel life, sunscreen, water, food, festivals, and product shopping." : language === "ne" ? qa.answer_ne : qa.answer_en}</Body>
+              </DetailDisclosure>
               <View style={styles.voteRow}>
                 {(gated ? ["premium"] : qa.tags).map((tag) => (
                   <Pill key={tag} tone="primary">{tag}</Pill>
@@ -64,6 +67,9 @@ export default function Community() {
               </View>
             </View>
           );})}
+          {visibleCount < filteredQAs.length ? (
+            <Button label={`Show more questions (${filteredQAs.length - visibleCount})`} onPress={() => setVisibleCount((current) => current + 18)} secondary />
+          ) : null}
         </Card>
 
         {locked ? (
@@ -98,7 +104,9 @@ export default function Community() {
               <Card key={question.id}>
                 {question.verified ? <Pill tone="secondary">{t(language, "verified")}</Pill> : null}
                 <H2>{question.title[language]}</H2>
-                <Body>{question.answer[language]}</Body>
+                <DetailDisclosure collapsedLabel="Tap for answer" expandedLabel="Hide answer" emoji="✅">
+                  <Body>{question.answer[language]}</Body>
+                </DetailDisclosure>
                 <View style={styles.voteRow}>
                   <Pill tone="primary">Helpful 24</Pill>
                   <Pill tone="accent">Clinic-safe</Pill>

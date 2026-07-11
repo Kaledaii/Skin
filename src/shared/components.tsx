@@ -247,6 +247,73 @@ export function Pill({ children, tone = "primary" }: PropsWithChildren<{ tone?: 
   return <Text style={[styles.pill, { backgroundColor: bg, color }]}>{children}</Text>;
 }
 
+export function DetailDisclosure({
+  title,
+  collapsedLabel = "See more",
+  expandedLabel = "See less",
+  emoji = "✨",
+  defaultOpen = false,
+  children
+}: PropsWithChildren<{
+  title?: string;
+  collapsedLabel?: string;
+  expandedLabel?: string;
+  emoji?: string;
+  defaultOpen?: boolean;
+}>) {
+  const { themeMode } = useApp();
+  const c = palettes[themeMode];
+  const [open, setOpen] = useState(defaultOpen);
+  const [hovered, setHovered] = useState(false);
+  const animated = useRef(new Animated.Value(defaultOpen ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.timing(animated, {
+      toValue: open ? 1 : 0,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: nativeDriver
+    }).start();
+  }, [animated, open]);
+
+  const rotate = animated.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "180deg"] });
+  const translateY = animated.interpolate({ inputRange: [0, 1], outputRange: [-4, 0] });
+
+  return (
+    <View style={styles.disclosureWrap}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={open ? expandedLabel : collapsedLabel}
+        onPress={() => setOpen((current) => !current)}
+        onHoverIn={() => setHovered(true)}
+        onHoverOut={() => setHovered(false)}
+        style={({ pressed }) => [
+          styles.disclosureButton,
+          {
+            backgroundColor: open || hovered ? c.primarySoft : c.surfaceAlt,
+            borderColor: open || hovered ? c.borderStrong : c.border,
+            transform: [{ scale: pressed ? 0.985 : 1 }]
+          }
+        ]}
+      >
+        <Text style={styles.disclosureEmoji}>{emoji}</Text>
+        <View style={styles.disclosureCopy}>
+          {title ? <Text style={[styles.disclosureTitle, { color: c.text }]}>{title}</Text> : null}
+          <Text style={[styles.disclosureLabel, { color: c.primary }]}>{open ? expandedLabel : collapsedLabel}</Text>
+        </View>
+        <Animated.View style={{ transform: [{ rotate }] }}>
+          <Feather name="chevron-down" color={c.primary} size={18} />
+        </Animated.View>
+      </Pressable>
+      {open ? (
+        <Animated.View style={[styles.disclosureBody, { opacity: animated, transform: [{ translateY }] }]}>
+          {children}
+        </Animated.View>
+      ) : null}
+    </View>
+  );
+}
+
 export function Button({ label, onPress, secondary = false, disabled = false }: { label: string; onPress: () => void; secondary?: boolean; disabled?: boolean }) {
   const { themeMode } = useApp();
   const c = palettes[themeMode];
@@ -581,6 +648,40 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     fontSize: 12,
     fontWeight: "800"
+  },
+  disclosureWrap: {
+    gap: spacing.xs
+  },
+  disclosureButton: {
+    minHeight: 44,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs
+  },
+  disclosureEmoji: {
+    fontSize: 17
+  },
+  disclosureCopy: {
+    flex: 1,
+    minWidth: 0
+  },
+  disclosureTitle: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "800"
+  },
+  disclosureLabel: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "900"
+  },
+  disclosureBody: {
+    gap: spacing.xs,
+    paddingTop: spacing.xs
   },
   button: {
     minHeight: 48,

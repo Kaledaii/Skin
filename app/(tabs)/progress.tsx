@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { router } from "expo-router";
 import { useApp } from "@/shared/AppContext";
 import { Celebration } from "@/shared/Celebration";
-import { Body, BrandMark, Button, Card, H1, H2, Pill, ProgressBar, Screen, SectionLabel, SignalCard, ToggleGroup } from "@/shared/components";
+import { Body, BrandMark, Button, Card, DetailDisclosure, H1, H2, Pill, ProgressBar, Screen, SectionLabel, SignalCard, ToggleGroup } from "@/shared/components";
 import { ErrorBoundary } from "@/shared/ErrorBoundary";
 import { t } from "@/shared/i18n";
 import { generateRoutine } from "@/shared/knowledge/engine";
@@ -86,10 +86,19 @@ export default function Progress() {
         </Card>
 
         <Card>
+          <H2>Glow journey</H2>
+          <View style={styles.milestoneRow}>
+            <Milestone label="Day 1" detail="Skin check done" active />
+            <Milestone label="Day 7" detail="Tiny wins" active={completedSteps > 0 || Boolean(todayCheckIn.skinNote || todayCheckIn.moodNote)} />
+            <Milestone label="Day 15" detail="Glow check" active={false} />
+            <Milestone label="Day 30" detail="Routine refresh" active={false} />
+          </View>
           <H2>Why this score?</H2>
+          <DetailDisclosure title="Score reasons" collapsedLabel="See reasons" expandedLabel="Hide reasons" emoji="📈">
           {habitScore.reasons.map((reason) => (
             <Body key={reason}>• {reason}</Body>
           ))}
+          </DetailDisclosure>
         </Card>
 
         <Card variant="seasonal">
@@ -97,7 +106,9 @@ export default function Progress() {
             <Feather name="file-text" color={c.primary} size={22} />
             <View style={styles.flex}>
               <H2>{premiumLocked ? "📊 Weekly Insights (Premium)" : "📊 Your Weekly Skin Report"}</H2>
-              <Body muted>{premiumLocked ? "Unlock premium to see your best habits, weak spots, likely triggers, and personalized next-week focus." : weeklyReport.summary}</Body>
+              <DetailDisclosure collapsedLabel={premiumLocked ? "Preview report" : "See weekly summary"} expandedLabel="Hide report" emoji="📝">
+                <Body muted>{premiumLocked ? "Unlock premium to see your best habits, weak spots, likely triggers, and personalized next-week focus." : weeklyReport.summary}</Body>
+              </DetailDisclosure>
             </View>
           </View>
           {premiumLocked ? (
@@ -143,7 +154,7 @@ export default function Progress() {
         />
 
         <Card>
-          <H2>Today's check-in</H2>
+          <H2>Today's glow check</H2>
           <View style={styles.checkRow}>
             <CheckPill label="SPF done" icon="sun" active={todayCheckIn.sunscreen} onPress={() => updateTodayCheckIn({ sunscreen: !todayCheckIn.sunscreen })} />
             <CheckPill label="Makeup removed" icon="check-circle" active={todayCheckIn.makeupRemoved} onPress={() => updateTodayCheckIn({ makeupRemoved: !todayCheckIn.makeupRemoved })} />
@@ -220,16 +231,19 @@ export default function Progress() {
         <Card>
           <H2>Your Lifestyle Signals</H2>
           <Body muted>Quiz answers and today check-in both count, but today's toggles do not overwrite your profile.</Body>
-          {lifestyleSignals.map((signal) => (
-            <SignalCard key={signal.id} tone={signal.tone} icon={signal.icon} label={signal.label} title={signal.title}>
-              {signal.body}
-            </SignalCard>
-          ))}
+          <DetailDisclosure collapsedLabel="See lifestyle signals" expandedLabel="Hide signals" emoji="🧭">
+            {lifestyleSignals.map((signal) => (
+              <SignalCard key={signal.id} tone={signal.tone} icon={signal.icon} label={signal.label} title={signal.title}>
+                {signal.body}
+              </SignalCard>
+            ))}
+          </DetailDisclosure>
         </Card>
 
         <Card>
           <H2>Weather readiness</H2>
           <Body muted>{environment.loading ? "Checking today's weather..." : "Mark the weather actions you are prepared for today."}</Body>
+          <DetailDisclosure collapsedLabel="See weather actions" expandedLabel="Hide weather actions" emoji="🌦️">
           {weatherActions.map((action) => {
             const ids = todayCheckIn.weatherActionIds ?? [];
             const active = ids.includes(action.id) || (action.autoSatisfiedBy === "sunscreen" && todayCheckIn.sunscreen);
@@ -252,6 +266,7 @@ export default function Progress() {
               </View>
             );
           })}
+          </DetailDisclosure>
         </Card>
 
         <Card>
@@ -379,6 +394,18 @@ function ProgressHabitCard({
   );
 }
 
+function Milestone({ label, detail, active }: { label: string; detail: string; active: boolean }) {
+  const { themeMode } = useApp();
+  const c = palettes[themeMode];
+  return (
+    <View style={[styles.milestone, { backgroundColor: active ? c.primarySoft : c.surfaceAlt, borderColor: active ? c.borderStrong : c.border }]}>
+      <Pill tone={active ? "secondary" : "primary"}>{active ? "Done" : "Next"}</Pill>
+      <Text style={[styles.milestoneLabel, { color: c.text }]}>{label}</Text>
+      <Text style={[styles.milestoneDetail, { color: c.muted }]}>{detail}</Text>
+    </View>
+  );
+}
+
 function humanWater(value: DailyCheckIn["water"]) {
   if (value === "less_than_1") return "<1L";
   if (value === "more_than_2") return "2L+";
@@ -416,6 +443,10 @@ const styles = StyleSheet.create({
   previewGrid: { gap: spacing.xs },
   reportGrid: { gap: spacing.xs },
   reportTile: { borderWidth: 1, borderRadius: 8, padding: spacing.sm, gap: spacing.xs },
+  milestoneRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
+  milestone: { flex: 1, minWidth: 132, borderWidth: 1, borderRadius: 8, padding: spacing.sm, gap: spacing.xs },
+  milestoneLabel: { fontSize: 16, fontWeight: "900" },
+  milestoneDetail: { fontSize: 12, lineHeight: 16, fontWeight: "700" },
   checkRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
   checkPill: { minHeight: 38, borderWidth: 1, borderRadius: 999, paddingHorizontal: spacing.md, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: spacing.xs },
   checkText: { fontSize: 13, fontWeight: "800" },

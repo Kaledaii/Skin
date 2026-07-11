@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AccessibilityInfo, ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useApp } from "@/shared/AppContext";
 import { Celebration } from "@/shared/Celebration";
-import { Body, BrandMark, Button, Card, FloatingBadge, H1, H2, Pill, ProgressBar, Screen, SectionLabel, SignalCard, ToggleGroup } from "@/shared/components";
+import { Body, BrandMark, Button, Card, DetailDisclosure, FloatingBadge, H1, H2, Pill, ProgressBar, Screen, SectionLabel, SignalCard, ToggleGroup } from "@/shared/components";
 import { ErrorBoundary } from "@/shared/ErrorBoundary";
 import { t } from "@/shared/i18n";
 import { contextualConditionDescription, generateRoutine, localized } from "@/shared/knowledge/engine";
@@ -36,7 +36,7 @@ export default function Home() {
   const environment = useEnvironmentalData();
   const result = useMemo(() => generateRoutine(profile.quiz), [profile.quiz]);
   const weatherActions = useMemo(() => (environment.data ? buildWeatherActions(environment.data) : []), [environment.data]);
-  const visibleEvening = useMemo(() => (tier === "premium" ? result.evening : result.evening.slice(0, 4)), [result.evening, tier]);
+  const visibleEvening = useMemo(() => result.evening, [result.evening]);
   const routineSteps = useMemo(() => [...result.morning, ...visibleEvening], [result.morning, visibleEvening]);
   const completed = routineSteps.filter((step) => todayCheckIn.completedStepIds.includes(step.id)).length;
   const percent = routineSteps.length ? Math.round((completed / routineSteps.length) * 100) : 0;
@@ -208,7 +208,9 @@ export default function Home() {
                 <Pill>{topMatch.condition.severity}</Pill>
               </View>
               <H2>{localized(language, topMatch.condition.name_en, topMatch.condition.name_ne)}</H2>
-              <Body muted>{contextualConditionDescription(topMatch.condition, profile.quiz, language)}</Body>
+              <DetailDisclosure title="Why this match?" collapsedLabel="See details" expandedLabel="Hide details" emoji="🔎">
+                <Body muted>{contextualConditionDescription(topMatch.condition, profile.quiz, language)}</Body>
+              </DetailDisclosure>
               <Body>{language === "en" ? "Recommended guidance only, not a medical diagnosis." : "यो recommended guidance मात्र हो, medical diagnosis होइन।"}</Body>
             </>
           ) : (
@@ -222,13 +224,15 @@ export default function Home() {
               <Feather name="shield" color={c.secondary} size={22} />
               <H2>Why we think this</H2>
             </View>
-            <Body muted>Transparent reasons from your symptoms, location, lifestyle, water, age, and current routine.</Body>
-            {trustReasons.map((reason) => (
-              <View key={reason} style={styles.reasonLine}>
-                <Feather name="check-circle" color={c.secondary} size={16} />
-                <Body>{reason}</Body>
-              </View>
-            ))}
+            <Body muted>Based on your quiz answers and daily context.</Body>
+            <DetailDisclosure title="Transparent match reasons" collapsedLabel="Tap for details" expandedLabel="Hide reasons" emoji="🧠">
+              {trustReasons.map((reason) => (
+                <View key={reason} style={styles.reasonLine}>
+                  <Feather name="check-circle" color={c.secondary} size={16} />
+                  <Body>{reason}</Body>
+                </View>
+              ))}
+            </DetailDisclosure>
           </Card>
         ) : null}
 
@@ -247,7 +251,13 @@ export default function Home() {
                 <View key={section.title} style={[styles.planTile, { borderColor: c.border, backgroundColor: c.surfaceAlt }]}>
                   <Pill tone={locked ? "accent" : "primary"}>{locked ? "Premium depth" : `Step ${index + 1}`}</Pill>
                   <H2>{section.title}</H2>
-                  <Body muted>{locked ? "Unlock full personalized detail, local product alternatives, and weekly adjustment logic." : section.body}</Body>
+                  {locked ? (
+                    <Body muted>Unlock full personalized detail, local product alternatives, and weekly adjustment logic.</Body>
+                  ) : (
+                    <DetailDisclosure title={section.title} collapsedLabel="See full plan" expandedLabel="Hide plan" emoji="🗺️">
+                      <Body muted>{section.body}</Body>
+                    </DetailDisclosure>
+                  )}
                   {locked ? <Button label="See premium value" onPress={() => router.push("/paywall" as never)} secondary /> : null}
                 </View>
               );
@@ -286,7 +296,7 @@ export default function Home() {
             ]}
             onChange={setRoutinePeriod}
           />
-          <Body muted>Tap a routine step after you complete it. Pink/filled steps are done for today.</Body>
+          <Body muted>Core routine only: quick, doable, and not meant to feel like homework.</Body>
           <RoutineSection title={routinePeriod === "morning" ? t(language, "morning") : t(language, "evening")} icon={null} steps={activeSteps} />
         </Card>
 
@@ -313,11 +323,13 @@ export default function Home() {
                   {remedy.verdict === "harmful" ? "Avoid" : remedy.verdict === "safe_mild" ? "Mild" : "Safe"}
                 </Pill>
                 <Body>{remedy.nepali ? `${remedy.remedy} (${remedy.nepali})` : remedy.remedy}</Body>
-                {remedy.ingredients ? <Body muted>Ingredients: {remedy.ingredients}</Body> : null}
-                <Body muted>{remedy.method ?? remedy.reason ?? remedy.note ?? "Use gently and stop if irritation starts."}</Body>
                 {remedy.frequency ? <Pill tone="primary">{remedy.frequency}</Pill> : null}
-                {remedy.why_it_works ? <Body muted>{remedy.why_it_works}</Body> : null}
-                {remedy.caution ? <Body muted>Caution: {remedy.caution}</Body> : null}
+                <DetailDisclosure title="Remedy details" collapsedLabel="See more" expandedLabel="See less" emoji="🌿">
+                  {remedy.ingredients ? <Body muted>Ingredients: {remedy.ingredients}</Body> : null}
+                  <Body muted>{remedy.method ?? remedy.reason ?? remedy.note ?? "Use gently and stop if irritation starts."}</Body>
+                  {remedy.why_it_works ? <Body muted>{remedy.why_it_works}</Body> : null}
+                  {remedy.caution ? <Body muted>Caution: {remedy.caution}</Body> : null}
+                </DetailDisclosure>
               </View>
             ))}
           </Card>
@@ -361,8 +373,10 @@ export default function Home() {
                   {expanded ? (
                     <>
                       <Pill tone={match.score >= 8 ? "secondary" : match.score >= 5 ? "accent" : "primary"}>{getMatchConfidence(match.score)}</Pill>
-                      <Body muted>{contextualConditionDescription(match.condition, profile.quiz, language)}</Body>
-                      <Body muted>Why: {buildTrustReasons(match, profile.quiz).slice(0, 3).join(" ")}</Body>
+                      <DetailDisclosure title="Concern detail" collapsedLabel="See more" expandedLabel="See less" emoji="🔎">
+                        <Body muted>{contextualConditionDescription(match.condition, profile.quiz, language)}</Body>
+                        <Body muted>Why: {buildTrustReasons(match, profile.quiz).slice(0, 3).join(" ")}</Body>
+                      </DetailDisclosure>
                     </>
                   ) : null}
                 </Pressable>
@@ -377,8 +391,10 @@ export default function Home() {
               <Feather name="alert-triangle" color={c.danger} size={22} />
               <H2>Doctor warning signs</H2>
             </View>
-            <Body>{doctorWarning(topMatch)}</Body>
-            <Body muted>Guidance only, not diagnosis. Painful, spreading, infected, or scarring concerns deserve medical care.</Body>
+            <DetailDisclosure title="Safety notes" collapsedLabel="See warning signs" expandedLabel="Hide warning signs" emoji="⚕️">
+              <Body>{doctorWarning(topMatch)}</Body>
+              <Body muted>Guidance only, not diagnosis. Painful, spreading, infected, or scarring concerns deserve medical care.</Body>
+            </DetailDisclosure>
           </Card>
         ) : null}
 
@@ -434,7 +450,9 @@ export default function Home() {
               <View key={step.id} style={styles.tipLine}>
                 <Pill tone="accent">{step.frequency}</Pill>
                 <Body>{step.action}</Body>
-                <Body muted>{step.instruction[language]}</Body>
+                <DetailDisclosure collapsedLabel="How to use this add-on" expandedLabel="Hide add-on" emoji="🗓️">
+                  <Body muted>{step.instruction[language]}</Body>
+                </DetailDisclosure>
               </View>
             ))}
           </Card>
@@ -461,7 +479,9 @@ export default function Home() {
                 <Body>
                   {visualCueForText(food.food_en, food.food_ne)} {localized(language, food.food_en, food.food_ne)}
                 </Body>
-                <Body muted>{localized(language, food.reason_en ?? "", food.reason_ne)}</Body>
+                <DetailDisclosure collapsedLabel="Why?" expandedLabel="Hide why" emoji="🥗">
+                  <Body muted>{localized(language, food.reason_en ?? "", food.reason_ne)}</Body>
+                </DetailDisclosure>
               </View>
             ))}
           </View>
@@ -470,7 +490,9 @@ export default function Home() {
             {result.dietAvoid.slice(0, 2).map((food) => (
               <View key={food.food_en} style={styles.dietRow}>
                 <Body>{visualCueForText(food.food_en, food.food_ne)} {localized(language, food.food_en, food.food_ne)}</Body>
-                <Body muted>{localized(language, food.reason_en ?? "", food.reason_ne)}</Body>
+                <DetailDisclosure collapsedLabel="Why?" expandedLabel="Hide why" emoji="⚡">
+                  <Body muted>{localized(language, food.reason_en ?? "", food.reason_ne)}</Body>
+                </DetailDisclosure>
               </View>
             ))}
           </View>
@@ -534,7 +556,7 @@ export default function Home() {
                 <>
                   <Pill tone="accent">Premium step</Pill>
                   <Body>{step.action}</Body>
-                  <Body muted>Unlock the full routine so lifestyle, weather, water, and product logic can adjust every step.</Body>
+                  <Body muted>Unlock optional add-ons, not a huge daily routine.</Body>
                   <Button label="Unlock full routine" onPress={() => router.push("/paywall" as never)} secondary />
                 </>
               ) : (
@@ -544,7 +566,9 @@ export default function Home() {
                     <Body muted>{todayCheckIn.completedStepIds.includes(step.id) ? "Completed" : "Tap when completed"}</Body>
                   </View>
                   <Button label={`${todayCheckIn.completedStepIds.includes(step.id) ? "Done: " : ""}${step.action}`} onPress={() => toggleCompletion(step.id)} secondary={!todayCheckIn.completedStepIds.includes(step.id)} />
-                  <Body muted>{step.instruction[language]}</Body>
+                  <DetailDisclosure collapsedLabel="How to do it" expandedLabel="Hide how" emoji="✨">
+                    <Body muted>{step.instruction[language]}</Body>
+                  </DetailDisclosure>
                   {step.durationSeconds ? <Pill tone="primary">{step.durationSeconds}s</Pill> : null}
                 </>
               )}
