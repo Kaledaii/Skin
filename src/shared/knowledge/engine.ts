@@ -45,6 +45,13 @@ const fallbackProfile: QuizProfile = {
     uses_toner: "no",
     uses_makeup_daily: "sometimes",
     removes_makeup_before_bed: "sometimes"
+  },
+  cycle: {
+    periodTiming: "prefer_not_to_say",
+    periodsRegular: "prefer_not_to_say",
+    cycleBreakouts: "none",
+    cycleSkinChange: "no_change",
+    painfulDeepAcne: "no"
   }
 };
 
@@ -219,6 +226,10 @@ function scoreCondition(condition: KnowledgeCondition, profile: QuizProfile): Co
     score += 1;
     reasons.push("Diet pattern: vegetarian users may need protein, iron, zinc, and B12-style support");
   }
+  if ((profile.cycle?.cycleBreakouts === "moderate" || profile.cycle?.cycleBreakouts === "severe" || profile.cycle?.painfulDeepAcne === "yes") && ["C001", "C011", "C012", "C014"].includes(condition.id)) {
+    score += profile.cycle?.cycleBreakouts === "severe" || profile.cycle?.painfulDeepAcne === "yes" ? 2 : 1;
+    reasons.push("Cycle signal: period-linked breakouts can flare with hormone changes");
+  }
 
   if (condition.id === "C015" && profile.ageGroup === "18_24" && !hasStrongPrematureAgingSignal(profile)) {
     return { condition, score: 0, reasons: ["Premature aging held back: no strong aging signal for this age group"] };
@@ -329,6 +340,59 @@ function buildContextualRoutine(profile: QuizProfile): { morning: GeneratedStep[
         ne: "Sutnu aghi 5 slow breaths garnuhos ra routine simple rakhnu. Stress le pimple, itch, dullness ra under-eye puffiness badhauna sakcha."
       }
     });
+  }
+
+  if (profile.cycle && profile.cycle.periodTiming !== "not_applicable" && profile.cycle.periodTiming !== "prefer_not_to_say") {
+    if (profile.cycle.cycleBreakouts === "moderate" || profile.cycle.cycleBreakouts === "severe" || profile.cycle.painfulDeepAcne === "yes" || profile.cycle.painfulDeepAcne === "sometimes") {
+      evening.push({
+        id: "cycle-breakout-reset",
+        action: "Cycle breakout reset",
+        instruction: {
+          en: "Around your period, keep the routine boring: gentle cleanse, moisturizer, SPF, and spot care only on active pimples. Do not scrub or pick.",
+          ne: "Period tira routine simple rakhnu: gentle cleanse, moisturizer, SPF, active pimple ma matra spot care. Scrub/pick nagarnu."
+        }
+      });
+      weekly.push({
+        id: "cycle-pimple-patch",
+        action: "Pimple patch support",
+        instruction: {
+          en: "Use hydrocolloid patches on whiteheads to reduce picking. Painful deep acne or scarring needs clinician advice.",
+          ne: "whitehead ma hydrocolloid patch use garna sakincha picking kam garna. Painful deep acne/scarring bhaye clinician advice."
+        },
+        frequency: "During flare"
+      });
+    }
+    if (profile.cycle.cycleSkinChange === "oilier") {
+      morning.push({
+        id: "cycle-oil-balance",
+        action: "Light oil-balance care",
+        instruction: {
+          en: "If skin feels oilier around your period, use a light non-comedogenic moisturizer and avoid heavy oils on acne-prone zones.",
+          ne: "period tira oily lage light non-comedogenic moisturizer use garnu, acne-prone zone ma heavy oil avoid garnu."
+        }
+      });
+    }
+    if (profile.cycle.cycleSkinChange === "drier" || profile.cycle.cycleSkinChange === "sensitive") {
+      evening.push({
+        id: "cycle-barrier-care",
+        action: "Cycle barrier care",
+        instruction: {
+          en: "If skin feels dry or sensitive during this cycle, pause harsh actives and focus on moisturizer, SPF, sleep, and water.",
+          ne: "cycle ma dry/sensitive lage harsh actives roknu; moisturizer, SPF, sleep, pani ma focus garnu."
+        }
+      });
+    }
+    if (profile.cycle.periodsRegular === "irregular" && (profile.cycle.cycleBreakouts === "severe" || profile.cycle.painfulDeepAcne === "yes")) {
+      weekly.push({
+        id: "cycle-clinician-note",
+        action: "Clinician check note",
+        instruction: {
+          en: "Irregular periods with painful deep acne should be discussed with a qualified clinician. This app gives skincare support, not hormone diagnosis.",
+          ne: "irregular period ra painful deep acne bhaye qualified clinician sanga kura garnu. App skincare support ho, hormone diagnosis hoina."
+        },
+        frequency: "Safety"
+      });
+    }
   }
 
   if (profile.lifestyle.exercise === "none") {
@@ -827,12 +891,40 @@ function buildDailyMicroTips(profile: QuizProfile, matches: ConditionMatch[], wa
   if (profile.lifestyle.junk_food_frequency === "high" || profile.lifestyle.junk_food_frequency === "very_high") {
     tips.push({ id: "junk-swap", tag: "food", text: { en: "High junk food week? Reduce cold drinks or maida first, not everything at once.", ne: "junk food high? sabai ekai choti haina, pahile cold drinks wa maida kam garnu." } });
   }
+  const cycleTips = buildCycleMicroTips(profile);
+  tips.push(...cycleTips);
   if (profile.lifestyle.screen_time_hours === "more_than_6") {
     tips.push({ id: "phone-clean", tag: "screen", text: { en: "Wipe your phone tonight; cheek acne can be phone-touch related.", ne: "aaja phone wipe garnu; cheek acne phone-touch related huna sakcha." } });
   }
   tips.push({ id: waterTip.id, tag: "water", text: { en: waterTip.tips.en[0], ne: waterTip.tips.ne[0] } });
 
   return tips.length > 0 ? tips : [{ id: waterTip.id, tag: "water", text: { en: waterTip.tips.en[0], ne: waterTip.tips.ne[0] } }];
+}
+
+function buildCycleMicroTips(profile: QuizProfile): DailyMicroTip[] {
+  const cycle = profile.cycle;
+  if (!cycle || cycle.periodTiming === "not_applicable" || cycle.periodTiming === "prefer_not_to_say") return [];
+  const tips: DailyMicroTip[] = [];
+  if (cycle.cycleBreakouts === "moderate" || cycle.cycleBreakouts === "severe" || cycle.painfulDeepAcne === "yes" || cycle.painfulDeepAcne === "sometimes") {
+    tips.push({
+      id: "cycle-breakout-gentle",
+      tag: "cycle",
+      text: {
+        en: "Period-linked breakout? Keep cleanser gentle, do not scrub or pick, and use spot care only on active pimples.",
+        ne: "period sanga pimple badhcha? cleanser gentle rakhnu, scrub/pick nagarnu, active pimple ma matra spot care."
+      }
+    });
+  }
+  if (cycle.cycleSkinChange === "oilier") {
+    tips.push({ id: "cycle-oil", tag: "cycle", text: { en: "Oilier around your period? Keep moisturizer light, cleanse gently twice, and avoid adding many new products.", ne: "period tira oily huncha? light moisturizer, gentle cleanse twice, dherai naya product nathapnu." } });
+  }
+  if (cycle.cycleSkinChange === "drier" || cycle.cycleSkinChange === "sensitive") {
+    tips.push({ id: "cycle-barrier", tag: "cycle", text: { en: "Sensitive or dry this cycle? Pause harsh actives and protect the barrier with moisturizer and SPF.", ne: "cycle ma sensitive/dry? harsh actives roknu, moisturizer ra SPF le barrier protect garnu." } });
+  }
+  if (cycle.periodsRegular === "irregular" && (cycle.cycleBreakouts === "severe" || cycle.painfulDeepAcne === "yes")) {
+    tips.push({ id: "cycle-doctor", tag: "safety", text: { en: "Irregular periods plus painful deep acne deserves clinician advice. The app can guide habits, not diagnose hormones.", ne: "irregular period ra painful deep acne bhaye clinician sanga kura garnu. App le habit guide garcha, hormone diagnose gardaina." } });
+  }
+  return tips;
 }
 
 function normalizeAction(action: string) {

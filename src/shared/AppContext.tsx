@@ -25,7 +25,7 @@ import {
   uploadPaymentScreenshot
 } from "./services/firebaseSync";
 import { addAdminAction, getCurrentAuthEmail } from "./services/firebaseSync";
-import { AppReview, BudgetTier, DailyCheckIn, Language, NotificationPreferences, PaymentProvider, PaymentRequest, PaymentState, SkinType, SubscriptionInfo, SubscriptionPlanId, SubscriptionTier, ThemeMode, UserProfile } from "./types";
+import { AppReview, BudgetTier, DailyCheckIn, Gender, Language, NotificationPreferences, PaymentProvider, PaymentRequest, PaymentState, ProfileAddOnStatus, QuizReview, SkinType, SubscriptionInfo, SubscriptionPlanId, SubscriptionTier, ThemeMode, UserProfile } from "./types";
 
 type AppState = {
   language: Language;
@@ -51,9 +51,16 @@ type AppState = {
   signInWithGoogle: () => Promise<AuthResult>;
   submitReview: (input: { rating: AppReview["rating"]; experience: string }) => Promise<string>;
   profile: UserProfile;
+  profiles: Record<string, UserProfile>;
+  activeProfileId: string;
   updateProfile: (patch: Partial<UserProfile>) => void;
-  updateQuiz: (section: "lifestyle" | "environment" | "currentRoutine", key: string, value: string) => void;
+  updateQuiz: (section: "lifestyle" | "environment" | "currentRoutine" | "cycle", key: string, value: string) => void;
   toggleQuizArray: (key: "symptoms" | "primaryConcerns", value: string) => void;
+  switchProfile: (profileId: string) => void;
+  addProfile: () => string;
+  activateProfileAddOn: (profileId: string) => void;
+  dueQuizReviewDay: 15 | 30 | null;
+  submitQuizReview: (review: Omit<QuizReview, "id" | "createdAt">) => void;
   completion: Record<string, boolean>;
   toggleCompletion: (id: string) => void;
   likedTipIds: string[];
@@ -76,6 +83,7 @@ type AppState = {
 };
 
 const defaultProfile: UserProfile = {
+  profileId: "primary",
   name: "",  // Will be set by user in onboarding
   age: "",
   gender: "female",
@@ -87,7 +95,9 @@ const defaultProfile: UserProfile = {
   budgetTier: "200to500",
   symptoms: [],
   quiz: getDefaultQuizProfile(),
-  consentAccepted: false
+  consentAccepted: false,
+  addOnStatus: "included",
+  quizReviews: []
 };
 
 export const defaultNotificationPreferences: NotificationPreferences = {
@@ -109,14 +119,19 @@ export function AppProvider({ children }: PropsWithChildren) {
   const [paymentState, setPaymentState] = useState<PaymentState>("idle");
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
   const [profile, setProfile] = useState<UserProfile>(defaultProfile);
+  const [profiles, setProfiles] = useState<Record<string, UserProfile>>({ primary: defaultProfile });
+  const [activeProfileId, setActiveProfileId] = useState("primary");
   const [completion, setCompletion] = useState<Record<string, boolean>>({});
   const [likedTipIds, setLikedTipIds] = useState<string[]>([]);
   const [savedTipIds, setSavedTipIds] = useState<string[]>([]);
   const [savedProductIds, setSavedProductIds] = useState<string[]>([]);
-  const [dailyCheckIns, setDailyCheckIns] = useState<Record<string, DailyCheckIn>>({});
+  const [profileSavedProductIds, setProfileSavedProductIds] = useState<Record<string, string[]>>({ primary: [] });
+  const [profileDailyCheckIns, setProfileDailyCheckIns] = useState<Record<string, Record<string, DailyCheckIn>>>({ primary: {} });
   const [today, setToday] = useState(getTodayKey);
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>(defaultNotificationPreferences);
+  const dailyCheckIns = profileDailyCheckIns[activeProfileId] ?? {};
   const todayCheckIn = dailyCheckIns[today] ?? createDefaultCheckIn(today, profile);
+  const dueQuizReviewDay = getDueQuizReviewDay(profile);
 
   useEffect(() => {
     // Initialize monitoring (Sentry) if configured
@@ -124,24 +139,38 @@ export function AppProvider({ children }: PropsWithChildren) {
     // Load from local storage first (cached data)
     AsyncStorage.getItem("skin-nepal-state").then((raw) => {
       if (!raw) return;
-      const parsed = JSON.parse(raw) as Partial<Pick<AppState, "language" | "themeMode" | "tier" | "profile" | "completion" | "subscription">>;
+      const parsed = JSON.parse(raw) as Partial<Pick<AppState, "language" | "themeMode" | "tier" | "profile" | "completion" | "subscription">> & {
+        profiles?: Record<string, UserProfile>;
+        activeProfileId?: string;
+        profileDailyCheckIns?: Record<string, Record<string, DailyCheckIn>>;
+        profileSavedProductIds?: Record<string, string[]>;
+      };
       if (parsed.language) setLanguageState(parsed.language);
       if (parsed.themeMode) setThemeModeState(parsed.themeMode);
       if (parsed.tier) setTierState(parsed.tier);
       if (parsed.subscription) setSubscription(parsed.subscription);
-      if (parsed.profile) {
-        const nextProfile = { ...defaultProfile, ...parsed.profile };
-        // Skip legacy seed logic since defaultProfile no longer has "Asha"
-        setProfile(nextProfile);
+      const migratedProfiles = migrateProfiles(parsed.profiles, parsed.profile);
+      const nextActiveProfileId = parsed.activeProfileId && migratedProfiles[parsed.activeProfileId] ? parsed.activeProfileId : Object.keys(migratedProfiles)[0] ?? "primary";
+      setProfiles(migratedProfiles);
+      setActiveProfileId(nextActiveProfileId);
+      setProfile(migratedProfiles[nextActiveProfileId] ?? defaultProfile);
+      if (parsed.profileDailyCheckIns) {
+        setProfileDailyCheckIns(parsed.profileDailyCheckIns);
       }
       if (parsed.completion) setCompletion(parsed.completion);
       const parsedState = JSON.parse(raw) as { likedTipIds?: string[]; savedTipIds?: string[]; savedProductIds?: string[]; notificationPreferences?: NotificationPreferences };
       if (parsedState.likedTipIds) setLikedTipIds(parsedState.likedTipIds);
       if (parsedState.savedTipIds) setSavedTipIds(parsedState.savedTipIds);
-      if (parsedState.savedProductIds) setSavedProductIds(parsedState.savedProductIds);
+      if (parsed.profileSavedProductIds) {
+        setProfileSavedProductIds(parsed.profileSavedProductIds);
+        setSavedProductIds(parsed.profileSavedProductIds[nextActiveProfileId] ?? []);
+      } else if (parsedState.savedProductIds) {
+        setSavedProductIds(parsedState.savedProductIds);
+        setProfileSavedProductIds({ [nextActiveProfileId]: parsedState.savedProductIds });
+      }
       if (parsedState.notificationPreferences) setNotificationPreferences({ ...defaultNotificationPreferences, ...parsedState.notificationPreferences });
       const checkInState = JSON.parse(raw) as { dailyCheckIns?: Record<string, DailyCheckIn> };
-      if (checkInState.dailyCheckIns) setDailyCheckIns(checkInState.dailyCheckIns);
+      if (checkInState.dailyCheckIns && !parsed.profileDailyCheckIns) setProfileDailyCheckIns({ [nextActiveProfileId]: checkInState.dailyCheckIns });
       const paymentState = JSON.parse(raw) as { paymentState?: PaymentState; paymentRequests?: PaymentRequest[] };
       if (paymentState.paymentState) setPaymentState(paymentState.paymentState);
       if (paymentState.paymentRequests) setPaymentRequests(paymentState.paymentRequests);
@@ -150,8 +179,8 @@ export function AppProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     // Save state to local storage (cache backup)
-    AsyncStorage.setItem("skin-nepal-state", JSON.stringify({ language, themeMode, tier, subscription, paymentState, paymentRequests, profile, completion, likedTipIds, savedTipIds, savedProductIds, dailyCheckIns, notificationPreferences })).catch(() => undefined);
-  }, [language, themeMode, tier, subscription, paymentState, paymentRequests, profile, completion, likedTipIds, savedTipIds, savedProductIds, dailyCheckIns, notificationPreferences]);
+    AsyncStorage.setItem("skin-nepal-state", JSON.stringify({ language, themeMode, tier, subscription, paymentState, paymentRequests, profile, profiles, activeProfileId, completion, likedTipIds, savedTipIds, savedProductIds, profileSavedProductIds, dailyCheckIns, profileDailyCheckIns, notificationPreferences })).catch(() => undefined);
+  }, [language, themeMode, tier, subscription, paymentState, paymentRequests, profile, profiles, activeProfileId, completion, likedTipIds, savedTipIds, savedProductIds, profileSavedProductIds, dailyCheckIns, profileDailyCheckIns, notificationPreferences]);
 
   useEffect(() => {
     const ensureToday = () => {
@@ -164,8 +193,12 @@ export function AppProvider({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
-    setDailyCheckIns((current) => (current[today] ? current : { ...current, [today]: createDefaultCheckIn(today, profile) }));
-  }, [profile, today]);
+    setProfileDailyCheckIns((current) => {
+      const activeCheckIns = current[activeProfileId] ?? {};
+      if (activeCheckIns[today]) return current;
+      return { ...current, [activeProfileId]: { ...activeCheckIns, [today]: createDefaultCheckIn(today, profile) } };
+    });
+  }, [activeProfileId, profile, today]);
 
   useEffect(() => {
     // Initialize Firebase authentication and load remote data
@@ -184,11 +217,13 @@ export function AppProvider({ children }: PropsWithChildren) {
         }
         // Load profile if exists
         if (remoteProfile && remoteProfile.name) {
-          setProfile(remoteProfile);
+          const normalized = normalizeProfile(remoteProfile, activeProfileId, "included");
+          setProfile(normalized);
+          setProfiles((current) => ({ ...current, [normalized.profileId ?? activeProfileId]: normalized }));
         }
         // Load check-ins if exist
         if (remoteCheckIns && Object.keys(remoteCheckIns).length > 0) {
-          setDailyCheckIns(remoteCheckIns);
+          setProfileDailyCheckIns((current) => ({ ...current, [activeProfileId]: remoteCheckIns }));
         }
       })
       .catch(() => undefined);
@@ -200,15 +235,19 @@ export function AppProvider({ children }: PropsWithChildren) {
       if (profile.name) {  // Only sync if profile has been filled
         syncUserSnapshot({
           profile,
+          profiles,
+          activeProfileId,
           subscription,
           dailyCheckIns,
+          profileDailyCheckIns,
+          profileSavedProductIds,
           paymentRequests
         }).catch(() => undefined);
       }
     }, 5000);
 
     return () => clearTimeout(timeout);
-  }, [profile, subscription, dailyCheckIns, paymentRequests]);
+  }, [profile, profiles, activeProfileId, subscription, dailyCheckIns, profileDailyCheckIns, profileSavedProductIds, paymentRequests]);
 
   useEffect(() => {
     const pending = paymentRequests.filter((item) => item.status === "pending_review" || item.status === "approved");
@@ -324,7 +363,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       setPaymentRequests((current) => [savedRequest, ...current.filter((item) => item.id !== savedRequest.id)]);
       setPaymentState("pending_review");
       try {
-        await syncUserSnapshot({ profile, subscription: { ...subscription, paymentState: "pending_review" }, dailyCheckIns, paymentRequests: [savedRequest, ...paymentRequests] });
+        await syncUserSnapshot({ profile, profiles, activeProfileId, subscription: { ...subscription, paymentState: "pending_review" }, dailyCheckIns, profileDailyCheckIns, profileSavedProductIds, paymentRequests: [savedRequest, ...paymentRequests] });
       } catch {
         // Keep the local pending review record when cloud sync is unavailable.
       }
@@ -451,21 +490,33 @@ export function AppProvider({ children }: PropsWithChildren) {
       return result.message;
     },
     profile,
-    updateProfile: (patch) => setProfile((current) => ({ ...current, ...patch })),
-    updateQuiz: (section, key, optionValue) => setProfile((current) => ({
-      ...current,
-      quiz: {
-        ...current.quiz,
-        [section]: {
-          ...current.quiz[section],
-          [key]: optionValue
+    profiles,
+    activeProfileId,
+    updateProfile: (patch) => {
+      setProfile((current) => {
+        const next = normalizeProfile({ ...current, ...patch }, current.profileId ?? activeProfileId, current.addOnStatus ?? "included");
+        setProfiles((profileMap) => ({ ...profileMap, [next.profileId ?? activeProfileId]: next }));
+        return next;
+      });
+    },
+    updateQuiz: (section, key, optionValue) => setProfile((current) => {
+      const next = normalizeProfile({
+        ...current,
+        quiz: {
+          ...current.quiz,
+          [section]: {
+            ...current.quiz[section],
+            [key]: optionValue
+          }
         }
-      }
-    })),
+      }, current.profileId ?? activeProfileId, current.addOnStatus ?? "included");
+      setProfiles((profileMap) => ({ ...profileMap, [next.profileId ?? activeProfileId]: next }));
+      return next;
+    }),
     toggleQuizArray: (key, optionValue) => setProfile((current) => {
       const values = current.quiz[key];
       const nextValues = values.includes(optionValue) ? values.filter((item) => item !== optionValue) : [...values, optionValue];
-      return {
+      const next = {
         ...current,
         symptoms: key === "symptoms" ? nextValues : current.symptoms,
         quiz: {
@@ -473,35 +524,102 @@ export function AppProvider({ children }: PropsWithChildren) {
           [key]: nextValues
         }
       };
+      setProfiles((profileMap) => ({ ...profileMap, [next.profileId ?? activeProfileId]: normalizeProfile(next, next.profileId ?? activeProfileId, next.addOnStatus ?? "included") }));
+      return next;
     }),
+    switchProfile: (profileId) => {
+      const next = profiles[profileId];
+      if (!next) return;
+      setActiveProfileId(profileId);
+      setProfile(next);
+      setSavedProductIds(profileSavedProductIds[profileId] ?? []);
+    },
+    addProfile: () => {
+      const profileId = `profile_${Date.now()}`;
+      const next = normalizeProfile({
+        ...defaultProfile,
+        profileId,
+        name: "",
+        age: "",
+        gender: "female",
+        consentAccepted: false,
+        addOnStatus: "locked",
+        planStartedAt: undefined,
+        quizReviews: []
+      }, profileId, "locked");
+      setProfiles((current) => ({ ...current, [profileId]: next }));
+      setProfileDailyCheckIns((current) => ({ ...current, [profileId]: {} }));
+      setProfileSavedProductIds((current) => ({ ...current, [profileId]: [] }));
+      setActiveProfileId(profileId);
+      setProfile(next);
+      setSavedProductIds([]);
+      return profileId;
+    },
+    activateProfileAddOn: (profileId) => {
+      setProfiles((current) => {
+        const existing = current[profileId];
+        if (!existing) return current;
+        const next = normalizeProfile({ ...existing, addOnStatus: "active" }, profileId, "active");
+        if (profileId === activeProfileId) setProfile(next);
+        return { ...current, [profileId]: next };
+      });
+    },
+    dueQuizReviewDay,
+    submitQuizReview: (review) => {
+      setProfile((current) => {
+        const submitted: QuizReview = { ...review, id: `review_${review.day}_${Date.now()}`, createdAt: new Date().toISOString() };
+        const next = applyQuizReview(normalizeProfile(current, current.profileId ?? activeProfileId, current.addOnStatus ?? "included"), submitted);
+        setProfiles((profileMap) => ({ ...profileMap, [next.profileId ?? activeProfileId]: next }));
+        return next;
+      });
+    },
     completion,
-    toggleCompletion: (id) => setDailyCheckIns((current) => {
-      const checkIn = current[today] ?? createDefaultCheckIn(today, profile);
+    toggleCompletion: (id) => setProfileDailyCheckIns((current) => {
+      const activeCheckIns = current[activeProfileId] ?? {};
+      const checkIn = activeCheckIns[today] ?? createDefaultCheckIn(today, profile);
       const existing = checkIn.completedStepIds ?? [];
       const completedStepIds = existing.includes(id) ? existing.filter((item) => item !== id) : [...existing, id];
-      return { ...current, [today]: { ...checkIn, completedStepIds, date: today } };
+      return { ...current, [activeProfileId]: { ...activeCheckIns, [today]: { ...checkIn, completedStepIds, date: today } } };
     }),
     likedTipIds,
     savedTipIds,
     savedProductIds,
     dailyCheckIns,
     todayCheckIn,
-    updateTodayCheckIn: (patch) => setDailyCheckIns((current) => ({
-      ...current,
-      [today]: { ...(current[today] ?? createDefaultCheckIn(today, profile)), ...patch, date: today }
-    })),
+    updateTodayCheckIn: (patch) => setProfileDailyCheckIns((current) => {
+      const activeCheckIns = current[activeProfileId] ?? {};
+      return {
+        ...current,
+        [activeProfileId]: {
+          ...activeCheckIns,
+          [today]: { ...(activeCheckIns[today] ?? createDefaultCheckIn(today, profile)), ...patch, date: today }
+        }
+      };
+    }),
     notificationPreferences,
     updateNotificationPreferences: (patch) => setNotificationPreferences((current) => ({ ...current, ...patch })),
     toggleLikedTip: (id) => setLikedTipIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id])),
     toggleSavedTip: (id) => setSavedTipIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id])),
-    toggleSavedProduct: (id) => setSavedProductIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id])),
+    toggleSavedProduct: (id) => setSavedProductIds((current) => {
+      const next = current.includes(id) ? current.filter((item) => item !== id) : [...current, id];
+      setProfileSavedProductIds((profileMap) => ({ ...profileMap, [activeProfileId]: next }));
+      return next;
+    }),
     pickSelfie: async () => {
       const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.75 });
-      if (!result.canceled) setProfile((current) => ({ ...current, selfieUri: result.assets[0]?.uri }));
+      if (!result.canceled) setProfile((current) => {
+        const next = { ...current, selfieUri: result.assets[0]?.uri };
+        setProfiles((profileMap) => ({ ...profileMap, [next.profileId ?? activeProfileId]: normalizeProfile(next, next.profileId ?? activeProfileId, next.addOnStatus ?? "included") }));
+        return next;
+      });
     },
     pickSelfieFromLibrary: async () => {
       const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.75 });
-      if (!result.canceled) setProfile((current) => ({ ...current, selfieUri: result.assets[0]?.uri }));
+      if (!result.canceled) setProfile((current) => {
+        const next = { ...current, selfieUri: result.assets[0]?.uri };
+        setProfiles((profileMap) => ({ ...profileMap, [next.profileId ?? activeProfileId]: normalizeProfile(next, next.profileId ?? activeProfileId, next.addOnStatus ?? "included") }));
+        return next;
+      });
     },
     pickSelfieFromCamera: async () => {
       const permission = await ImagePicker.requestCameraPermissionsAsync();
@@ -510,9 +628,13 @@ export function AppProvider({ children }: PropsWithChildren) {
         return;
       }
       const result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.75, allowsEditing: false });
-      if (!result.canceled) setProfile((current) => ({ ...current, selfieUri: result.assets[0]?.uri }));
+      if (!result.canceled) setProfile((current) => {
+        const next = { ...current, selfieUri: result.assets[0]?.uri };
+        setProfiles((profileMap) => ({ ...profileMap, [next.profileId ?? activeProfileId]: normalizeProfile(next, next.profileId ?? activeProfileId, next.addOnStatus ?? "included") }));
+        return next;
+      });
     },
-    exportData: () => JSON.stringify({ language, themeMode, tier, subscription, paymentState, paymentRequests, profile, completion, likedTipIds, savedTipIds, savedProductIds, dailyCheckIns, notificationPreferences }, null, 2),
+    exportData: () => JSON.stringify({ language, themeMode, tier, subscription, paymentState, paymentRequests, profile, profiles, activeProfileId, completion, likedTipIds, savedTipIds, savedProductIds, profileSavedProductIds, dailyCheckIns, profileDailyCheckIns, notificationPreferences }, null, 2),
     deleteCloudData: async () => {
       const result = await deleteCloudSnapshot();
       return result.ok ? "Cloud data delete request completed." : "Cloud delete is unavailable in local demo mode.";
@@ -526,15 +648,18 @@ export function AppProvider({ children }: PropsWithChildren) {
       setPaymentState("idle");
       setPaymentRequests([]);
       setProfile(defaultProfile);
+      setProfiles({ primary: defaultProfile });
+      setActiveProfileId("primary");
       setCompletion({});
       setLikedTipIds([]);
       setSavedTipIds([]);
       setSavedProductIds([]);
-      setDailyCheckIns({});
+      setProfileSavedProductIds({ primary: [] });
+      setProfileDailyCheckIns({ primary: {} });
       setToday(getTodayKey());
       setNotificationPreferences(defaultNotificationPreferences);
     }
-  }), [completion, language, profile, themeMode, tier, subscription, paymentState, paymentRequests, likedTipIds, savedTipIds, savedProductIds, dailyCheckIns, notificationPreferences, today, todayCheckIn]);
+  }), [activeProfileId, completion, dueQuizReviewDay, language, profile, profiles, profileSavedProductIds, themeMode, tier, subscription, paymentState, paymentRequests, likedTipIds, savedTipIds, savedProductIds, dailyCheckIns, profileDailyCheckIns, notificationPreferences, today, todayCheckIn]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
@@ -547,6 +672,7 @@ export function useApp() {
 
 export const skinTypes: SkinType[] = ["oily", "dry", "combination", "sensitive"];
 export const budgetTiers: BudgetTier[] = ["under200", "200to500", "500plus"];
+export const genders: Gender[] = ["female", "male", "prefer_not_to_say"];
 
 function getTodayKey() {
   const date = new Date();
@@ -571,5 +697,79 @@ function createDefaultCheckIn(date: string, profile: UserProfile): DailyCheckIn 
     alcohol: false,
     weatherActionIds: [],
     selfieUri: profile.selfieUri
+  };
+}
+
+function migrateProfiles(savedProfiles?: Record<string, UserProfile>, legacyProfile?: UserProfile) {
+  const source = savedProfiles && Object.keys(savedProfiles).length > 0
+    ? savedProfiles
+    : { primary: legacyProfile ?? defaultProfile };
+  const entries = Object.entries(source).map(([id, item], index) => {
+    const status: ProfileAddOnStatus = index === 0 ? "included" : item.addOnStatus ?? "locked";
+    const profileId = item.profileId ?? id;
+    return [profileId, normalizeProfile(item, profileId, status)] as const;
+  });
+  return Object.fromEntries(entries.length ? entries : [["primary", defaultProfile]]);
+}
+
+function normalizeProfile(profile: UserProfile, profileId: string, addOnStatus: ProfileAddOnStatus): UserProfile {
+  const quiz = profile.quiz ?? getDefaultQuizProfile();
+  const defaultQuiz = getDefaultQuizProfile();
+  return {
+    ...defaultProfile,
+    ...profile,
+    profileId,
+    gender: normalizeGender(profile.gender),
+    addOnStatus,
+    quiz: {
+      ...defaultQuiz,
+      ...quiz,
+      lifestyle: { ...defaultQuiz.lifestyle, ...quiz.lifestyle },
+      environment: { ...defaultQuiz.environment, ...quiz.environment },
+      currentRoutine: { ...defaultQuiz.currentRoutine, ...quiz.currentRoutine },
+      cycle: { ...defaultQuiz.cycle, ...quiz.cycle }
+    },
+    quizReviews: profile.quizReviews ?? []
+  };
+}
+
+function normalizeGender(value: Gender | "nonbinary" | "preferNot" | undefined): Gender {
+  if (value === "male" || value === "female" || value === "prefer_not_to_say") return value;
+  return "prefer_not_to_say";
+}
+
+function getDueQuizReviewDay(profile: UserProfile): 15 | 30 | null {
+  if (!profile.planStartedAt || profile.addOnStatus === "locked") return null;
+  const started = new Date(profile.planStartedAt).getTime();
+  if (Number.isNaN(started)) return null;
+  const elapsedDays = Math.floor((Date.now() - started) / (24 * 60 * 60 * 1000));
+  const completed = new Set((profile.quizReviews ?? []).map((review) => review.day));
+  if (elapsedDays >= 30 && !completed.has(30)) return 30;
+  if (elapsedDays >= 15 && !completed.has(15)) return 15;
+  return null;
+}
+
+function applyQuizReview(profile: UserProfile, review: QuizReview): UserProfile {
+  const quiz = { ...profile.quiz, lifestyle: { ...profile.quiz.lifestyle }, currentRoutine: { ...profile.quiz.currentRoutine } };
+  if (review.routineFollowed === "no") {
+    quiz.currentRoutine.cleanses_twice = "no";
+    quiz.currentRoutine.uses_sunscreen = quiz.currentRoutine.uses_sunscreen === "yes" ? "sometimes" : quiz.currentRoutine.uses_sunscreen;
+  }
+  if (review.dietFollowed === "no") {
+    quiz.lifestyle.junk_food_frequency = quiz.lifestyle.junk_food_frequency === "high" ? "high" : "medium";
+  }
+  if (review.sideEffects === "dryness" || review.sideEffects === "burning") {
+    quiz.primaryConcerns = Array.from(new Set([...quiz.primaryConcerns, "sensitivity", "dryness"]));
+    quiz.symptoms = Array.from(new Set([...quiz.symptoms, review.sideEffects === "burning" ? "burning_sensation" : "dry_patches"]));
+  }
+  if (review.acneChange === "worse") {
+    quiz.primaryConcerns = Array.from(new Set([...quiz.primaryConcerns, "acne"]));
+    quiz.symptoms = Array.from(new Set([...quiz.symptoms, "cysts_painful"]));
+  }
+  return {
+    ...profile,
+    quiz,
+    lastReviewPromptAt: review.createdAt,
+    quizReviews: [...(profile.quizReviews ?? []).filter((item) => item.day !== review.day), review]
   };
 }

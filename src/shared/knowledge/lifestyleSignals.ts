@@ -78,6 +78,15 @@ export function buildLifestyleSignals(profile: UserProfile, checkIn?: DailyCheck
     );
   }
 
+  if (profile.gender === "female" && quiz.cycle?.periodTiming !== "not_applicable" && quiz.cycle?.periodTiming !== "prefer_not_to_say") {
+    if (quiz.cycle.cycleBreakouts === "moderate" || quiz.cycle.cycleBreakouts === "severe" || quiz.cycle.painfulDeepAcne === "yes" || quiz.cycle.painfulDeepAcne === "sometimes") {
+      signals.push(signal("cycle-breakouts", "advice", "calendar", "Cycle", "Period-linked breakouts noted", "Hormonal shifts around periods can trigger oil and acne. Keep care gentle, avoid scrubbing/picking, and use spot care only where needed."));
+    }
+    if (quiz.cycle.periodsRegular === "irregular" && (quiz.cycle.cycleBreakouts === "severe" || quiz.cycle.painfulDeepAcne === "yes")) {
+      signals.push(signal("cycle-safety", "warning", "alert-triangle", "Cycle safety", "Clinician advice recommended", "Irregular periods plus painful deep acne deserves qualified medical advice. Prabha can support habits, not diagnose hormones."));
+    }
+  }
+
   return signals.slice(0, 9);
 }
 

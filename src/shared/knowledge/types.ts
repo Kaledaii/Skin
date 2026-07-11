@@ -121,6 +121,13 @@ export type QuizProfile = {
   lifestyle: Record<string, string>;
   environment: Record<string, string>;
   currentRoutine: Record<string, string>;
+  cycle: {
+    periodTiming: string;
+    periodsRegular: string;
+    cycleBreakouts: string;
+    cycleSkinChange: string;
+    painfulDeepAcne: string;
+  };
 };
 
 export type ConditionMatch = {

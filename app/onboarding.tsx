@@ -3,13 +3,13 @@ import { router } from "expo-router";
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { budgetTiers, skinTypes, useApp } from "@/shared/AppContext";
+import { budgetTiers, genders, skinTypes, useApp } from "@/shared/AppContext";
 import { Body, Button, Card, H2, Pill, ProgressBar, Screen } from "@/shared/components";
 import { t } from "@/shared/i18n";
 import { humanize, knowledgeBase } from "@/shared/knowledge/engine";
 import { MarketingHero, marketingImages, PortraitGlowStrip } from "@/shared/marketingVisuals";
 import { palettes, spacing } from "@/shared/theme";
-import { BudgetTier, Language, SkinType } from "@/shared/types";
+import { BudgetTier, Gender, Language, SkinType } from "@/shared/types";
 
 const symptomsToShow = [
   "pimples_forehead",
@@ -49,13 +49,14 @@ export default function Onboarding() {
   const answeredCount =
     Number(Boolean(profile.name)) +
     Number(Boolean(profile.age)) +
+    Number(Boolean(profile.gender)) +
     Number(profile.quiz.primaryConcerns.length > 0) +
     Number(profile.quiz.symptoms.length > 0) +
     Number(Boolean(profile.quiz.lifestyle.diet)) +
     Number(Boolean(profile.quiz.lifestyle.junk_food_frequency)) +
     Number(Boolean(profile.quiz.environment.water_source)) +
     Number(Boolean(profile.quiz.currentRoutine.uses_sunscreen));
-  const quizPercent = Math.round((answeredCount / 8) * 100);
+  const quizPercent = Math.round((answeredCount / 9) * 100);
 
   return (
     <Screen>
@@ -113,13 +114,34 @@ export default function Onboarding() {
         <Card onLayout={(event) => { profileY.current = event.nativeEvent.layout.y; }}>
           <SectionHeader title={language === "en" ? "Profile" : "Profile"} subtitle={language === "en" ? "Basic details and fit" : "Basic details and fit"} />
           <SectionBody>
+            {profile.addOnStatus === "locked" ? (
+              <View style={[styles.lockedProfile, { borderColor: c.border, backgroundColor: c.surfaceAlt }]}>
+                <Pill tone="accent">Extra profile locked</Pill>
+                <Body muted>Activate this paid profile add-on in Settings before completing a separate quiz and routine.</Body>
+              </View>
+            ) : null}
             <TextInput value={profile.name} onChangeText={(name) => updateProfile({ name })} placeholder="Name" placeholderTextColor={c.muted} style={[styles.input, { borderColor: c.border, color: c.text }]} />
             <TextInput value={profile.age} onChangeText={(age) => updateProfile({ age })} keyboardType="number-pad" placeholder="Age" placeholderTextColor={c.muted} style={[styles.input, { borderColor: c.border, color: c.text }]} />
             <TextInput value={profile.location} onChangeText={(location) => updateProfile({ location })} placeholder="Location" placeholderTextColor={c.muted} style={[styles.input, { borderColor: c.border, color: c.text }]} />
+            <DropdownField label="Gender" value={profile.gender} options={genders} onChange={(gender) => updateProfile({ gender: gender as Gender })} />
             <DropdownField label="Skin type" value={profile.skinType} options={skinTypes} onChange={(skinType) => updateProfile({ skinType: skinType as SkinType })} />
             <DropdownField label="Budget" value={profile.budgetTier} options={budgetTiers} onChange={(budgetTier) => updateProfile({ budgetTier: budgetTier as BudgetTier })} />
           </SectionBody>
         </Card>
+
+        {profile.gender === "female" ? (
+          <Card>
+            <SectionHeader title="Cycle & skin" subtitle="Optional but useful for period-linked skin changes." />
+            <SectionBody>
+              <DropdownField label="Where are you in your cycle?" value={profile.quiz.cycle.periodTiming} options={["before_period", "during_period", "after_period", "mid_cycle", "not_sure", "prefer_not_to_say"]} onChange={(value) => updateQuiz("cycle", "periodTiming", value)} />
+              <DropdownField label="Are periods regular?" value={profile.quiz.cycle.periodsRegular} options={["regular", "irregular", "not_sure", "prefer_not_to_say"]} onChange={(value) => updateQuiz("cycle", "periodsRegular", value)} />
+              <DropdownField label="Breakouts around period" value={profile.quiz.cycle.cycleBreakouts} options={["none", "mild", "moderate", "severe"]} onChange={(value) => updateQuiz("cycle", "cycleBreakouts", value)} />
+              <DropdownField label="Skin change during cycle" value={profile.quiz.cycle.cycleSkinChange} options={["no_change", "oilier", "drier", "sensitive", "duller"]} onChange={(value) => updateQuiz("cycle", "cycleSkinChange", value)} />
+              <DropdownField label="Painful/deep acne" value={profile.quiz.cycle.painfulDeepAcne} options={["no", "sometimes", "yes"]} onChange={(value) => updateQuiz("cycle", "painfulDeepAcne", value)} />
+              <Body muted>Guidance only. Irregular periods with painful deep acne should be discussed with a qualified clinician.</Body>
+            </SectionBody>
+          </Card>
+        ) : null}
 
         <Card>
           <SectionHeader title={language === "en" ? "Symptoms" : "Symptoms"} subtitle={language === "en" ? "Multiple options can be selected." : "Multiple options select garna milcha."} />
@@ -249,12 +271,20 @@ export default function Onboarding() {
 
         <Button label={profile.consentAccepted ? t(language, "start") : "Accept consent to continue"} onPress={() => {
           // Comprehensive validation before allowing app entry
+          if (profile.addOnStatus === "locked") {
+            setValidationMessage(language === "en" ? "This extra profile is locked. Activate its paid add-on in Settings first." : "Yo extra profile locked cha. Settings ma paid add-on activate garnu hos.");
+            return;
+          }
           if (!profile.name || !profile.name.trim()) {
             setValidationMessage(language === "en" ? "Please enter your name." : "Aafno naam enter garnu hos.");
             return;
           }
           if (!profile.age || !profile.age.trim()) {
             setValidationMessage(language === "en" ? "Please enter your age." : "Aafno umar enter garnu hos.");
+            return;
+          }
+          if (!profile.gender) {
+            setValidationMessage(language === "en" ? "Please select gender." : "Gender select garnu hos.");
             return;
           }
           if (!profile.quiz.ageGroup) {
@@ -282,6 +312,7 @@ export default function Onboarding() {
             return;
           }
           setValidationMessage(null);
+          updateProfile({ planStartedAt: profile.planStartedAt ?? new Date().toISOString() });
           router.replace("/(tabs)/home");
         }} />
       </ScrollView>
@@ -403,6 +434,7 @@ const styles = StyleSheet.create({
   sectionBody: { gap: spacing.sm, marginTop: spacing.sm },
   flex: { flex: 1 },
   input: { borderWidth: 1, borderRadius: 8, minHeight: 46, paddingHorizontal: spacing.md, fontSize: 15 },
+  lockedProfile: { borderWidth: 1, borderRadius: 8, padding: spacing.md, gap: spacing.xs },
   iconRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   wrap: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
   selfieActions: { gap: spacing.xs },

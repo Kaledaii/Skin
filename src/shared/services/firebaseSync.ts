@@ -6,8 +6,12 @@ import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
 export type SyncPayload = {
   profile: UserProfile;
+  profiles?: Record<string, UserProfile>;
+  activeProfileId?: string;
   subscription: SubscriptionInfo;
   dailyCheckIns: Record<string, DailyCheckIn>;
+  profileDailyCheckIns?: Record<string, Record<string, DailyCheckIn>>;
+  profileSavedProductIds?: Record<string, string[]>;
   paymentRequests?: PaymentRequest[];
 };
 
@@ -76,7 +80,11 @@ export async function syncUserSnapshot(payload: SyncPayload) {
     const subscriptionToSave = existingPremiumActive && !localIsPremium ? existingSubscription : payload.subscription;
     const basePayload = {
       profile: payload.profile,
+      profiles: payload.profiles ?? { [payload.profile.profileId ?? "primary"]: payload.profile },
+      activeProfileId: payload.activeProfileId ?? payload.profile.profileId ?? "primary",
       dailyCheckIns: payload.dailyCheckIns,
+      profileDailyCheckIns: payload.profileDailyCheckIns,
+      profileSavedProductIds: payload.profileSavedProductIds,
       paymentRequests: payload.paymentRequests ?? [],
       updatedAt: serverTimestamp()
     };

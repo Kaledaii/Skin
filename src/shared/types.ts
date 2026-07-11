@@ -8,13 +8,29 @@ export type SubscriptionPlanId = "monthly" | "yearly" | "beta";
 export type PaymentState = "idle" | "pending" | "pending_review" | "verifying" | "active" | "failed" | "rejected" | "expired";
 export type PaymentRequestStatus = "pending_review" | "approved" | "rejected";
 export type SkinType = "oily" | "dry" | "combination" | "sensitive";
-export type Gender = "female" | "male" | "nonbinary" | "preferNot";
+export type Gender = "female" | "male" | "prefer_not_to_say";
 export type BudgetTier = "under200" | "200to500" | "500plus";
 export type SeasonMode = "summer" | "monsoon" | "dashain" | "winter";
+export type ProfileAddOnStatus = "included" | "locked" | "active";
+
+export type QuizReview = {
+  id: string;
+  day: 15 | 30;
+  createdAt: string;
+  acneChange?: "much_better" | "slightly_better" | "same" | "worse" | "not_applicable";
+  productsWorked: "yes" | "partly" | "no" | "not_used";
+  remediesWorked: "yes" | "partly" | "no" | "not_used";
+  dietFollowed: "yes" | "partly" | "no";
+  routineFollowed: "yes" | "partly" | "no";
+  sideEffects: "none" | "dryness" | "burning" | "more_breakouts" | "other";
+  rating: 1 | 2 | 3 | 4 | 5;
+  feedback: string;
+};
 
 export type QuizProfile = import("./knowledge/types").QuizProfile;
 
 export type UserProfile = {
+  profileId?: string;
   name: string;
   age: string;
   gender: Gender;
@@ -28,6 +44,10 @@ export type UserProfile = {
   quiz: QuizProfile;
   selfieUri?: string;
   consentAccepted: boolean;
+  addOnStatus?: ProfileAddOnStatus;
+  planStartedAt?: string;
+  lastReviewPromptAt?: string;
+  quizReviews?: QuizReview[];
 };
 
 export type SubscriptionInfo = {

@@ -23,6 +23,8 @@ export function buildTrustReasons(match: ConditionMatch, profile: QuizProfile) {
   if (profile.lifestyle.junk_food_frequency === "high" || profile.lifestyle.junk_food_frequency === "medium") reasons.add("Food: frequent sweet/maida/fried snacks can worsen acne or dullness for some users.");
   if (profile.lifestyle.smoking === "yes") reasons.add("Habit: smoking can slow healing and break collagen faster.");
   if (profile.lifestyle.alcohol === "yes") reasons.add("Habit: alcohol can dehydrate skin and worsen puffiness/redness.");
+  if (profile.cycle?.cycleBreakouts === "moderate" || profile.cycle?.cycleBreakouts === "severe") reasons.add("Cycle: hormonal changes around periods can contribute to breakouts, so the plan stays gentle and non-picking focused.");
+  if (profile.cycle?.periodsRegular === "irregular" && (profile.cycle?.painfulDeepAcne === "yes" || profile.cycle?.cycleBreakouts === "severe")) reasons.add("Safety: irregular periods with painful deep acne should be discussed with a qualified clinician.");
   return Array.from(reasons).slice(0, 8);
 }
 
