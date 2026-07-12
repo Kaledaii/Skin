@@ -25,6 +25,8 @@ type AdminSection = "overview" | "review" | "users" | "data" | "products" | "rev
 type ReviewFilter = "pending_review" | "approved" | "rejected" | "all";
 type AdminTone = "primary" | "secondary" | "accent" | "danger" | "success";
 
+const adminLogo = require("../assets/brand/prabha-icon-1024.png");
+
 const sections: Array<{ id: AdminSection; label: string; icon: ComponentProps<typeof Feather>["name"] }> = [
   { id: "overview", label: "Overview", icon: "grid" },
   { id: "review", label: "Review", icon: "credit-card" },
@@ -86,9 +88,9 @@ const adminFx = {
 };
 
 export default function AdminDashboard() {
-  const { themeMode, paymentRequests, refreshPaymentRequests, approvePaymentRequest, rejectPaymentRequest, signInWithEmail } = useApp();
-  const c = palettes[themeMode];
-  const adminSidebar = getAdminSidebarPalette(themeMode);
+  const { themeMode, setThemeMode, paymentRequests, refreshPaymentRequests, approvePaymentRequest, rejectPaymentRequest, signInWithEmail } = useApp();
+  const c = palettes.dark;
+  const adminSidebar = getAdminSidebarPalette("dark");
   const [reducedMotion, setReducedMotion] = useState(false);
   const [section, setSection] = useState<AdminSection>("overview");
   const [status, setStatus] = useState<string | null>(null);
@@ -137,6 +139,10 @@ export default function AdminDashboard() {
   useEffect(() => {
     refreshAdminAccess().catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    if (themeMode !== "dark") setThemeMode("dark");
+  }, [setThemeMode, themeMode]);
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReducedMotion).catch(() => setReducedMotion(false));
@@ -203,7 +209,7 @@ export default function AdminDashboard() {
         <View style={[styles.sidebar, { backgroundColor: adminSidebar.bg, borderColor: adminSidebar.border }]}>
           <View style={styles.brandConsole}>
             <View style={styles.brandOrb}>
-              <Feather name="command" color={adminFx.bg} size={22} />
+              <Image source={adminLogo} style={styles.brandLogoImage} resizeMode="cover" />
             </View>
             <View style={styles.flex}>
               <Text style={[styles.sidebarTitle, { color: adminSidebar.title }]}>Prabha Admin</Text>
@@ -1021,7 +1027,7 @@ function getAdminSidebarPalette(themeMode: "light" | "dark") {
 }
 
 const styles = StyleSheet.create({
-  adminStage: { flex: 1, backgroundColor: adminFx.bg, overflow: "hidden" },
+  adminStage: { flex: 1, margin: -spacing.md, backgroundColor: adminFx.bg, overflow: "hidden" },
   adminWash: { position: "absolute", width: 430, height: 430, borderRadius: 215, opacity: 0.22 },
   adminWashOne: { top: -150, right: -120, backgroundColor: adminFx.rose },
   adminWashTwo: { bottom: -170, left: "22%", backgroundColor: adminFx.gold },
@@ -1030,6 +1036,7 @@ const styles = StyleSheet.create({
   sidebar: { width: 260, borderRightWidth: 1, padding: spacing.md, gap: spacing.md, shadowColor: "#000", shadowOpacity: 0.38, shadowRadius: 28, shadowOffset: { width: 8, height: 0 } },
   brandConsole: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingBottom: spacing.sm, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.08)" },
   brandOrb: { width: 48, height: 48, borderRadius: 16, backgroundColor: adminFx.gold, alignItems: "center", justifyContent: "center", shadowColor: adminFx.gold, shadowOpacity: 0.48, shadowRadius: 18, shadowOffset: { width: 0, height: 8 } },
+  brandLogoImage: { width: 42, height: 42, borderRadius: 13 },
   sidebarTitle: { fontSize: 22, lineHeight: 28, fontWeight: "900", fontFamily: "Georgia" },
   sidebarSubtitle: { fontSize: 14, lineHeight: 20, fontWeight: "700" },
   sidebarStatusStack: { gap: spacing.xs },

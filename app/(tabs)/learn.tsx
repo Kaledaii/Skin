@@ -7,7 +7,7 @@ import { Body, BrandMark, Button, Card, DetailDisclosure, FloatingBadge, H1, H2,
 import { ErrorBoundary } from "@/shared/ErrorBoundary";
 import { getAllArticles, getRecommendedArticles, getSeasonalCalendar } from "@/shared/knowledge/content";
 import { ContentArticle } from "@/shared/knowledge/contentTypes";
-import { dailyHabitTips, glossaryTerms, nutrientGuides } from "@/shared/knowledge/education";
+import { glossaryTerms, nutrientGuides } from "@/shared/knowledge/education";
 import { generateRoutine } from "@/shared/knowledge/engine";
 import { calculateSkinHabitScore } from "@/shared/knowledge/tracking";
 import { ImagePromoCard, marketingImages } from "@/shared/marketingVisuals";
@@ -81,23 +81,6 @@ export default function Learn() {
           <DetailDisclosure collapsedLabel="Why this score?" expandedLabel="Hide score detail" emoji="📈">
             <Body muted>{habitScore.reasons.slice(0, 2).join(" ")}</Body>
           </DetailDisclosure>
-        </Card>
-
-        <Card>
-          <H2>Daily healthy habits</H2>
-          {dailyHabitTips.map((tip) => (
-            <View key={tip.id} style={[styles.infoTile, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
-              <View style={styles.row}>
-                <Pill tone="accent">{tip.tags[0]}</Pill>
-                <Feather name="check-circle" color={c.secondary} size={18} />
-              </View>
-              <H2>{visualCueForText(tip.title, tip.why, tip.how)} {tip.title}</H2>
-              <Body>{tip.why}</Body>
-              <DetailDisclosure collapsedLabel="How to do it" expandedLabel="Hide habit detail" emoji="✨">
-                <Body muted>{tip.how}</Body>
-              </DetailDisclosure>
-            </View>
-          ))}
         </Card>
 
         <Card>
