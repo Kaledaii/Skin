@@ -1,12 +1,14 @@
 import ReactNativeAsyncStorage from "@react-native-async-storage/async-storage";
 import type { FirebaseApp } from "firebase/app";
 import { getApps, initializeApp } from "firebase/app";
-import type { Auth, Persistence } from "firebase/auth";
+import type { Auth } from "firebase/auth";
 import * as FirebaseAuth from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getRemoteConfig } from "firebase/remote-config";
 import { getStorage } from "firebase/storage";
 import { Platform } from "react-native";
+
+declare const require: (moduleName: string) => any;
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -34,11 +36,14 @@ export function getFirebase() {
 function getFirebaseAuth(app: FirebaseApp): Auth {
   if (Platform.OS === "web") return FirebaseAuth.getAuth(app);
   try {
-    const getReactNativePersistence = (FirebaseAuth as typeof FirebaseAuth & {
-      getReactNativePersistence?: (storage: typeof ReactNativeAsyncStorage) => Persistence;
-    }).getReactNativePersistence;
-    if (!getReactNativePersistence) return FirebaseAuth.initializeAuth(app);
-    return FirebaseAuth.initializeAuth(app, { persistence: getReactNativePersistence(ReactNativeAsyncStorage) });
+    const rnAuth = require("@firebase/auth") as {
+      initializeAuth?: typeof FirebaseAuth.initializeAuth;
+      getReactNativePersistence?: (storage: typeof ReactNativeAsyncStorage) => unknown;
+    };
+    const initializeAuth = rnAuth.initializeAuth ?? FirebaseAuth.initializeAuth;
+    const getReactNativePersistence = rnAuth.getReactNativePersistence;
+    if (!getReactNativePersistence) return FirebaseAuth.getAuth(app);
+    return initializeAuth(app, { persistence: getReactNativePersistence(ReactNativeAsyncStorage) as never });
   } catch {
     return FirebaseAuth.getAuth(app);
   }

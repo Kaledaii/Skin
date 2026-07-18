@@ -164,6 +164,8 @@ export type AdminProduct = Product & {
 
 export type AdminUserSummary = {
   id: string;
+  email?: string | null;
+  recoveryPhone?: string;
   name?: string;
   location?: string;
   skinType?: SkinType;

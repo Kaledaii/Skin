@@ -31,3 +31,4 @@ docs/prabha_skincare_source_code_package.json
 
 expo-env.d.ts
 # @end expo-cli
+functions/.env*

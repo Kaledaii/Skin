@@ -425,7 +425,7 @@ export default function Home() {
               <Feather name="check-circle" color={c.secondary} size={22} />
               <H2>Daily healthy habits</H2>
             </View>
-            <Button label="View all" onPress={() => router.push("/(tabs)/learn" as never)} secondary />
+            <Button label="View all" onPress={() => router.push("/(tabs)/tips" as never)} secondary />
           </View>
           <Body muted>Small Nepal-friendly habits that support the routine you are completing today.</Body>
           {dailyHabitTips.slice(0, 3).map((tip) => (

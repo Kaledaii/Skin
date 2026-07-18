@@ -18,12 +18,6 @@ export default function Settings() {
     tier,
     subscription,
     loadSubscription,
-    profile,
-    profiles,
-    activeProfileId,
-    switchProfile,
-    addProfile,
-    activateProfileAddOn,
     authUser,
     authStatus,
     recoveryPhone,
@@ -58,7 +52,7 @@ export default function Settings() {
 
         <Card>
           <H2>Account</H2>
-          <Body muted>Your email account protects premium, quiz answers, profiles, progress, and payment history after reinstall.</Body>
+          <Body muted>Your email account protects premium, quiz answers, progress, and payment history after reinstall.</Body>
           <Pill tone={authUser?.email ? "secondary" : "danger"}>{authUser?.email ? "Signed in" : "Email login required"}</Pill>
           <Body>Email: {authUser?.email ?? "Not signed in"}</Body>
           <Body muted>Recovery phone: {recoveryPhone || "Add it on the login screen or next payment."}</Body>
@@ -68,41 +62,6 @@ export default function Settings() {
           </View>
           <Body muted>Paid but premium missing? Contact support with your account email, payment phone, transaction ID, and screenshot.</Body>
           {accountStatus || authStatus ? <Body>{accountStatus ?? authStatus}</Body> : null}
-        </Card>
-
-        <Card>
-          <H2>Profiles</H2>
-          <Body muted>Each person gets separate quiz answers, recommendations, progress logs, and follow-up reviews.</Body>
-          <Pill tone={profile.addOnStatus === "locked" ? "accent" : "secondary"}>{profile.addOnStatus === "locked" ? "Current profile locked" : `Current: ${profile.name || "New profile"}`}</Pill>
-          <View style={styles.profileList}>
-            {Object.values(profiles).map((item) => {
-              const active = item.profileId === activeProfileId;
-              const locked = item.addOnStatus === "locked";
-              return (
-                <View key={item.profileId} style={[styles.profileRow, { borderColor: active ? c.borderStrong : c.border, backgroundColor: active ? c.primarySoft : c.surfaceAlt }]}>
-                  <View style={styles.profileCopy}>
-                    <Body>{item.name || "New profile"}</Body>
-                    <Body muted>{locked ? "Paid add-on required" : `${item.gender.replace(/_/g, " ")} - ${item.skinType}`}</Body>
-                  </View>
-                  <View style={styles.profileActions}>
-                    <Button label={active ? "Active" : "Switch"} onPress={() => switchProfile(item.profileId ?? "primary")} secondary />
-                    {locked ? <Button label="Activate add-on" onPress={() => {
-                      activateProfileAddOn(item.profileId ?? "primary");
-                      router.push("/onboarding" as never);
-                    }} secondary /> : null}
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-          <Button
-            label="Add paid profile"
-            onPress={() => {
-              addProfile();
-            }}
-            secondary
-          />
-          <Body muted>New profiles start locked. Activate the paid add-on, then open onboarding to fill that person's quiz.</Body>
         </Card>
 
         <Card>
@@ -206,10 +165,6 @@ export default function Settings() {
 const styles = StyleSheet.create({
   content: { gap: spacing.md, paddingBottom: spacing.xl },
   notificationGrid: { gap: spacing.xs },
-  profileList: { gap: spacing.xs },
-  profileRow: { borderWidth: 1, borderRadius: 8, padding: spacing.sm, gap: spacing.xs },
-  profileCopy: { gap: 2 },
-  profileActions: { gap: spacing.xs },
   starRow: { flexDirection: "row", gap: spacing.xs, flexWrap: "wrap" },
   starButton: {
     width: 46,

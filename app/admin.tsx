@@ -3,7 +3,7 @@ import type { ComponentProps, PropsWithChildren } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AccessibilityInfo, Animated, Easing, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, ViewStyle } from "react-native";
 import { budgetTiers, skinTypes, useApp } from "@/shared/AppContext";
-import { Body, Button, H1, H2, Pill, Screen, SectionLabel, Segment } from "@/shared/components";
+import { Button, Pill, Screen, Segment } from "@/shared/components";
 import { firebaseReady } from "@/shared/services/firebase";
 import {
   archiveAdminProduct,
@@ -73,12 +73,12 @@ const emptyProductForm = {
 const adminFx = {
   bg: "#100A0D",
   bg2: "#1B0F17",
-  panel: "rgba(34, 20, 28, 0.92)",
-  panel2: "rgba(49, 27, 40, 0.86)",
+  panel: "rgba(42, 24, 34, 0.97)",
+  panel2: "rgba(60, 32, 48, 0.94)",
   line: "rgba(255, 213, 169, 0.18)",
   lineStrong: "rgba(255, 213, 169, 0.42)",
   text: "#FFF7F0",
-  muted: "#D9B8AD",
+  muted: "#F0CFC2",
   gold: "#F4B95B",
   rose: "#FF6E96",
   cyan: "#67E8F9",
@@ -170,14 +170,14 @@ export default function AdminDashboard() {
       <Screen showQuickActions={false}>
         <ScrollView contentContainerStyle={styles.content}>
           <AdminPanel variant="hero" style={styles.lockedPanel}>
-            <SectionLabel tone="accent">Admin only</SectionLabel>
-            <H1>Prabha admin is locked</H1>
-            <Body muted>
+            <AdminLabel tone="accent">Admin only</AdminLabel>
+            <AdminTitle>Prabha admin is locked</AdminTitle>
+            <AdminCopy muted>
               {firebaseReady ? "Sign in with an admin account that has an adminUsers/{uid} document or admin custom claim." : "Firebase is not configured. Local admin UI testing needs EXPO_PUBLIC_ADMIN_MODE=true."}
-            </Body>
-            <Body muted>Current email: {getCurrentAuthEmail() ?? "not signed in"}</Body>
-            <Body muted>Current UID: {adminAccess.uid ?? "not signed in"}</Body>
-            {adminAccess.error ? <Body muted>{adminAccess.error}</Body> : null}
+            </AdminCopy>
+            <AdminCopy muted>Current email: {getCurrentAuthEmail() ?? "not signed in"}</AdminCopy>
+            <AdminCopy muted>Current UID: {adminAccess.uid ?? "not signed in"}</AdminCopy>
+            {adminAccess.error ? <AdminCopy tone="danger">{adminAccess.error}</AdminCopy> : null}
             <View style={styles.authBox}>
               <TextInput value={adminEmail} onChangeText={setAdminEmail} autoCapitalize="none" keyboardType="email-address" placeholder="Admin email" placeholderTextColor={c.muted} style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]} />
               <TextInput value={adminPassword} onChangeText={setAdminPassword} secureTextEntry placeholder="Admin password" placeholderTextColor={c.muted} style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]} />
@@ -193,7 +193,7 @@ export default function AdminDashboard() {
                   }
                 }}
               />
-              {authStatus ? <Body muted>{authStatus}</Body> : null}
+              {authStatus ? <AdminCopy tone="secondary">{authStatus}</AdminCopy> : null}
             </View>
           </AdminPanel>
         </ScrollView>
@@ -246,9 +246,9 @@ export default function AdminDashboard() {
               <Feather name={activeSection.icon} color={adminFx.gold} size={26} />
             </View>
             <View style={styles.flex}>
-              <SectionLabel tone="accent">Founder console</SectionLabel>
-              <H1>{activeSection.label}</H1>
-              <Body muted>Payments, users, reviews, products, and growth proof in one cinematic control room.</Body>
+              <AdminLabel tone="accent">Founder console</AdminLabel>
+              <AdminTitle>{activeSection.label}</AdminTitle>
+              <AdminCopy muted>Payments, users, reviews, products, and growth proof in one cinematic control room.</AdminCopy>
             </View>
             <View style={styles.actionRow}>
               <AdminStatusChip label={firebaseReady ? "Firebase connected" : "Local mode"} tone={firebaseReady ? "success" : "accent"} />
@@ -347,7 +347,7 @@ function OverviewSection({ metrics, status, lastCheckedAt }: { metrics: AdminMet
         <AdminPanel>
           <View style={styles.panelTitleRow}>
             <Feather name="radio" color={adminFx.cyan} size={20} />
-            <H2>Needs attention</H2>
+            <AdminHeading>Needs attention</AdminHeading>
           </View>
           <CommandLine icon="clock" label="Pending payment reviews" value={String(metrics.pendingPayments)} tone={metrics.pendingPayments ? "accent" : "success"} />
           <CommandLine icon="star" label="Review signals" value={`${metrics.totalReviews} total`} tone="secondary" />
@@ -356,7 +356,7 @@ function OverviewSection({ metrics, status, lastCheckedAt }: { metrics: AdminMet
         <AdminPanel>
           <View style={styles.panelTitleRow}>
             <Feather name="bar-chart-2" color={adminFx.gold} size={20} />
-            <H2>Operating pulse</H2>
+            <AdminHeading>Operating pulse</AdminHeading>
           </View>
           <MiniBar label="Premium conversion" value={metrics.totalUsers ? Math.round((metrics.premiumUsers / metrics.totalUsers) * 100) : 0} />
           <MiniBar label="Payment reviewed" value={reviewLoad ? Math.round(((metrics.approvedPayments + metrics.rejectedPayments) / reviewLoad) * 100) : 0} />
@@ -399,7 +399,7 @@ function ReviewSection(props: {
           onReject={() => props.onReject(request.id, props.rejectNotes[request.id] ?? "")}
         />
       ))}
-      {!props.visibleRequests.length ? <AdminPanel><H2>No requests</H2><Body muted>No payment requests match this filter.</Body></AdminPanel> : null}
+      {!props.visibleRequests.length ? <AdminPanel><AdminHeading>No requests</AdminHeading><AdminCopy muted>No payment requests match this filter.</AdminCopy></AdminPanel> : null}
     </>
   );
 }
@@ -411,12 +411,12 @@ function UsersSection({ query, setQuery, users }: { query: string; setQuery: (va
       <AdminPanel>
         <View style={styles.panelTitleRow}>
           <Feather name="users" color={adminFx.gold} size={20} />
-          <H2>User command roster</H2>
+          <AdminHeading>User command roster</AdminHeading>
         </View>
         <TableHeader columns={["User", "Skin", "Subscription", "Check-ins"]} />
         {users.map((user) => (
           <View key={user.id} style={styles.tableRow}>
-            <TableCell title={user.name || "Unnamed"} subtitle={user.location || user.id} />
+            <TableCell title={user.name || user.email || "Account created"} subtitle={user.email || user.recoveryPhone || user.location || user.id} />
             <TableCell title={user.skinType || "unknown"} />
             <TableCell title={user.subscriptionTier || "free"} subtitle={user.subscriptionStatus} />
             <TableCell title={String(user.checkInCount)} subtitle={user.updatedAt ? new Date(user.updatedAt).toLocaleDateString() : undefined} />
@@ -437,17 +437,17 @@ function DataSection({ metrics }: { metrics: AdminMetrics }) {
   ];
   return (
     <AdminPanel>
-      <SectionLabel tone="secondary">Portfolio proof</SectionLabel>
-      <H2>Non-sensitive growth summary</H2>
+      <AdminLabel tone="secondary">Portfolio proof</AdminLabel>
+      <AdminHeading>Non-sensitive growth summary</AdminHeading>
       <View style={styles.proofGrid}>
         {proofLines.map((line, index) => (
           <View key={line} style={styles.proofTile}>
             <Text style={styles.proofIndex}>{String(index + 1).padStart(2, "0")}</Text>
-            <Body>{line}</Body>
+            <AdminCopy>{line}</AdminCopy>
           </View>
         ))}
       </View>
-      <Body muted>Use these aggregate numbers in your portfolio. Avoid sharing raw user phone, email, screenshots, or payment IDs publicly.</Body>
+      <AdminCopy muted>Use these aggregate numbers in your portfolio. Avoid sharing raw user phone, email, screenshots, or payment IDs publicly.</AdminCopy>
     </AdminPanel>
   );
 }
@@ -481,9 +481,9 @@ function ProductsAdminSection({
   return (
     <>
       <AdminPanel>
-        <SectionLabel tone="accent">Manual product add</SectionLabel>
-        <H2>Add earning product</H2>
-        <Body muted>Short customer-facing fields first. Internal trust and fake-risk can stay in the data without dominating the shopper UI.</Body>
+        <AdminLabel tone="accent">Manual product add</AdminLabel>
+        <AdminHeading>Add earning product</AdminHeading>
+        <AdminCopy muted>Short customer-facing fields first. Internal trust and fake-risk can stay in the data without dominating the shopper UI.</AdminCopy>
         <View style={styles.formGrid}>
           <AdminInput label="Name" value={form.name} onChange={(name) => setForm((current) => ({ ...current, name }))} />
           <AdminInput label="Category" value={form.category} onChange={(category) => setForm((current) => ({ ...current, category }))} />
@@ -498,19 +498,19 @@ function ProductsAdminSection({
           <AdminInput label="Why not" value={form.whyNot} onChange={(whyNot) => setForm((current) => ({ ...current, whyNot }))} />
           <AdminInput label="Safety note" value={form.safetyNote} onChange={(safetyNote) => setForm((current) => ({ ...current, safetyNote }))} />
         </View>
-        <Body muted>Budget tier</Body>
+        <AdminCopy muted>Budget tier</AdminCopy>
         <Segment value={form.budgetTier} options={budgetTiers} onChange={(budgetTier: BudgetTier) => setForm((current) => ({ ...current, budgetTier }))} />
-        <Body muted>Skin fit</Body>
+        <AdminCopy muted>Skin fit</AdminCopy>
         <Segment value={form.fit.split("|")[0] as SkinType} options={skinTypes} onChange={(fit: SkinType) => setForm((current) => ({ ...current, fit }))} />
-        <Body muted>Status</Body>
+        <AdminCopy muted>Status</AdminCopy>
         <Segment value={form.status} options={["active", "draft", "archived"]} onChange={(status: AdminProduct["status"]) => setForm((current) => ({ ...current, status }))} />
         <AdminCommandButton label="Save product" icon="save" onPress={onSave} />
       </AdminPanel>
 
       <AdminPanel>
-        <SectionLabel tone="secondary">CSV import</SectionLabel>
-        <H2>Bulk add products</H2>
-        <Body muted>Required columns: name, category, price, budgetTier, fit, ingredients, affiliateUrl. Use | for lists.</Body>
+        <AdminLabel tone="secondary">CSV import</AdminLabel>
+        <AdminHeading>Bulk add products</AdminHeading>
+        <AdminCopy muted>Required columns: name, category, price, budgetTier, fit, ingredients, affiliateUrl. Use | for lists.</AdminCopy>
         <Button label="Choose CSV file" onPress={async () => setCsvText(await pickCsvText())} secondary />
         <TextInput
           value={csvText}
@@ -524,13 +524,13 @@ function ProductsAdminSection({
           <AdminCommandButton label="Preview CSV" icon="eye" onPress={() => setCsvPreview(parseProductsCsv(csvText))} subtle />
           <AdminCommandButton label={`Import ${csvPreview.valid.length}`} icon="upload" onPress={onImport} subtle={!csvPreview.valid.length} />
         </View>
-        {csvPreview.errors.map((error) => <Body key={error} muted>{error}</Body>)}
+        {csvPreview.errors.map((error) => <AdminCopy key={error} tone="danger">{error}</AdminCopy>)}
         {csvPreview.valid.length ? <AdminStatusChip label={`${csvPreview.valid.length} valid rows ready`} tone="success" /> : null}
-        {csvPreview.valid.slice(0, 5).map((product) => <Body key={product.id}>{product.name} - {product.price}</Body>)}
+        {csvPreview.valid.slice(0, 5).map((product) => <AdminCopy key={product.id}>{product.name} - {product.price}</AdminCopy>)}
       </AdminPanel>
 
       <AdminPanel>
-        <H2>Admin products</H2>
+        <AdminHeading>Admin products</AdminHeading>
         <TableHeader columns={["Product", "Status", "Price", "Signal"]} />
         {products.map((product) => (
           <View key={product.id} style={styles.tableRow}>
@@ -551,15 +551,15 @@ function ProductsAdminSection({
 function ReviewsSection({ reviews }: { reviews: AppReview[] }) {
   return (
     <AdminPanel>
-      <H2>App reviews</H2>
+      <AdminHeading>App reviews</AdminHeading>
       {reviews.map((review) => (
         <View key={review.id} style={styles.reviewLine}>
           <Text style={styles.stars}>{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</Text>
-          <Body>{review.experience}</Body>
-          <Body muted>{review.profileName || "Anonymous"} - {new Date(review.createdAt).toLocaleString()}</Body>
+          <AdminCopy>{review.experience}</AdminCopy>
+          <AdminCopy tone="secondary">{review.profileName || "Anonymous"} - {new Date(review.createdAt).toLocaleString()}</AdminCopy>
         </View>
       ))}
-      {!reviews.length ? <Body muted>No app reviews yet.</Body> : null}
+      {!reviews.length ? <AdminCopy muted>No app reviews yet.</AdminCopy> : null}
     </AdminPanel>
   );
 }
@@ -567,12 +567,12 @@ function ReviewsSection({ reviews }: { reviews: AppReview[] }) {
 function SettingsSection({ adminAccess, lastCheckedAt }: { adminAccess: { allowed: boolean; uid: string | null; source?: string; error?: string }; lastCheckedAt: string | null }) {
   return (
     <AdminPanel variant="warning">
-      <H2>Admin safety</H2>
-      <Body>Access: {adminAccess.allowed ? "allowed" : "blocked"}</Body>
-      <Body muted>UID: {adminAccess.uid ?? "none"}</Body>
-      <Body muted>Source: {adminAccess.source ?? "local/config"}</Body>
-      <Body muted>Last checked: {lastCheckedAt ?? "not checked yet"}</Body>
-      <Body muted>Keep raw payment screenshots, phone numbers, and emails private. Share only aggregate metrics in portfolios.</Body>
+      <AdminHeading>Admin safety</AdminHeading>
+      <AdminCopy tone={adminAccess.allowed ? "success" : "danger"}>Access: {adminAccess.allowed ? "allowed" : "blocked"}</AdminCopy>
+      <AdminCopy muted>UID: {adminAccess.uid ?? "none"}</AdminCopy>
+      <AdminCopy tone="accent">Source: {adminAccess.source ?? "local/config"}</AdminCopy>
+      <AdminCopy muted>Last checked: {lastCheckedAt ?? "not checked yet"}</AdminCopy>
+      <AdminCopy muted>Keep raw payment screenshots, phone numbers, and emails private. Share only aggregate metrics in portfolios.</AdminCopy>
     </AdminPanel>
   );
 }
@@ -583,13 +583,16 @@ function PaymentReviewCard({ request, rejectNote, onRejectNote, onApprove, onRej
   const screenshot = request.screenshotDownloadUrl ?? request.screenshotUri;
   const [auditOpen, setAuditOpen] = useState(false);
   const [auditActions, setAuditActions] = useState<any[]>([]);
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  const approvalMessage = buildUserPaymentMessage(request, "approved");
+  const rejectionMessage = buildUserPaymentMessage(request, "rejected", rejectNote);
   return (
     <AdminPanel variant={request.status === "pending_review" ? "hero" : "default"}>
       <View style={styles.requestHeader}>
         <View style={styles.flex}>
           <AdminStatusChip label={request.status.replace("_", " ")} tone={request.status === "approved" ? "success" : request.status === "rejected" ? "danger" : "accent"} />
-          <H2>{request.profileName || request.payerName || "Unnamed user"}</H2>
-          <Body muted>{request.userEmail || request.userId}</Body>
+          <AdminHeading>{request.profileName || request.payerName || "Unnamed user"}</AdminHeading>
+          <AdminCopy tone="secondary">{request.userEmail || request.userId}</AdminCopy>
         </View>
         <View style={styles.amountBox}>
           <Text style={[styles.amount, { color: c.text }]}>Rs. {request.amount}</Text>
@@ -614,7 +617,7 @@ function PaymentReviewCard({ request, rejectNote, onRejectNote, onApprove, onRej
           <Image source={{ uri: screenshot }} style={styles.screenshot} resizeMode="cover" />
           <Button label="Open screenshot" onPress={() => Linking.openURL(screenshot)} secondary />
         </View>
-      ) : <Body muted>No screenshot attached.</Body>}
+      ) : <AdminCopy tone="danger">No screenshot attached.</AdminCopy>}
       {request.status === "pending_review" ? (
         <>
           <TextInput value={rejectNote} onChangeText={onRejectNote} placeholder="Reject note" multiline style={[styles.noteInput, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]} />
@@ -623,7 +626,23 @@ function PaymentReviewCard({ request, rejectNote, onRejectNote, onApprove, onRej
             <AdminCommandButton label="Reject" icon="x-circle" onPress={onReject} subtle />
           </View>
         </>
-      ) : <Body muted>Reviewed: {formatDate(request.reviewedAt)} - {request.reviewNote ?? "No note"}</Body>}
+      ) : <AdminCopy tone="secondary">Reviewed: {formatDate(request.reviewedAt)} - {request.reviewNote ?? "No note"}</AdminCopy>}
+      <AdminPanel style={styles.messagePanel}>
+        <View style={styles.panelTitleRow}>
+          <Feather name="send" color={adminFx.cyan} size={18} />
+          <AdminHeading>Manual user message</AdminHeading>
+        </View>
+        <AdminCopy muted>Copy this after approving/rejecting. No Firebase Blaze email needed.</AdminCopy>
+        <View style={styles.actionRow}>
+          <AdminCommandButton label="Copy approval email" icon="copy" onPress={async () => setCopyStatus(await copyAdminMessage(approvalMessage))} subtle />
+          <AdminCommandButton label="Copy rejection email" icon="copy" onPress={async () => setCopyStatus(await copyAdminMessage(rejectionMessage))} subtle />
+          <AdminCommandButton label="Copy WhatsApp" icon="message-circle" onPress={async () => setCopyStatus(await copyAdminMessage(buildWhatsAppPaymentMessage(request, request.status === "rejected" ? "rejected" : "approved", rejectNote || request.reviewNote)))} subtle />
+        </View>
+        {copyStatus ? <AdminCopy tone={copyStatus.includes("Copied") ? "success" : "accent"}>{copyStatus}</AdminCopy> : null}
+        <View style={styles.messagePreview}>
+          <AdminCopy>{request.status === "rejected" ? rejectionMessage : approvalMessage}</AdminCopy>
+        </View>
+      </AdminPanel>
       <AdminCommandButton
         label={auditOpen ? "Hide audit" : "Show audit"}
         icon={auditOpen ? "chevron-up" : "activity"}
@@ -641,9 +660,9 @@ function PaymentReviewCard({ request, rejectNote, onRejectNote, onApprove, onRej
           {auditActions.length ? auditActions.map((action) => (
             <View key={action.id} style={styles.auditLine}>
               <Feather name="terminal" color={adminFx.cyan} size={14} />
-              <Body muted>{action.actionType} - {action.adminId ?? "unknown"}</Body>
+              <AdminCopy muted>{action.actionType} - {action.adminId ?? "unknown"}</AdminCopy>
             </View>
-          )) : <Body muted>No audit entries yet.</Body>}
+          )) : <AdminCopy muted>No audit entries yet.</AdminCopy>}
         </View>
       ) : null}
     </AdminPanel>
@@ -725,6 +744,24 @@ function AdminHero({ eyebrow, title, body, footer, icon }: { eyebrow: string; ti
       </View>
     </AdminPanel>
   );
+}
+
+function AdminTitle({ children }: PropsWithChildren) {
+  return <Text style={styles.adminTitle}>{children}</Text>;
+}
+
+function AdminHeading({ children }: PropsWithChildren) {
+  return <Text style={styles.adminHeading}>{children}</Text>;
+}
+
+function AdminCopy({ children, muted = false, tone }: PropsWithChildren<{ muted?: boolean; tone?: AdminTone }>) {
+  const color = tone ? adminToneColor(tone) : muted ? adminFx.muted : adminFx.text;
+  return <Text style={[styles.adminCopy, { color }]}>{children}</Text>;
+}
+
+function AdminLabel({ children, tone = "accent" }: PropsWithChildren<{ tone?: AdminTone }>) {
+  const color = adminToneColor(tone);
+  return <Text style={[styles.adminLabel, { color }]}>{children}</Text>;
 }
 
 function AdminStatusChip({ label, tone = "primary" }: { label: string; tone?: AdminTone }) {
@@ -837,7 +874,7 @@ function AdminInput({ label, value, onChange, keyboardType }: { label: string; v
   const c = palettes[themeMode];
   return (
     <View style={styles.field}>
-      <Body muted>{label}</Body>
+      <AdminCopy muted>{label}</AdminCopy>
       <TextInput value={value} onChangeText={onChange} keyboardType={keyboardType} placeholder={label} placeholderTextColor={c.muted} style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]} />
     </View>
   );
@@ -850,8 +887,8 @@ function TableHeader({ columns }: { columns: string[] }) {
 function TableCell({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <View style={styles.tableCell}>
-      <Body>{title}</Body>
-      {subtitle ? <Body muted>{subtitle}</Body> : null}
+      <AdminCopy>{title}</AdminCopy>
+      {subtitle ? <AdminCopy muted>{subtitle}</AdminCopy> : null}
     </View>
   );
 }
@@ -863,7 +900,7 @@ function Detail({ label, value }: { label: string; value: string }) {
   return (
     <View style={[styles.detail, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
       <Text style={[styles.detailLabel, { color: c.muted }]}>{label}</Text>
-      <Body>{value}</Body>
+      <AdminCopy>{value}</AdminCopy>
     </View>
   );
 }
@@ -1003,6 +1040,53 @@ function formatDate(value?: string) {
   return date.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+async function copyAdminMessage(message: string) {
+  if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(message);
+    return "Copied message.";
+  }
+  return "Copy is available on web. Select the preview text below on this device.";
+}
+
+function buildUserPaymentMessage(request: PaymentRequest, status: "approved" | "rejected", rejectNote?: string) {
+  const greeting = request.payerName ? `Hi ${request.payerName},` : "Hi,";
+  if (status === "approved") {
+    return [
+      greeting,
+      "",
+      "Good news. Your Prabha Premium has been activated.",
+      "",
+      `Request ID: ${request.id}`,
+      `Plan: ${request.plan}`,
+      `Payment: ${request.provider} / Rs. ${request.amount}`,
+      `Transaction ID: ${request.transactionId}`,
+      "",
+      "Please open Prabha and tap Settings > Refresh account data if premium does not appear instantly.",
+      "",
+      "Thank you for supporting Prabha."
+    ].join("\n");
+  }
+  return [
+    greeting,
+    "",
+    "Your Prabha payment request could not be approved yet.",
+    "",
+    `Request ID: ${request.id}`,
+    `Reason: ${rejectNote || request.reviewNote || "We could not verify the payment screenshot or transaction ID."}`,
+    "",
+    "Please send the correct screenshot/transaction ID or contact support with your payment phone.",
+    "",
+    "Prabha Support"
+  ].join("\n");
+}
+
+function buildWhatsAppPaymentMessage(request: PaymentRequest, status: "approved" | "rejected", rejectNote?: string) {
+  if (status === "approved") {
+    return `Hi ${request.payerName || ""}, your Prabha Premium is activated. Request: ${request.id}. Open the app and refresh account data if needed.`;
+  }
+  return `Hi ${request.payerName || ""}, your Prabha payment request needs correction. Request: ${request.id}. Reason: ${rejectNote || "payment proof could not be verified"}. Please resend correct proof.`;
+}
+
 function getAdminSidebarPalette(themeMode: "light" | "dark") {
   if (themeMode === "dark") {
     return {
@@ -1062,6 +1146,10 @@ const styles = StyleSheet.create({
   adminPanelEdge: { position: "absolute", left: 0, top: 0, bottom: 0, width: 4, opacity: 0.86 },
   commandHero: { flexDirection: "row", alignItems: "center", gap: spacing.md, flexWrap: "wrap" },
   heroIconLarge: { width: 72, height: 72, borderRadius: 24, alignItems: "center", justifyContent: "center", backgroundColor: adminFx.gold, shadowColor: adminFx.gold, shadowOpacity: 0.42, shadowRadius: 18, shadowOffset: { width: 0, height: 8 } },
+  adminTitle: { color: adminFx.text, fontSize: 32, lineHeight: 38, fontWeight: "900", fontFamily: Platform.select({ web: "Georgia, serif", default: undefined }) },
+  adminHeading: { color: adminFx.text, fontSize: 22, lineHeight: 28, fontWeight: "900", fontFamily: Platform.select({ web: "Georgia, serif", default: undefined }) },
+  adminCopy: { fontSize: 15, lineHeight: 22, fontWeight: "700" },
+  adminLabel: { fontSize: 12, lineHeight: 16, fontWeight: "900", textTransform: "uppercase" },
   adminEyebrow: { color: adminFx.gold, fontSize: 12, fontWeight: "900", textTransform: "uppercase" },
   commandHeroTitle: { color: adminFx.text, fontSize: 30, lineHeight: 36, fontWeight: "900", fontFamily: Platform.select({ web: "Georgia, serif", default: undefined }) },
   commandHeroBody: { color: adminFx.muted, fontSize: 15, lineHeight: 22, fontWeight: "700" },
@@ -1115,6 +1203,8 @@ const styles = StyleSheet.create({
   proofIndex: { color: adminFx.gold, fontSize: 12, fontWeight: "900" },
   auditList: { borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.10)", paddingTop: spacing.sm, gap: spacing.xs },
   auditLine: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  messagePanel: { shadowOpacity: 0.16, backgroundColor: "rgba(24, 16, 24, 0.72)" },
+  messagePreview: { borderWidth: 1, borderColor: adminFx.line, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.055)", padding: spacing.sm },
   reviewLine: { gap: spacing.xs, paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: "rgba(140,148,166,0.18)" },
   stars: { color: "#E59B2E", fontSize: 16, fontWeight: "900" }
 });

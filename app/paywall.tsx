@@ -33,7 +33,9 @@ export default function Paywall() {
   const qrTone = provider === "esewa" ? "#1FB20A" : "#D7193F";
   const receiverName = "Kale Daii";
   const walletNumber = "9709185409";
-  const pending = paymentRequests.find((item) => item.status === "pending_review");
+  const syncedPending = paymentRequests.find((item) => item.status === "pending_review" && item.cloudSyncStatus === "synced");
+  const localPending = paymentRequests.find((item) => item.status === "pending_review" && item.cloudSyncStatus !== "synced");
+  const pending = syncedPending ?? localPending;
   const latestReviewed = paymentRequests.find((item) => item.status === "approved" || item.status === "rejected");
   useEffect(() => {
     trackEvent("paywall_viewed", { screen: "paywall" });
@@ -89,7 +91,7 @@ export default function Paywall() {
           ) : null}
           {pending ? (
             <View style={[styles.reviewStatus, { borderColor: c.borderStrong, backgroundColor: c.surface }]}>
-              <Pill tone="accent">Pending review</Pill>
+              <Pill tone={pending.cloudSyncStatus === "synced" ? "accent" : "danger"}>{pending.cloudSyncStatus === "synced" ? "Pending review" : "Not visible in admin"}</Pill>
               <H2>{language === "en" ? "Payment under review" : "Payment review मा छ"}</H2>
               <Body muted>
                 {language === "en"
@@ -194,27 +196,40 @@ export default function Paywall() {
             secondary
           />
           <Button
-            label={!authUser?.email ? "Sign in before payment" : pending ? "Already under review" : submitting || paymentState === "pending" ? "Submitting..." : "Submit for review"}
-            disabled={!authUser?.email || submitting || paymentState === "pending"}
+            label={!authUser?.email ? "Sign in before payment" : syncedPending ? "Already under review" : localPending ? "Retry admin sync" : submitting ? "Submitting..." : "Submit for review"}
+            disabled={!authUser?.email || submitting}
             onPress={async () => {
-              if (pending) {
+              if (syncedPending) {
                 setMessage("You already have a payment under review. Result will be updated within 24 hours.");
                 setReviewModalOpen(true);
+                return;
+              }
+              if (localPending) {
+                setSubmitting(true);
+                try {
+                  setMessage(await retryPendingPaymentSync());
+                } finally {
+                  setSubmitting(false);
+                }
                 return;
               }
               setSubmitting(true);
               trackEvent("payment_started", { plan, provider });
               try {
-                const result = await submitManualPayment({ provider, plan, transactionId, payerName, payerPhone, screenshotUri: screenshotUri ?? "" });
+                const result = await submitWithTimeout(submitManualPayment({ provider, plan, transactionId, payerName, payerPhone, screenshotUri: screenshotUri ?? "" }));
                 setMessage(result.message);
                 if (result.ok) setReviewModalOpen(true);
                 trackEvent(result.ok ? "payment_succeeded" : "payment_failed", { plan, provider, state: result.request?.status ?? "failed" });
+              } catch (error) {
+                const nextMessage = error instanceof Error ? error.message : "Payment submit timed out. Please check connection and try again.";
+                setMessage(nextMessage);
+                trackEvent("payment_failed", { plan, provider, state: "timeout" });
               } finally {
                 setSubmitting(false);
               }
             }}
           />
-          <Body muted>Status: {pending ? "pending review" : paymentState}. {pending ? `Request ${pending.id}` : "No pending request yet."}</Body>
+          <Body muted>Status: {pending ? `${pending.status} / ${pending.cloudSyncStatus ?? "unknown sync"}` : paymentState}. {pending ? `Request ${pending.id}` : "No pending request yet."}</Body>
           <Body muted>If payment is not verified within 24 hours, contact 9709185409 or mishant480@gmail.com.</Body>
           {message ? <Body>{message}</Body> : null}
         </Card>
@@ -251,6 +266,13 @@ export default function Paywall() {
       </Modal>
     </Screen>
   );
+}
+
+function submitWithTimeout<T>(promise: Promise<T>, ms = 30000): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("Payment submit timed out. Please check your internet, then tap Submit for review again.")), ms))
+  ]);
 }
 
 const styles = StyleSheet.create({

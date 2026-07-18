@@ -136,6 +136,7 @@ export function AppProvider({ children }: PropsWithChildren) {
   const [authUser, setAuthUser] = useState<AuthUserSummary | null>(null);
   const [authStatus, setAuthStatus] = useState<string | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const [localStateReady, setLocalStateReady] = useState(false);
   const [recoveryPhone, setRecoveryPhone] = useState("");
   const [profile, setProfile] = useState<UserProfile>(defaultProfile);
   const [profiles, setProfiles] = useState<Record<string, UserProfile>>({ primary: defaultProfile });
@@ -196,13 +197,14 @@ export function AppProvider({ children }: PropsWithChildren) {
       const paymentState = JSON.parse(raw) as { paymentState?: PaymentState; paymentRequests?: PaymentRequest[] };
       if (paymentState.paymentState) setPaymentState(paymentState.paymentState);
       if (paymentState.paymentRequests) setPaymentRequests(paymentState.paymentRequests);
-    }).catch(() => undefined);
+    }).catch(() => undefined).finally(() => setLocalStateReady(true));
   }, []);
 
   useEffect(() => {
+    if (!localStateReady) return;
     // Save state to local storage (cache backup)
     AsyncStorage.setItem("skin-nepal-state", JSON.stringify({ language, themeMode, tier, subscription, paymentState, paymentRequests, profile, profiles, activeProfileId, recoveryPhone, completion, likedTipIds, savedTipIds, savedProductIds, profileSavedProductIds, dailyCheckIns, profileDailyCheckIns, notificationPreferences })).catch(() => undefined);
-  }, [language, themeMode, tier, subscription, paymentState, paymentRequests, profile, profiles, activeProfileId, recoveryPhone, completion, likedTipIds, savedTipIds, savedProductIds, profileSavedProductIds, dailyCheckIns, profileDailyCheckIns, notificationPreferences]);
+  }, [localStateReady, language, themeMode, tier, subscription, paymentState, paymentRequests, profile, profiles, activeProfileId, recoveryPhone, completion, likedTipIds, savedTipIds, savedProductIds, profileSavedProductIds, dailyCheckIns, profileDailyCheckIns, notificationPreferences]);
 
   useEffect(() => {
     const ensureToday = () => {
@@ -266,7 +268,7 @@ export function AppProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     // Auto-sync profile changes to Firebase (5 second debounce to avoid too frequent saves)
     const timeout = setTimeout(() => {
-      if (profile.name) {  // Only sync if profile has been filled
+      if (localStateReady && profile.name) {  // Only sync if profile has been filled
         syncUserSnapshot({
           profile,
           profiles,
@@ -283,7 +285,7 @@ export function AppProvider({ children }: PropsWithChildren) {
     }, 5000);
 
     return () => clearTimeout(timeout);
-  }, [profile, profiles, activeProfileId, subscription, dailyCheckIns, profileDailyCheckIns, profileSavedProductIds, recoveryPhone, notificationPreferences, paymentRequests]);
+  }, [localStateReady, profile, profiles, activeProfileId, subscription, dailyCheckIns, profileDailyCheckIns, profileSavedProductIds, recoveryPhone, notificationPreferences, paymentRequests]);
 
   useEffect(() => {
     const pending = paymentRequests.filter((item) => item.status === "pending_review" || item.status === "approved");
@@ -431,18 +433,20 @@ export function AppProvider({ children }: PropsWithChildren) {
         : { ...request, cloudSyncStatus: "local_only" as const, cloudSyncError: "error" in saved ? saved.error : "Could not sync to Firebase admin inbox." };
       setPaymentRequests((current) => [savedRequest, ...current.filter((item) => item.id !== savedRequest.id)]);
       setRecoveryPhone(input.payerPhone.trim());
-      setPaymentState("pending_review");
-      try {
-        await syncUserSnapshot({ profile, profiles, activeProfileId, subscription: { ...subscription, paymentState: "pending_review" }, dailyCheckIns, profileDailyCheckIns, profileSavedProductIds, recoveryPhone: input.payerPhone.trim(), notificationPreferences, paymentRequests: [savedRequest, ...paymentRequests] });
-      } catch {
-        // Keep the local pending review record when cloud sync is unavailable.
+      setPaymentState(saved.ok ? "pending_review" : "failed");
+      if (saved.ok) {
+        try {
+          await syncUserSnapshot({ profile, profiles, activeProfileId, subscription: { ...subscription, paymentState: "pending_review" }, dailyCheckIns, profileDailyCheckIns, profileSavedProductIds, recoveryPhone: input.payerPhone.trim(), notificationPreferences, paymentRequests: [savedRequest, ...paymentRequests] });
+        } catch {
+          // The admin inbox write already succeeded; user snapshot sync can retry later.
+        }
       }
       return {
-        ...result,
+        ok: saved.ok,
         request: savedRequest,
         message: saved.ok
           ? "Payment submitted for review and synced to the admin panel."
-          : "Payment saved on this device, but it did not reach the admin panel yet. Enable Firebase Anonymous Auth or tap Retry admin sync after fixing Firebase."
+          : `Payment saved on this device, but it did not reach the admin panel yet. ${savedRequest.cloudSyncError ?? "Check Firebase Auth/Firestore rules and tap Retry admin sync."}`
       };
     },
     approvePaymentRequest: async (id, note = "Approved") => {
@@ -502,6 +506,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       }
       const synced = { ...saved.request, cloudSyncStatus: "synced" as const, cloudSyncError: undefined };
       setPaymentRequests((current) => current.map((item) => item.id === pending.id ? synced : item));
+      setPaymentState("pending_review");
       return "Payment request synced to the admin panel.";
     },
     paymentRequests,

@@ -114,7 +114,7 @@ export default function Progress() {
           {premiumLocked ? (
             <View style={styles.previewGrid}>
               <Pill tone="primary">Best habit</Pill>
-              <Body>{weeklyReport.bestHabit}</Body>
+              <Body>Unlock to see which habit is helping most this week.</Body>
               <Pill tone="accent">Unlock premium for 6 more insights →</Pill>
             </View>
           ) : (

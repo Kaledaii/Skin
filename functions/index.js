@@ -63,6 +63,29 @@ async function sendAdminEmail({ subject, text }) {
   return { sent: true };
 }
 
+async function sendUserEmail({ to, subject, text }) {
+  const config = notificationEmailConfig();
+  if (!config.host || !config.user || !config.pass || !config.from || !to) {
+    console.log("User email notification skipped: SMTP env vars or recipient missing.", { subject, to: Boolean(to) });
+    return { sent: false, reason: "smtp_or_recipient_missing" };
+  }
+
+  const transport = nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    auth: { user: config.user, pass: config.pass }
+  });
+
+  await transport.sendMail({
+    from: config.from,
+    to,
+    subject,
+    text
+  });
+  return { sent: true };
+}
+
 async function writeAdminNotification(kind, sourceId, payload, emailResult) {
   const id = `${kind}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   await admin.firestore().collection("adminNotifications").doc(id).set({
@@ -113,6 +136,54 @@ exports.notifyPaymentRequestCreated = functions.firestore.document("paymentReque
     payerPhone: request.payerPhone || null,
     status: request.status || "pending_review"
   }, emailResult);
+});
+
+exports.notifyPaymentRequestReviewed = functions.firestore.document("paymentRequests/{requestId}").onUpdate(async (change, context) => {
+  const before = change.before.data() || {};
+  const after = change.after.data() || {};
+  if (before.status === after.status) return null;
+  if (!["approved", "rejected"].includes(after.status)) return null;
+
+  const email = after.userEmail;
+  const approved = after.status === "approved";
+  const subject = approved ? "Prabha Premium activated" : "Prabha payment review update";
+  const text = approved
+    ? [
+        "Good news, your Prabha Premium access has been activated.",
+        "",
+        `Request ID: ${context.params.requestId}`,
+        `Plan: ${after.plan || "premium"}`,
+        `Provider: ${after.provider || "wallet"}`,
+        `Transaction ID: ${after.transactionId || "not provided"}`,
+        "",
+        "Open Prabha and refresh account data from Settings if premium does not appear instantly.",
+        "",
+        "Thank you for supporting Prabha."
+      ].join("\n")
+    : [
+        "Your Prabha payment request could not be approved yet.",
+        "",
+        `Request ID: ${context.params.requestId}`,
+        `Reason: ${after.reviewNote || "We could not verify the payment proof."}`,
+        "",
+        "Please check your transaction ID and screenshot, then submit again or contact support with your payment phone and transaction ID."
+      ].join("\n");
+
+  let emailResult;
+  try {
+    emailResult = await sendUserEmail({ to: email, subject, text });
+  } catch (err) {
+    console.error("notifyPaymentRequestReviewed email error", err);
+    if (Sentry) Sentry.captureException(err);
+    emailResult = { sent: false, reason: String(err) };
+  }
+
+  await writeAdminNotification(approved ? "payment_approved_email" : "payment_rejected_email", context.params.requestId, {
+    userEmail: email || null,
+    status: after.status,
+    reviewNote: after.reviewNote || null
+  }, emailResult);
+  return null;
 });
 
 exports.notifyAppReviewCreated = functions.firestore.document("appReviews/{reviewId}").onCreate(async (snapshot, context) => {

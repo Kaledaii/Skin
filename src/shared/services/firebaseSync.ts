@@ -1,7 +1,7 @@
 import { AdminMetrics, AdminProduct, AdminUserSummary, AppReview, DailyCheckIn, NotificationPreferences, PaymentRequest, SubscriptionInfo, UserProfile, UserSnapshot } from "../types";
 import { getFirebase } from "./firebase";
 import { collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
-import { createUserWithEmailAndPassword, EmailAuthProvider, GoogleAuthProvider, linkWithCredential, signInAnonymously as firebaseSignInAnonymously, signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
+import { Auth, createUserWithEmailAndPassword, EmailAuthProvider, GoogleAuthProvider, linkWithCredential, onAuthStateChanged, signInAnonymously as firebaseSignInAnonymously, signInWithEmailAndPassword, signInWithPopup, User } from "firebase/auth";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
 export type SyncPayload = {
@@ -32,11 +32,32 @@ function withTimeout<T>(promise: Promise<T>, ms = 12000): Promise<T> {
   ]);
 }
 
+async function waitForInitialAuth(auth: Auth, ms = 2500): Promise<User | null> {
+  if (auth.currentUser) return auth.currentUser;
+  return withTimeout(
+    new Promise<User | null>((resolve) => {
+      const unsubscribe = onAuthStateChanged(
+        auth,
+        (user) => {
+          unsubscribe();
+          resolve(user);
+        },
+        () => {
+          unsubscribe();
+          resolve(null);
+        }
+      );
+    }),
+    ms
+  ).catch(() => auth.currentUser ?? null);
+}
+
 export async function ensureAnonymousUser(): Promise<AuthResult> {
   try {
     const firebase = getFirebase();
     if (!firebase) return { ok: false, mode: "local-demo", message: "Firebase is not configured; using local demo mode." };
-    const user = firebase.auth.currentUser ?? (await firebaseSignInAnonymously(firebase.auth)).user;
+    const restoredUser = await waitForInitialAuth(firebase.auth);
+    const user = restoredUser ?? (await firebaseSignInAnonymously(firebase.auth)).user;
     return { ok: true, uid: user.uid, email: user.email, mode: "anonymous", message: "Anonymous account ready." };
   } catch {
     return { ok: false, mode: "local-demo", message: "Could not connect to Firebase; using local mode." };
@@ -162,12 +183,13 @@ export async function uploadPaymentScreenshot(uri: string, requestId: string) {
 
     const firebase = getFirebase();
     if (!firebase || !uri) return undefined;
-    const user = firebase.auth.currentUser ?? (await firebaseSignInAnonymously(firebase.auth)).user;
-    const response = await fetch(uri);
-    const blob = await response.blob();
+    const user = await waitForInitialAuth(firebase.auth, 3000);
+    if (!user) return undefined;
+    const response = await withTimeout(fetch(uri), 8000);
+    const blob = await withTimeout(response.blob(), 8000);
     const storageRef = ref(firebase.storage, `payment-screenshots/${user.uid}/${requestId}.jpg`);
-    await uploadBytes(storageRef, blob);
-    return getDownloadURL(storageRef);
+    await withTimeout(uploadBytes(storageRef, blob), 10000);
+    return withTimeout(getDownloadURL(storageRef), 5000);
   } catch {
     return undefined;
   }
@@ -189,10 +211,10 @@ async function uploadPaymentScreenshotToCloudinary(uri: string, requestId: strin
   formData.append("public_id", requestId);
 
   try {
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+    const response = await withTimeout(fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
       method: "POST",
       body: formData
-    });
+    }), 12000);
     if (!response.ok) return undefined;
     const payload = await response.json() as { secure_url?: string };
     return payload.secure_url;
@@ -206,12 +228,16 @@ export async function savePaymentRequest(request: PaymentRequest) {
     const firebase = getFirebase();
     if (!firebase) return { ok: false, mode: "local-demo" as const, request };
     let next = { ...request };
-    try {
-      const user = firebase.auth.currentUser ?? (await withTimeout(firebaseSignInAnonymously(firebase.auth), 8000)).user;
-      next = { ...next, userId: user.uid, userEmail: user.email ?? request.userEmail ?? null };
-    } catch {
-      next = { ...next, userId: request.userId || "local-demo-user", userEmail: request.userEmail ?? null };
+    const user = await waitForInitialAuth(firebase.auth, 5000);
+    if (!user?.email) {
+      return {
+        ok: false,
+        mode: "local-demo" as const,
+        request,
+        error: "Firebase email session is not ready. Sign in again, then submit payment."
+      };
     }
+    next = { ...next, userId: user.uid, userEmail: user.email ?? request.userEmail ?? null };
     // Basic server-side rate limiting: prevent abuse
     try {
       const MAX_PER_HOUR = 5;
@@ -229,18 +255,22 @@ export async function savePaymentRequest(request: PaymentRequest) {
     }
 
     // Basic sanitization: trim strings and cap lengths
-    next = {
+    next = compactFirestoreData({
       ...next,
       transactionId: String(next.transactionId ?? "").trim().slice(0, 128),
       payerName: String(next.payerName ?? "").trim().slice(0, 128),
       payerPhone: String(next.payerPhone ?? "").trim().slice(0, 32),
       screenshotDownloadUrl: next.screenshotDownloadUrl ? String(next.screenshotDownloadUrl).trim().slice(0, 1024) : next.screenshotDownloadUrl
-    };
-    await withTimeout(setDoc(doc(firebase.db, "paymentRequests", request.id), { ...next, cloudSyncStatus: "synced", cloudSyncError: null, updatedAt: serverTimestamp() }, { merge: true }));
+    }) as PaymentRequest;
+    await withTimeout(setDoc(doc(firebase.db, "paymentRequests", request.id), compactFirestoreData({ ...next, cloudSyncStatus: "synced", cloudSyncError: null, updatedAt: serverTimestamp() }), { merge: true }));
     return { ok: true, mode: "firebase-synced" as const, request: next };
   } catch (error) {
     return { ok: false, mode: "local-demo" as const, request, error: errorMessage(error) };
   }
+}
+
+function compactFirestoreData<T extends Record<string, unknown>>(value: T): T {
+  return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined)) as T;
 }
 
 export async function listPaymentRequests(status?: PaymentRequest["status"]) {
@@ -449,21 +479,31 @@ export async function listAdminUsers() {
     const snapshot = await withTimeout(getDocs(collection(firebase.db, "users")));
     const users = snapshot.docs.map((item) => {
       const data = item.data() as {
+        userEmail?: string | null;
+        recoveryPhone?: string;
         profile?: UserProfile;
+        profiles?: Record<string, UserProfile>;
+        activeProfileId?: string;
         subscription?: SubscriptionInfo;
         dailyCheckIns?: Record<string, DailyCheckIn>;
+        profileDailyCheckIns?: Record<string, Record<string, DailyCheckIn>>;
         updatedAt?: { toDate?: () => Date } | string;
       };
       const updatedAt = typeof data.updatedAt === "string" ? data.updatedAt : data.updatedAt?.toDate?.()?.toISOString();
+      const activeProfile = data.activeProfileId ? data.profiles?.[data.activeProfileId] : undefined;
+      const profile = activeProfile ?? data.profile;
+      const checkIns = data.activeProfileId ? data.profileDailyCheckIns?.[data.activeProfileId] : data.dailyCheckIns;
       return {
         id: item.id,
-        name: data.profile?.name,
-        location: data.profile?.location,
-        skinType: data.profile?.skinType,
-        subscriptionStatus: data.subscription?.status,
-        subscriptionTier: data.subscription?.tier,
+        email: data.userEmail,
+        recoveryPhone: data.recoveryPhone,
+        name: profile?.name || data.userEmail || "Account created",
+        location: profile?.location || data.recoveryPhone,
+        skinType: profile?.skinType,
+        subscriptionStatus: data.subscription?.status ?? "free",
+        subscriptionTier: data.subscription?.tier ?? "free",
         updatedAt,
-        checkInCount: Object.keys(data.dailyCheckIns ?? {}).length
+        checkInCount: Object.keys(checkIns ?? {}).length
       } satisfies AdminUserSummary;
     });
     return { ok: true, mode: "firebase-synced" as const, users };
